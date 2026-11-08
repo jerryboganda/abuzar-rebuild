@@ -72,11 +72,17 @@ export function classify() {
 
   const registered = new Set(PRINT_TEMPLATES.flatMap((template) => template.definitions))
   const classes: Record<string, string[]> = {}
-  const flags = { pageNumbers: 0, grouped: 0, crosstab: 0, label: 0, graph: 0, composite: 0 }
+  const flags = { headerData: 0, letterhead: 0, pageNumbers: 0, grouped: 0, crosstab: 0, label: 0, graph: 0, composite: 0 }
   for (const [name, def] of definitions) {
     const used = uses.get(name) ?? {}
     const processing = Number(def.datawindow.processing ?? 0)
     const pageNumbers = def.objects.some((object) => /\bpage(count)?\s*\(/i.test(object.expression ?? ''))
+    // A company letterhead (f_ReportHeaderInfo*, owner preferences) or a reprint counter is printed-document evidence.
+    const letterhead = def.objects.some((object) => /f_reportheaderinfo|f_stringpreferences\s*\(\s*['"]owner|reprintcounter/i.test(object.expression ?? ''))
+    if (letterhead) flags.letterhead++
+    // Record data (columns or computed values) printed in the header band is a document layout: on-screen grids keep only captions there.
+    const headerData = def.objects.some((object) => object.band === 'header' && (object.type === 'column' || object.type === 'compute'))
+    if (headerData) flags.headerData++
     if (pageNumbers) flags.pageNumbers++
     if (def.bands.group?.length) flags.grouped++
     if (processing === 4) flags.crosstab++
@@ -86,7 +92,7 @@ export function classify() {
     // Highest-evidence class first; a DataWindow lands in exactly one class.
     const cls = registered.has(name) ? 'registered-template' :
       used.print ? 'print-target' :
-      used.report || pageNumbers || processing === 2 ? 'report-or-document' :
+      used.report || pageNumbers || letterhead || headerData || [2, 3, 4, 5].includes(processing) ? 'report-or-document' :
       onScreen.has(name) ? 'screen-control' :
       used.control || used.implicit ? 'script-assigned-control' :
       used.datastore ? 'datastore-only' :

@@ -45,7 +45,7 @@ test('every generated and reviewed form plans every visible field exactly once',
 
 // Forms whose source tab order is not row-major cannot be wrapped into lines without reordering the DOM (and so the tab order).
 // They keep one field per line until a placement-based arrangement exists; the list is pinned so any new case fails loudly.
-const NON_ROW_MAJOR = ['d_mr_patientdischarge', 'd_old_general1', 'd_opensalereturnfooter', 'd_salepreferences', 'd_salereturnfooter_view', 'd_servicefooter_view', 'd_visitvitals']
+const NON_ROW_MAJOR = ['d_mr_patientdischarge', 'd_old_general1', 'd_opensalereturnfooter', 'd_patientvisit_obs_us', 'd_salepreferences', 'd_salereturnfooter_view', 'd_servicefooter_view', 'd_visitvitals']
 
 test('only the known forms have a source order that interleaves lines', () => {
   const definitions = loadDefinitions()

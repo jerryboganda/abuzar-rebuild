@@ -34,7 +34,7 @@ const ART = new Set(['bitmap', 'rectangle', 'roundrectangle', 'ellipse', 'line']
 export interface Derivation { surface?: DataSurface; reason?: string }
 
 /** Pairs every label with the column it describes using the geometry stored in the source definition. */
-export function derive(name: string, def: DwDef): Derivation {
+export function derive(name: string, def: DwDef, options: { plainSeparators?: boolean } = {}): Derivation {
   const processing = Number(def.datawindow.processing ?? 0)
   if (processing !== 0 && processing !== 1) return { reason: `processing style ${processing}` }
   // A freeform ("tabular") DataWindow whose captions sit in a header band reads as a grid, as the original paints it.
@@ -62,6 +62,7 @@ export function derive(name: string, def: DwDef): Derivation {
       kind === 'form' && object.type === 'button' && object.band === 'detail' ||
       object.band === 'background' ||
       ART.has(object.type) && (object.band === 'detail' || object.band === 'header' || object.band === 'background') ||
+      object.type === 'line' && (totalBands as readonly string[]).includes(object.band) ||
       kind === 'grid' && (object.type === 'text' || object.type === 'compute') && (totalBands as readonly string[]).includes(object.band) ||
       kind === 'grid' && (object.type === 'text' || object.type === 'compute' || object.type === 'column') && groupBands.includes(object.band)))
   if (strange) return { reason: `unsupported object: ${strange.type} in ${strange.band}` }
@@ -70,7 +71,8 @@ export function derive(name: string, def: DwDef): Derivation {
   const texts = inBand(labelBand, 'text')
   const groupboxes = inBand('detail', 'groupbox')
   const horizontal = (line: DwObject) => num(line, 'y1') === num(line, 'y2') && num(line, 'x2') > num(line, 'x1')
-  const lines = inBand('detail', 'line').filter(horizontal)
+  // A rule line the surface cannot place (grouped forms, odd order) is accounted for as an unpainted decoration: it is design, not structure.
+  const lines = options.plainSeparators ? [] : inBand('detail', 'line').filter(horizontal)
   const separatorLines = new Set(lines.map((line) => line.name))
   if (!fields.length && !(kind === 'form' && (inBand('detail', 'button').length || texts.length))) return { reason: 'no fields' }
   const columnOf = (object: DwObject) => def.table.columns.find((column) => column.name.toLowerCase() === object.name.toLowerCase())
@@ -300,11 +302,17 @@ export function deriveAll(definitions = loadDefinitions(), skip: ReadonlySet<str
   for (const [name, def] of definitions) {
     if (skip.has(name)) { skipped++; continue }
     let outcome: Derivation
-    try { outcome = derive(name, def) } catch (error) { outcome = { reason: `derivation error: ${(error as Error).message}` } }
-    if (outcome.surface) {
-      const issues = dataSurfaceIssues(def, outcome.surface)
-      if (issues.length) outcome = { reason: `validation: ${issues[0].replace(/:.*$/, '')}` }
+    const attempt = (options: { plainSeparators?: boolean }): Derivation => {
+      let result: Derivation
+      try { result = derive(name, def, options) } catch (error) { result = { reason: `derivation error: ${(error as Error).message}` } }
+      if (result.surface) {
+        const issues = dataSurfaceIssues(def, result.surface)
+        if (issues.length) result = { reason: `validation: ${issues[0].replace(/:.*$/, '')}` }
+      }
+      return result
     }
+    outcome = attempt({})
+    if (!outcome.surface && /separator/i.test(outcome.reason ?? '')) outcome = attempt({ plainSeparators: true })
     if (outcome.surface) surfaces.push(outcome.surface)
     else (backlog[outcome.reason!] ??= []).push(name)
   }

@@ -402,7 +402,7 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
     const clippedHeight = band && !Array.isArray(band) ? Number(band.height ?? 0) : 0
     const clipped = !!object && clippedHeight > 0 && Number(object.y ?? 0) >= clippedHeight
     // Static artwork, or any object the source clips below its band, is accounted for and not painted.
-    if (!object || !(clipped || object.band === 'background' || ['bitmap', 'rectangle', 'roundrectangle', 'ellipse', 'line'].includes(object.type) && !['summary', 'footer'].includes(object.band))) issues.push(`Unsupported decoration: ${name}`)
+    if (!object || !(clipped || object.band === 'background' || (object.type === 'line' || ['bitmap', 'rectangle', 'roundrectangle', 'ellipse'].includes(object.type) && !['summary', 'footer'].includes(object.band)))) issues.push(`Unsupported decoration: ${name}`)
     if (used.has(name)) issues.push(`Duplicate decoration: ${name}`)
     used.add(name)
   }

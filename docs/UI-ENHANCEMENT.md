@@ -21,14 +21,15 @@ instructions below; acceptance requirements and historical evidence are unchange
 
 **Source-derived Modern layouts now cover most windows; nothing new is browser-verified, and the enhancement remains incomplete and unreleased.**
 Measured from the working tree by `tools/parity/ui_completion_audit.mjs` (see
-`ui-completion-audit.md`): 1,958 of 2,062 inventoried windows (95.0%) have a
+`ui-completion-audit.md`): 1,959 of 2,062 inventoried windows (95.0%) have a
 Modern layout. 170 are hand-reviewed (9 workspace/tool, 55 criteria, 4
-calculator, 2 calendar and 100 entry windows). 1,788 are generated from the
-recovered definitions by `web/tools/derive-*.ts`: 1,540 dialog and sheet windows
-and 248 entry masters. The other 104 windows keep the labelled Classic
-compatibility layout. For DataWindows, 3,206 of 8,740 (36.7%) have a Modern
-surface: 275 reviewed and 2,931 generated. 5,534 have none; most are reports
-and print documents, which are a separate family. Generated mappings are
+calculator, 2 calendar and 100 entry windows). 1,789 are generated from the
+recovered definitions by `web/tools/derive-*.ts`: 1,541 dialog and sheet windows
+and 248 entry masters. The other 103 windows keep the labelled Classic
+compatibility layout. For DataWindows, 3,278 of 8,740 (37.5%) have a Modern
+surface: 275 reviewed and 3,003 generated. Print, PDF and report layouts are
+exempt from structural parity (decision 16): 5,356 DataWindows are evidence-classified
+that way, so on-screen coverage is 3,216 of 3,384 (95.0%). Generated mappings are
 validated against the source and re-validated at runtime, but they are **not
 individually reviewed and have no browser evidence**. Verified complete Modern
 screens and accepted workflows remain zero.
@@ -131,7 +132,7 @@ Decisions recorded for future sessions:
    source width proportions (`colgroup`); dialog content is ordered by source position unless a
    reviewed `contentOrder` exists. Narrow containers stack the cells. Measured on the recovered
    definitions: 970 form surfaces, 456 have fields that share a row, all visible fields are
-   planned exactly once. Known gap: 7 forms (`d_mr_patientdischarge`, `d_old_general1`,
+   planned exactly once. Known gap: 8 forms (`d_mr_patientdischarge`, `d_old_general1`, `d_patientvisit_obs_us`,
    `d_opensalereturnfooter`, `d_salepreferences`, `d_salereturnfooter_view`,
    `d_servicefooter_view`, `d_visitvitals`) have a tab order that interleaves lines, so their
    shared rows are not merged (reordering the DOM would change the tab order); a placement-based
@@ -153,13 +154,17 @@ document classification and approved templates remain open.
 ### Document classification (evidence, not approval)
 
 `web/tools/classify-documents.ts` writes `ui-print-classification.json`: each of the 8,740
-DataWindows lands in one class from script and window evidence only. 4,331 are print or
-report candidates (231 assigned to print targets, 4,096 report targets or page-numbered
-layouts, 4 registered templates); 1,705 sit on screen controls; 465 are datastores with no
-screen; 911 have no evidence. Structural flags: 4,211 use page numbers, 2,041 have groups,
-147 are crosstabs, 70 graphs, 59 composites. The 104 windows still without a layout are mostly
-hosts of these report layouts, so they belong to the document family, whose Modern templates
-need layout review, dimensions and approval before they can be generated.
+DataWindows lands in one class from script and window evidence only. 5,138 are print or
+report candidates (231 assigned to print targets, 4,903 report targets, page-numbered or
+company-letterhead layouts, 4 registered templates); 1,701 sit on screen controls; 465 are
+datastores with no screen; 812 have no evidence. Structural flags: 4,547 carry a company
+letterhead or reprint counter, 4,211 use page numbers, 2,041 have groups, 147 are crosstabs,
+70 graphs, 59 composites. Under the 2026-11-08 rule (decision 16) print, PDF and report design
+is exempt from structural parity and may be redesigned freely; only its data must stay correct.
+Of the 5,391 DataWindows without a Modern surface, 5,031 are such print/report candidates;
+360 are not and remain open on-screen work (85 column-in-header, 70 graphs, 34 line-in-summary,
+28 composites, 21 grouped, 18 text-in-header and smaller causes). The 104 windows still without
+a layout are mostly hosts of these report layouts.
 
 ### Final browser pass: matrix prepared, not run
 

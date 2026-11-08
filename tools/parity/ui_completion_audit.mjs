@@ -370,6 +370,13 @@ const summary = {
       unique: mappedDataWindowsInInventory.size,
       unmapped: unmappedDataWindows,
       outsideInventory: mappedDataWindowsOutsideInventory,
+      // Print, PDF and report layouts are exempt from structural parity (AGENTS.md "UI standard"): on-screen coverage excludes them.
+      onScreen: (() => {
+        const exempt = new Set(['report-or-document', 'print-target', 'registered-template'].flatMap((key) => classification?.members?.[key] ?? []))
+        if (!classification) return null
+        const required = [...inventoryDataWindows].filter((name) => !exempt.has(name))
+        return { required: required.length, covered: required.filter((name) => mappedDataWindowsInInventory.has(name)).length, exempt: inventoryDataWindows.size - required.length }
+      })(),
     },
     printTemplates: {
       families: new Set(PRINT_TEMPLATES.map((template) => template.family)).size,
@@ -448,6 +455,7 @@ only the authored surfaces.
 | Windows without a Modern layout | ${summary.authored.windowMappings.unmapped} |
 | DataWindows with a Modern surface (reviewed + generated) | ${summary.authored.dataWindowMappings.unique} (${pct(summary.authored.dataWindowMappings.unique, summary.inventory.datawindows)}); ${summary.authored.dataWindowMappings.reviewed} reviewed (${summary.authored.dataWindowMappings.globalSurfaces} global with nested lookups, ${summary.authored.dataWindowMappings.contextualSurfaces} contextual) and ${summary.authored.dataWindowMappings.generatedOnly} generated only, overlaps counted once |
 | DataWindows without a Modern surface | ${summary.authored.dataWindowMappings.unmapped} |
+| On-screen DataWindows (excluding print/report layouts, which are exempt from parity) with a Modern surface | ${summary.authored.dataWindowMappings.onScreen ? `${summary.authored.dataWindowMappings.onScreen.covered} of ${summary.authored.dataWindowMappings.onScreen.required} (${pct(summary.authored.dataWindowMappings.onScreen.covered, summary.authored.dataWindowMappings.onScreen.required)}); ${summary.authored.dataWindowMappings.onScreen.exempt} print/report candidates exempt` : 'classification missing'} |
 | Authored names absent from the static inventory | ${summary.authored.windowMappings.outsideInventory.length} windows, ${summary.authored.dataWindowMappings.outsideInventory.length} DataWindows${summary.authored.dataWindowMappings.outsideInventory.length ? ` (${summary.authored.dataWindowMappings.outsideInventory.join(', ')})` : ''} |
 | Modern print template families | ${summary.authored.printTemplates.families} |
 | Registered Modern print definitions | ${summary.authored.printTemplates.definitions} |
