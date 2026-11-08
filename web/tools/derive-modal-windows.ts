@@ -12,11 +12,15 @@ import { EMBEDDED_NATIVES, WINDOW_SURFACES, CRITERIA_WINDOW_SURFACES, CALCULATOR
 import type { WindowSurface } from '../src/ui/window-surfaces.ts'
 import { DATA_SURFACES, CRITERIA_DATA_SURFACES, TRANSACTION_DATA_SURFACES, dataSurfaceIssues } from '../src/ui/data-surfaces.ts'
 import type { DataSurface } from '../src/ui/data-surfaces.ts'
-import { derive, loadDefinitions } from './derive-data-surfaces.ts'
+import { derive, deriveValidated, loadDefinitions } from './derive-data-surfaces.ts'
 import { dataSurfaceByName } from '../src/ui/surface-registry.ts'
 import type { DwDef } from '../src/dw/def.ts'
 
 const here = import.meta.dirname
+// Evidence classes written by classify-documents.ts (docs/ui-print-classification.json); run it before this generator.
+const classificationPath = resolve(here, '..', '..', 'docs', 'ui-print-classification.json')
+const documents: ReadonlySet<string> = new Set(existsSync(classificationPath) ?
+  ['report-or-document', 'print-target', 'registered-template'].flatMap((key) => (JSON.parse(readFileSync(classificationPath, 'utf8')).members as Record<string, string[]>)[key] ?? []) : [])
 const objectsRoot = resolve(here, '..', '..', 'data', 'src', 'objects')
 export const OUTPUT_TS = resolve(here, '..', 'src', 'ui', 'derived-modal-windows.ts')
 export const OUTPUT_BACKLOG = resolve(here, '..', '..', 'docs', 'ui-derived-modal-windows-backlog.json')
@@ -198,6 +202,9 @@ export async function deriveModal(name: string, library: string, rt: Runtime, re
       else if (box.hidden) auxiliary.push(box.name)
       // The source assigns this DataWindow's object at run time: it keeps its original element.
       else if (!dataobject) dynamic.push(box)
+      // A print, PDF or report DataWindow is exempt from structural parity (its design is redesigned separately): the window around it
+      // still gets its Modern layout, and the document keeps its original element inside that frame.
+      else if (documents.has(dataobject)) dynamic.push(box)
       else return { reason: `unmapped DataWindow: ${dataobject}` }
     }
     const options = [...by('checkbox').map((box) => ({ box, native: 'checkbox' as const })), ...by('radiobutton').map((box) => ({ box, native: 'radiobutton' as const }))]
@@ -237,7 +244,7 @@ export async function deriveModalWindows() {
   const resolveSurface: Resolve = (dataobject) => {
     const definition = definitions.get(dataobject)
     if (!definition) return undefined
-    const surface = reviewed.get(dataobject) ?? derive(dataobject, definition).surface
+    const surface = reviewed.get(dataobject) ?? deriveValidated(dataobject, definition).surface
     return surface && !dataSurfaceIssues(definition, surface).length ? surface : undefined
   }
   const rt = new Runtime({ load: async (className: string) => {

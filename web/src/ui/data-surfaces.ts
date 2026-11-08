@@ -443,7 +443,7 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
           if (used.has(field.labelObject)) issues.push(`Duplicate label: ${field.labelObject}`)
           used.add(field.labelObject)
         } else if (!field.label?.trim()) issues.push(`Missing label: ${field.object}`)
-        if (field.labelHidden && (field.labelObject || !field.label?.trim())) issues.push(`Hidden total label needs a plain name: ${field.object}`)
+        if (field.labelHidden && (field.labelObject && objects.get(field.labelObject)?.text?.trim() || !field.label?.trim())) issues.push(`Hidden total label needs a plain name: ${field.object}`)
       }
     }
   }

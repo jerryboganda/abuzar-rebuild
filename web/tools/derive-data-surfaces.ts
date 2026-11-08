@@ -232,8 +232,14 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
           Math.abs(centreY(text) - centreY(compute)) <= Math.max(num(compute, 'height'), 40))
           .sort((a, b) => right(b) - right(a))
         const entry: Total = { object: compute.name.toLowerCase() }
-        if (candidates.length) { entry.labelObject = candidates[0].name.toLowerCase(); used.add(candidates[0].name) }
-        else {
+        if (candidates.length) {
+          entry.labelObject = candidates[0].name.toLowerCase(); used.add(candidates[0].name)
+          // The caption object exists but its text is blank (a script may set it): keep it, with an accessible name until then.
+          if (!candidates[0].text?.trim()) {
+            entry.label = compute.name.charAt(0).toUpperCase() + compute.name.slice(1).replace(/_/g, ' ')
+            entry.labelHidden = true
+          }
+        } else {
           // An unlabelled total is named by the column header above it (source text, accelerator marks removed).
           const header = texts.filter((text) => !hidden(text) && Math.min(right(compute), right(text)) - Math.max(num(compute, 'x'), num(text, 'x')) > 0)
             .sort((a, b) => (Math.min(right(compute), right(b)) - Math.max(num(compute, 'x'), num(b, 'x'))) - (Math.min(right(compute), right(a)) - Math.max(num(compute, 'x'), num(a, 'x'))))[0]
@@ -308,6 +314,21 @@ export function reviewedDataWindows(): Set<string> {
   return names
 }
 
+/** Derives a surface and validates it against its definition; a rule line the surface cannot place is retried as an unpainted decoration. */
+export function deriveValidated(name: string, def: DwDef): Derivation {
+  const attempt = (options: { plainSeparators?: boolean }): Derivation => {
+    let result: Derivation
+    try { result = derive(name, def, options) } catch (error) { result = { reason: `derivation error: ${(error as Error).message}` } }
+    if (result.surface) {
+      const issues = dataSurfaceIssues(def, result.surface)
+      if (issues.length) result = { reason: `validation: ${issues[0].replace(/:.*$/, '')}` }
+    }
+    return result
+  }
+  const outcome = attempt({})
+  return !outcome.surface && /separator/i.test(outcome.reason ?? '') ? attempt({ plainSeparators: true }) : outcome
+}
+
 // Shared control DataWindows that every entry window hosts in a compact original presentation (the Find box).  Entry windows that keep
 // their Classic layout must keep it, so no global Modern surface is generated for them.
 const CONTROL_DATAWINDOWS = ['d_find']
@@ -319,17 +340,7 @@ export function deriveAll(definitions = loadDefinitions(), skip: ReadonlySet<str
   for (const [name, def] of definitions) {
     if (skip.has(name)) { skipped++; continue }
     let outcome: Derivation
-    const attempt = (options: { plainSeparators?: boolean }): Derivation => {
-      let result: Derivation
-      try { result = derive(name, def, options) } catch (error) { result = { reason: `derivation error: ${(error as Error).message}` } }
-      if (result.surface) {
-        const issues = dataSurfaceIssues(def, result.surface)
-        if (issues.length) result = { reason: `validation: ${issues[0].replace(/:.*$/, '')}` }
-      }
-      return result
-    }
-    outcome = attempt({})
-    if (!outcome.surface && /separator/i.test(outcome.reason ?? '')) outcome = attempt({ plainSeparators: true })
+    outcome = deriveValidated(name, def)
     if (outcome.surface) surfaces.push(outcome.surface)
     else (backlog[outcome.reason!] ??= []).push(name)
   }

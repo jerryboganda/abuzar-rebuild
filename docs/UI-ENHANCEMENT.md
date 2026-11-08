@@ -21,15 +21,17 @@ instructions below; acceptance requirements and historical evidence are unchange
 
 **Source-derived Modern layouts now cover most windows; nothing new is browser-verified, and the enhancement remains incomplete and unreleased.**
 Measured from the working tree by `tools/parity/ui_completion_audit.mjs` (see
-`ui-completion-audit.md`): 1,959 of 2,062 inventoried windows (95.0%) have a
+`ui-completion-audit.md`): 2,024 of 2,062 inventoried windows (98.2%) have a
 Modern layout. 170 are hand-reviewed (9 workspace/tool, 55 criteria, 4
-calculator, 2 calendar and 100 entry windows). 1,789 are generated from the
-recovered definitions by `web/tools/derive-*.ts`: 1,541 dialog and sheet windows
-and 248 entry masters. The other 103 windows keep the labelled Classic
-compatibility layout. For DataWindows, 3,278 of 8,740 (37.5%) have a Modern
-surface: 275 reviewed and 3,003 generated. Print, PDF and report layouts are
-exempt from structural parity (decision 16): 5,582 DataWindows are evidence-classified
-that way, so on-screen coverage is 2,992 of 3,158 (94.7%). Generated mappings are
+calculator, 2 calendar and 100 entry windows). 1,854 are generated from the
+recovered definitions by `web/tools/derive-*.ts`: 1,601 dialog and sheet windows
+and 253 entry masters (a print or report DataWindow inside a window keeps its
+original element in the Modern frame; its own design is redesigned separately).
+The other 38 windows keep the labelled Classic compatibility layout. For
+DataWindows, 3,293 of 8,740 (37.7%) have a Modern surface: 275 reviewed and 3,018
+generated. Print, PDF and report layouts are exempt from structural parity
+(decision 16): 5,582 DataWindows are evidence-classified that way, so on-screen
+coverage is 3,007 of 3,158 (95.2%). Generated mappings are
 validated against the source and re-validated at runtime, but they are **not
 individually reviewed and have no browser evidence**. Verified complete Modern
 screens and accepted workflows remain zero.

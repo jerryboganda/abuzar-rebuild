@@ -437,7 +437,8 @@ export class ModernDwView extends DwView {
       const item = document.createElement('div')
       const label = document.createElement('dt')
       label.id = `${this.identity}-${band.band}-${grouped ? `${row}-` : ''}${field.object}-label`
-      label.textContent = field.labelHidden ? '' : sourceLabel?.textContent ?? (labelObject ? '' : field.label ?? '')
+      // Hidden only while the source caption is blank; a script-set caption is painted.
+      label.textContent = field.labelHidden && !sourceLabel?.textContent?.trim() ? '' : sourceLabel?.textContent ?? (labelObject ? '' : field.label ?? '')
       if (label.textContent) item.append(label)
       if (value) {
         const result = document.createElement('dd')

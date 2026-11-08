@@ -12,7 +12,7 @@ import { ENTRY_WINDOW_SURFACES, entryControlPaths, entryWindowIssues } from '../
 import type { EntryWindowSurface } from '../src/ui/window-surfaces.ts'
 import { DATA_SURFACES, CRITERIA_DATA_SURFACES, TRANSACTION_DATA_SURFACES, dataSurfaceIssues } from '../src/ui/data-surfaces.ts'
 import type { DataSurface } from '../src/ui/data-surfaces.ts'
-import { derive, loadDefinitions } from './derive-data-surfaces.ts'
+import { derive, deriveValidated, loadDefinitions } from './derive-data-surfaces.ts'
 
 const here = import.meta.dirname
 const objectsRoot = resolve(here, '..', '..', 'data', 'src', 'objects')
@@ -110,7 +110,7 @@ export async function deriveWindows(): Promise<{ surfaces: EntryWindowSurface[];
     if (!def) return undefined
     const reviewed = global.get(dataobject)
     if (reviewed) return !dataSurfaceIssues(def, reviewed).length ? { surface: reviewed, inline: false } : undefined
-    const surface = contextual.get(dataobject) ?? derive(dataobject, def).surface
+    const surface = contextual.get(dataobject) ?? deriveValidated(dataobject, def).surface
     return surface && !dataSurfaceIssues(def, surface).length ? { surface, inline: true } : undefined
   }
   const hand = new Set(ENTRY_WINDOW_SURFACES.map((surface) => surface.name))
