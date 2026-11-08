@@ -12,6 +12,23 @@ import { buildDerivedFixtures, standardSingle, representativeModalWindows } from
 import { WINDOW_SURFACES, CALCULATOR_WINDOW_SURFACES, CRITERIA_WINDOW_SURFACES, LOOKUP_CRITERIA_WINDOWS, REFERENCE_CRITERIA_WINDOWS, NUMERIC_CRITERIA_WINDOWS, DATE_OPTION_CRITERIA_WINDOWS, DATE_CHOICE_CRITERIA_WINDOWS, ENTRY_WINDOW_SURFACES } from '../src/ui/window-surfaces.ts'
 import { parseScriptFile } from '../src/pbscript/parser.ts'
 import { checkForcedColors } from './presentation-forced-colors.mjs'
+import { createRequire } from 'node:module'
+// Automated WCAG 2.2 A/AA rules (axe-core). CI installs it for this job; where it is absent the scan is reported as not run.
+const axeSource = await (async () => {
+  try { return await readFile(createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8') } catch { return null }
+})()
+const axeCases = []
+async function scanAccessibility(page, label, selector) {
+  if (!axeSource) return
+  if (!(await page.evaluate(() => !!window.axe))) await page.addScriptTag({ content: axeSource })
+  const violations = await page.evaluate(async (selector) => {
+    const root = document.querySelector(selector)
+    if (!root) return null
+    const result = await window.axe.run(root, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] }, resultTypes: ['violations'] })
+    return result.violations.map((violation) => ({ id: violation.id, impact: violation.impact, nodes: violation.nodes.length, sample: violation.nodes[0]?.target?.join(' ') ?? '' }))
+  }, selector)
+  if (violations) axeCases.push({ label, violations })
+}
 
 const visibleContrast = (form) => form.evaluate((root) => {
   const rgba = (color) => (color.match(/[\d.]+/g) || []).map(Number)
@@ -352,6 +369,7 @@ async function captureDerivedModalWindows(page, output, names = representativeMo
       const minimumContrast = contrast.length ? Math.min(...contrast) : 21
       assert.ok(minimumContrast >= 4.5, `${name}/${width}: generated dialog text contrast (${minimumContrast})`)
       cases.push({ name, theme, scale, width, height, minimumContrast })
+      await scanAccessibility(page, `${name}/${theme}/${width}`, '.presentation-modern-dialog[open]>.modern-window')
     }
   }
   await page.evaluate(() => window.closeDerivedModalPreview())
@@ -3391,8 +3409,14 @@ try {
   assert.deepEqual(pageErrors, [])
   assert.deepEqual(forbidden, [])
   assert.equal(await page.evaluate(() => window.fixtureNativeAccess), 0)
-  await writeFile(resolve(output, 'result.json'), JSON.stringify({ ...result, surfaceCases, windowCases, calculatorCases, calendarCases, dataWindowCalendarCases, entryCases, singleEntryCases, contactCases, contactCardCases, dropdownCases, editableLookupCases, automaticChoiceCases, selectorVariantCases, transactionBandCases, associatedInvoiceCases, cashierCases, paymentCases, categoryCases, criteriaCases, criteriaWindowCases, derivedModalCases, printSettingsCases, printDocumentCases, forcedColors, performanceSamples: await page.evaluate(() => window.presentationPerformance ?? []), skippedTextChecks: await page.evaluate(() => window.singleEntrySkippedText ?? []), pageErrors, forbidden }, null, 2) + '\n')
+  await writeFile(resolve(output, 'result.json'), JSON.stringify({ ...result, surfaceCases, windowCases, calculatorCases, calendarCases, dataWindowCalendarCases, entryCases, singleEntryCases, contactCases, contactCardCases, dropdownCases, editableLookupCases, automaticChoiceCases, selectorVariantCases, transactionBandCases, associatedInvoiceCases, cashierCases, paymentCases, categoryCases, criteriaCases, criteriaWindowCases, derivedModalCases, printSettingsCases, printDocumentCases, forcedColors, accessibility: { scanner: axeSource ? 'axe-core' : 'not installed', cases: axeCases }, performanceSamples: await page.evaluate(() => window.presentationPerformance ?? []), skippedTextChecks: await page.evaluate(() => window.singleEntrySkippedText ?? []), pageErrors, forbidden }, null, 2) + '\n')
   console.log(`Presentation: ${result.passed} browser assertions; four viewport sizes; ${surfaceCases.length} surface, ${windowCases.length} dialog, ${calculatorCases.length} calculator, ${calendarCases.length} calendar, ${dataWindowCalendarCases.length} DataWindow-calendar, ${entryCases.length} aging-entry, ${singleEntryCases.length} single-entry, ${contactCases.length} contact-group, ${contactCardCases.length} contact-card, ${dropdownCases.length} editable-dropdown, ${editableLookupCases.length} editable-lookup, ${automaticChoiceCases.length} automatic-choice, ${selectorVariantCases.length} selector-variant, ${transactionBandCases.length} transaction-band, ${associatedInvoiceCases.length} associated-invoice, ${cashierCases.length} cashier, ${paymentCases.length} payment, ${categoryCases.length} category, ${criteriaCases.length} criteria, ${criteriaWindowCases.length} criteria-window and ${derivedModalCases.length} generated-window appearance cases; no database or external requests.`)
+  {
+    const serious = axeCases.flatMap((item) => item.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact)).map((violation) => `${item.label}: ${violation.id} (${violation.impact}, ${violation.nodes} nodes, ${violation.sample})`))
+    console.log(axeSource ? `Accessibility scan: ${axeCases.length} generated dialog appearances, ${serious.length} serious or critical WCAG violations.` : 'Accessibility scan: axe-core not installed, not run.')
+    for (const line of serious.slice(0, 40)) console.log('  ' + line)
+    assert.deepEqual(serious, [], 'Generated Modern dialogs have no serious or critical automated WCAG violation')
+  }
   }
   }
   }
