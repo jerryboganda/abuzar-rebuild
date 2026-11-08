@@ -129,6 +129,12 @@ export function applyModernWindow(view: WinView): boolean {
   for (const name of surface.embedded ?? []) {
     const element = elements.get(name)!
     element.classList.add('window-embedded')
+    // A container keeps its own children and may be larger than the dialog: it scrolls, and as a scroll region it is focusable.
+    const native = [...view.ctlViews].find(([control]) => control.parent === view.w && control.name === name)?.[0].native
+    if (native && ['tab', 'userobject', 'olecustomcontrol', 'richtextedit', 'listview', 'datawindow'].includes(native)) {
+      element.dataset.embeddedScroll = ''
+      if (element.tabIndex < 0 && !element.querySelector('a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])')) element.tabIndex = 0
+    }
     content.append(element)
     contentItems.set(name, element)
     itemControls.set(name, [name])

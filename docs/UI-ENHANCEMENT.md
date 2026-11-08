@@ -174,7 +174,10 @@ Decisions recorded for future sessions:
    `web/tools/compare-crawls.mjs` compares the two item by item (clock values in titles ignored).
    First result (run 42524908981, commit `d7f06b56`): 78 of 78 crawled commands had an identical
    outcome; the crawl budget then covered 78 of 110 menu items (28 did not click in either mode,
-   the same items), so the budget is raised to cover the whole menu. This compares what the
+   the same items), so the budget was raised to cover the whole menu. Whole-menu result (run
+   42528203005, commit `e9a821e5`): 110 of 110 menu items walked in each mode (53 did not click in
+   either mode: items the administrator profile does not enable), 114 of 114 recorded outcomes
+   identical in Classic and Modern. This compares what the
    commands do, not every field edit inside a window; data-entry workflows inside windows are
    covered by the synthetic browser suite, not by this crawl.
 9. The Modern workspace sidebar now browses the live menu by module (collapsed
