@@ -98,10 +98,23 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
     const sameRow = (text: DwObject, field: DwObject) => hidden(text) === hidden(field) &&
       Math.abs(centreY(text) - centreY(field)) <= Math.max(num(field, 'height'), 40)
     // Globally cheapest pairs first (vertical alignment dominates), so a near label is never taken by a farther field.
-    const candidates = visibleFields.flatMap((field) => texts
-      .filter((text) => sameRow(text, field) && right(text) <= num(field, 'x') + 8)
-      .map((text) => ({ field, text, cost: Math.abs(centreY(text) - centreY(field)) * 10 + (num(field, 'x') - right(text)) })))
-      .sort((a, b) => a.cost - b.cost)
+    // A caption stacked directly above its field (left edges aligned, a short gap) is paired too, at a small penalty so a caption on the
+    // field's own row still wins when both exist; without it a stacked caption is taken by a farther field on its row.
+    const bottom = (object: DwObject) => num(object, 'y') + num(object, 'height')
+    const stackedAbove = (text: DwObject, field: DwObject) => hidden(text) === hidden(field) && bottom(text) <= num(field, 'y') + 8 &&
+      num(field, 'y') - bottom(text) <= Math.max(num(field, 'height') * 2, 120) &&
+      Math.abs(num(text, 'x') - num(field, 'x')) <= Math.max(num(text, 'width') * 0.5, 100)
+    // A caption cannot be paired with a field when another field sits between them on that row: that field owns the caption.
+    const between = (text: DwObject, field: DwObject) => visibleFields.some((other) => other !== field && hidden(other) === hidden(field) &&
+      num(other, 'x') >= right(text) - 8 && right(other) <= num(field, 'x') + 8 &&
+      Math.min(bottom(other), bottom(field)) - Math.max(num(other, 'y'), num(field, 'y')) >= 0.5 * Math.min(num(other, 'height'), num(field, 'height')) &&
+      Math.min(bottom(other), bottom(text)) - Math.max(num(other, 'y'), num(text, 'y')) > 0)
+    const candidates = visibleFields.flatMap((field) => [
+      ...texts.filter((text) => sameRow(text, field) && right(text) <= num(field, 'x') + 8 && !between(text, field))
+        .map((text) => ({ field, text, cost: Math.abs(centreY(text) - centreY(field)) * 10 + (num(field, 'x') - right(text)) })),
+      ...texts.filter((text) => stackedAbove(text, field))
+        .map((text) => ({ field, text, cost: (num(field, 'y') - bottom(text)) * 10 + Math.abs(num(text, 'x') - num(field, 'x')) + 200 })),
+    ]).sort((a, b) => a.cost - b.cost)
     const paired = new Set<string>()
     for (const { field, text } of candidates) {
       if (paired.has(field.name) || taken.has(text.name)) continue
