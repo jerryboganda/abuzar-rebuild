@@ -349,10 +349,16 @@ async function captureCalendars(page, output, dataWindow = false) {
 }
 
 // One generated response window per distinct layout shape, at the lightest and the harshest appearance.
-async function captureDerivedModalWindows(page, output, names = representativeModalWindows()) {
+// With `failures`, appearance failures are recorded and the scan goes on, so one run reports every window.
+async function captureDerivedModalWindows(page, output, names = representativeModalWindows(), failures = null) {
   const cases = []
+  const expect = (condition, message) => {
+    if (condition) return
+    if (!failures) assert.fail(message)
+    failures.push(message)
+  }
   for (const name of names) {
-    for (const [theme, scale, width, height] of [['light', 100, 1366, 768], ['dark', 200, 320, 768]]) {
+    for (const [theme, scale, width, height] of [['light', 100, 1366, 768], ['dark', 200, 320, 768]]) try {
       await page.setViewportSize({ width, height })
       await page.evaluate(async ({ name, theme, scale }) => {
         await window.openDerivedModalPreview(name)
@@ -361,14 +367,14 @@ async function captureDerivedModalWindows(page, output, names = representativeMo
         view.el.style.setProperty('--p-scale', String(scale / 100))
       }, { name, theme, scale })
       const form = page.locator('.presentation-modern-dialog[open]>.modern-window')
-      assert.ok(await form.evaluate((root) => {
+      expect(await form.evaluate((root) => {
         const bounds = root.getBoundingClientRect()
         return root.scrollWidth <= root.clientWidth + 1 && bounds.left >= 0 && bounds.right <= innerWidth + .5 &&
           bounds.top >= 0 && bounds.bottom <= innerHeight + .5
       }), `${name}/${width}: generated dialog reflows inside the viewport`)
       for (const control of await form.locator('input:visible:not(:disabled),select:visible:not(:disabled),button:visible:not(:disabled),.surface-value:visible').all()) {
         await control.focus()
-        assert.ok(await control.evaluate((element) => {
+        expect(await control.evaluate((element) => {
           const bounds = element.getBoundingClientRect()
           return bounds.left >= 0 && bounds.right <= innerWidth + 1 && bounds.top >= 0 && bounds.bottom <= innerHeight + 1
         }), `${name}/${width}: keyboard focus reveals fields and actions`)
@@ -376,9 +382,12 @@ async function captureDerivedModalWindows(page, output, names = representativeMo
       const contrast = await visibleContrast(form)
       const minimumContrast = contrast.length ? Math.min(...contrast) : 21
       const weakest = await lowestContrast(page)
-      assert.ok(minimumContrast >= 4.5, `${name}/${width}: generated dialog text contrast (${minimumContrast}; ${weakest})`)
+      expect(minimumContrast >= 4.5, `${name}/${width}: generated dialog text contrast (${minimumContrast}; ${weakest})`)
       cases.push({ name, theme, scale, width, height, minimumContrast })
       await scanAccessibility(page, `${name}/${theme}/${width}`, '.presentation-modern-dialog[open]>.modern-window')
+    } catch (error) {
+      if (!failures) throw error
+      failures.push(`${name}/${theme}/${width}: ${String(error?.message ?? error).split('\n')[0]}`)
     }
   }
   await page.evaluate(() => window.closeDerivedModalPreview())
@@ -1564,16 +1573,16 @@ try {
   if (process.argv[4] === '--accessibility-only') {
     const names = representativeModalWindows()
     await page.evaluate(async (names) => { window.derivedFilter = names; await window.runDerivedChecks() }, names)
-    let failure = null
-    try { await captureDerivedModalWindows(page, output, names) } catch (error) { failure = error }
+    const failures = []
+    try { await captureDerivedModalWindows(page, output, names, failures) } catch (error) { failures.push(String(error?.message ?? error)) }
     const serious = axeCases.flatMap((item) => item.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact))
       .map((violation) => `${item.label}: ${violation.id} (${violation.impact}, ${violation.nodes} nodes, ${violation.sample})`))
     const moderate = axeCases.flatMap((item) => item.violations.filter((violation) => !['serious', 'critical'].includes(violation.impact)).map((violation) => `${item.label}: ${violation.id} (${violation.impact})`))
-    await writeFile(resolve(output, 'accessibility-result.json'), JSON.stringify({ scanner: axeSource ? 'axe-core' : 'not installed', cases: axeCases, failure: failure ? String(failure.message) : null }, null, 2) + '\n')
-    console.log(axeSource ? `Accessibility: ${names.length} generated dialogs, ${axeCases.length} appearances scanned; ${serious.length} serious or critical and ${moderate.length} other WCAG violations.` : 'Accessibility: axe-core not installed.')
+    await writeFile(resolve(output, 'accessibility-result.json'), JSON.stringify({ scanner: axeSource ? 'axe-core' : 'not installed', windows: names.length, cases: axeCases, failures }, null, 2) + '\n')
+    console.log(axeSource ? `Accessibility: ${names.length} generated dialogs, ${axeCases.length} appearances scanned; ${serious.length} serious or critical and ${moderate.length} other WCAG violations; ${failures.length} appearance check failures.` : 'Accessibility: axe-core not installed.')
     for (const line of [...serious, ...moderate].slice(0, 60)) console.log('  ' + line)
-    if (failure) console.log('Appearance check failure: ' + String(failure.message).slice(0, 400))
-    await browser.close(); server.close(); process.exit(serious.length || failure || !axeSource ? 1 : 0)
+    for (const line of failures.slice(0, 60)) console.log('  Appearance check failure: ' + String(line).slice(0, 400))
+    await browser.close(); server.close(); process.exit(serious.length || failures.length || !axeSource ? 1 : 0)
   }
   // Focused run of the generated-family checks for the named windows/DataWindows (argv[5..]); a development aid, not an acceptance pass.
   if (process.argv[4] === '--derived-only') {

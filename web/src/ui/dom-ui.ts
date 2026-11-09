@@ -115,6 +115,8 @@ export class DomUi implements UiHost {
   }
 
   protected responseWindowsBlockPointer(): boolean { return true }
+  /** The colour a control's text is drawn with: its source colour in the native presentation. */
+  controlTextColor(source: string, _el: HTMLElement): string { return source }
   protected shortcutsEnabled(): boolean { return true }
   /** PowerBuilder response windows and message boxes are application-modal: the frame's accelerators wait until they close. */
   protected menuShortcutsEnabled(): boolean {
@@ -903,11 +905,15 @@ export class WinView {
 
   private style(c: PBObject, el: HTMLElement): void {
     el.style.font = fontOf(c)
-    const tc = c.props.get('textcolor')
-    if (typeof tc === 'number') el.style.color = pbColor(tc, '#000')
     if (bool(c, 'underline', false)) el.style.textDecoration = 'underline'
     const bc = c.props.get('backcolor')
     if (typeof bc === 'number') el.style.background = pbColor(bc, 'transparent')
+    this.textColor(c, el)
+  }
+
+  private textColor(c: PBObject, el: HTMLElement): void {
+    const tc = c.props.get('textcolor')
+    if (typeof tc === 'number') el.style.color = this.ui.controlTextColor(pbColor(tc, '#000'), el)
   }
 
   private borderClass(c: PBObject, el: HTMLElement): void {
@@ -1431,8 +1437,7 @@ export class WinView {
       const sp = el.querySelector('span')
       if (sp) mnemonic(sp as HTMLElement, raw)
     }
-    const tc = c.props.get('textcolor')
-    if (typeof tc === 'number') el.style.color = pbColor(tc, '#000')
+    this.textColor(c, el)
   }
 }
 

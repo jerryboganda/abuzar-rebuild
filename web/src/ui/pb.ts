@@ -40,6 +40,29 @@ export function pbColor(v: number | string | undefined | null, fallback = 'trans
   return SYSTEM_COLORS.window // 0x01 / 0x08 / 0x40: window background
 }
 
+/** The relative luminance (WCAG) of an opaque `#rrggbb` or `rgb()` colour, or null for anything else. */
+function luminance(color: string): number | null {
+  const hex = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color.trim())
+  const fn = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)\s*(?:[,/]\s*([\d.]+%?)\s*)?\)$/i.exec(color.trim())
+  if (fn?.[4] !== undefined && parseFloat(fn[4]) < (fn[4].endsWith('%') ? 100 : 1)) return null
+  const channels = hex ? hex.slice(1, 4).map((value) => parseInt(value, 16)) : fn ? fn.slice(1, 4).map(Number) : null
+  if (!channels) return null
+  return channels.map((value) => value / 255).map((value) => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4)
+    .reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0)
+}
+
+/**
+ * The source text colour when it can be read on the source background (WCAG AA, 4.5:1); otherwise black or
+ * white, whichever reads better. The background (the field's own colour, such as a colour channel) is kept.
+ */
+export function readableText(text: string, background: string): string {
+  const foreground = luminance(text), back = luminance(background)
+  if (foreground === null || back === null) return text
+  const ratio = (a: number, b: number) => (Math.max(a, b) + .05) / (Math.min(a, b) + .05)
+  if (ratio(foreground, back) >= 4.5) return text
+  return ratio(0, back) >= ratio(1, back) ? '#000000' : '#ffffff'
+}
+
 function rgb(bgr: number): string {
   const r = bgr & 0xff
   const g = (bgr >> 8) & 0xff

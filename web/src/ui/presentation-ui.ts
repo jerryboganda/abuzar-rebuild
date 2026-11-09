@@ -6,6 +6,7 @@ import type { NDwBase } from '../runtime/native/dwctrl.ts'
 import type { InterfaceMode, PresentationSession } from '../app/ui-preferences.ts'
 import { validatePreferences } from '../app/ui-preferences.ts'
 import { printDw } from './print.ts'
+import { readableText } from './pb.ts'
 import { printFamilies, printTemplateFor, resolvePrintPresentation } from './print-templates.ts'
 import { menuCommands, menuModules, executeMenuCommand } from './menu-commands.ts'
 import { PRESENTATION_CSS } from './presentation-styles.ts'
@@ -87,6 +88,10 @@ export class PresentationUi extends DomUi {
   protected override menuShortcutsEnabled(): boolean { return this.session.activeMode === 'classic' ? super.menuShortcutsEnabled() : !this.hasModal() }
   /** Modern response windows are modal dialogs, which already make the rest of the workspace inert. */
   protected override responseWindowsBlockPointer(): boolean { return this.session.activeMode === 'classic' }
+  /** Modern keeps a field's source colours (a colour channel, a status) but never draws unreadable text on them. */
+  override controlTextColor(source: string, el: HTMLElement): string {
+    return this.session.activeMode === 'modern' ? readableText(source, el.style.backgroundColor) : source
+  }
   override accessibleTabs(): boolean { return this.session.activeMode === 'modern' }
 
   override createDwView(control: NDwBase, host: HTMLElement): DwView {
