@@ -573,7 +573,17 @@ async function checkLookupCriteriaInput(page) {
         assert.equal(await editor.getAttribute('aria-expanded'), 'true',
           `${name}: source ShowList intentionally remains open after selection`)
         await editor.press('Tab')
-        await page.waitForFunction(() => window.criteriaWindowPreview.el('cb_ok') === document.activeElement, null, { timeout: 10000 })
+        // Tab past the lookup's only field moves on to the window's next control in the source tab order (the start date
+        // where the dialog has dates: dw_control 10, em_startdate 20, ..., cb_ok 40), as PowerBuilder does.
+        await page.waitForFunction(() => {
+          const f = window.criteriaWindowPreview
+          const order = (control) => Number(control?.props.get('taborder') ?? 0)
+          const own = order(f.window.children.get('dw_control'))
+          const next = [...f.window.children.values()]
+            .filter((control) => order(control) > own && control.props.get('visible') !== false && control.props.get('enabled') !== false)
+            .sort((a, b) => order(a) - order(b))[0]
+          return !!next && f.el(next.name).contains(document.activeElement)
+        }, null, { timeout: 10000 })
           .catch(async (error) => {
             const state = await page.evaluate(() => {
               const f = window.criteriaWindowPreview, active = document.activeElement
@@ -587,7 +597,7 @@ async function checkLookupCriteriaInput(page) {
                 popup: !!f.dw?.choiceEdit?.popup?.open, row: f.model.row, column: f.model.col,
                 cbOk: describe(f.el('cb_ok')), stops: stops.slice(0, 16).map(describe) }
             })
-            throw new Error(`Tab from the lookup did not reach OK: ${JSON.stringify(state)}`, { cause: error })
+            throw new Error(`Tab from the lookup did not reach the next control in the source tab order: ${JSON.stringify(state)}`, { cause: error })
           })
         assert.equal(await data.locator('.dw-choice-popup:visible').count(), 0,
           `${name}: real Tab accepts and dismisses the automatic list before the next action`)
