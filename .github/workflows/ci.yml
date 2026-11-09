@@ -111,8 +111,8 @@ jobs:
       - name: Install Chromium
         working-directory: web
         run: npx playwright install --with-deps chromium
+      # Required since the first complete scan was clean (553 dialogs, 1,106 appearances, 0 violations, 2026-11-09).
       - name: Accessibility of the generated Modern dialogs (WCAG 2.2 A/AA, axe-core)
-        continue-on-error: true
         run: node web/e2e/presentation-smoke.mjs web/dist shots/presentation --accessibility-only | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Verify the real presentation against synthetic fixtures
         run: node web/e2e/presentation-smoke.mjs
