@@ -443,9 +443,10 @@ async function captureCriteriaWindows(page, output, surfaces = CRITERIA_WINDOW_S
         if (!reveal && (lookupOwner || referenceOwner || numericOwner || dateOptions || dateChoice || ['w_arg_zone_sdate_ldate_top_n_customer', 'w_sale_replace_custref',
           'w_arg_sdate', 'w_arg_sdate_notime', 'w_arg_sdate_ldate'].includes(surface.name))) {
           const stops = dateChoice ? [...dateChoice.order.filter((name) =>
-            !['st_4', 'gb_2', 'rb_bank', 'rb_both', 'rb_purprice'].includes(name)), 'cb_ok', 'cb_cancel'] :
+            !['st_4', 'gb_2'].includes(name)), 'cb_ok', 'cb_cancel'] :
+            // every radio with a TabOrder is its own tab stop, as the source defines it (w_arg_sdate_ldate_purtype: rb_pp 50, then 60)
             dateOptions ? ['em_startdate', 'em_enddate', ...dateOptions.checkboxes,
-            ...(dateOptions.radios ? [dateOptions.radios[0]] : []), 'cb_ok', 'cb_cancel'] : lookupOwner ? [
+            ...(dateOptions.radios ?? []), 'cb_ok', 'cb_cancel'] : lookupOwner ? [
             ...(['w_arg_singleregion', 'w_arg_singlezone', 'w_arg_supp_label'].includes(surface.name) ? [] :
               ['em_startdate', 'em_enddate']), 'dw_control', ...(surface.name === 'w_arg_supp_label' ? ['cbx_supress'] : []),
             'cb_ok', 'cb_cancel',
@@ -462,7 +463,10 @@ async function captureCriteriaWindows(page, output, surfaces = CRITERIA_WINDOW_S
           // without one (w_arg_sale_sdate_ldate's cbx_cash / cbx_credit) is skipped by Tab, as in PowerBuilder.
           const tabOrders = await page.evaluate((names) => {
             const f = window.criteriaWindowPreview
-            return Object.fromEntries(names.map((name) => [name, Number(f.window.children.get(name)?.props.get('taborder') ?? 0)]))
+            // a hidden or disabled control takes no Tab either
+            const order = (control) => !control || control.props.get('visible') === false || control.props.get('enabled') === false ? 0 :
+              Number(control.props.get('taborder') ?? 0)
+            return Object.fromEntries(names.map((name) => [name, order(f.window.children.get(name))]))
           }, [...new Set(stops)])
           const order = stops.map((name, index) => ({ name, index })).filter(({ name }) => tabOrders[name] > 0)
             .sort((a, b) => tabOrders[a.name] - tabOrders[b.name] || a.index - b.index).map((entry) => entry.name)
