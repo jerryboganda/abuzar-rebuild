@@ -2368,7 +2368,8 @@ try {
         return kind === 'list' ?
           !f.view.choiceEdit?.popup?.open && f.model.col === f.model.colIndex('startingmarginperc') + 1 && document.activeElement === f.view.editor :
           f.model.getItem(1, f.column) === 904 && f.model.col === f.model.colIndex(f.column) + 1 &&
-            !!f.view.editor && document.activeElement === f.view.editor && f.host.contains(document.activeElement)
+            !f.view.choiceEdit?.popup?.open && f.host.contains(document.activeElement) &&
+            document.activeElement.closest('[data-obj]')?.getAttribute('data-obj') === f.column
       }, kind)
     }
     await page.evaluate(() => window.automaticChoicePreview.close())
@@ -2433,11 +2434,13 @@ try {
       // purinvpagesize is the last tab field (80) of the only row: as in PowerBuilder, Tab keeps the keyboard on it.
       await page.waitForFunction(() => {
         const f = window.selectorVariantPreview
-        return f.model.col === f.model.colIndex('purinvpagesize') + 1 && !!f.view.editor &&
-          document.activeElement === f.view.editor && f.host.contains(document.activeElement)
+        return f.model.col === f.model.colIndex('purinvpagesize') + 1 && f.host.contains(document.activeElement) &&
+          document.activeElement.closest('[data-obj]')?.getAttribute('data-obj') === 'purinvpagesize'
       })
-      if (await page.evaluate(() => !!window.selectorVariantPreview.view.choiceEdit?.popup?.open)) await input.press('Escape')
-      await input.press('Escape')
+      for (let attempt = 0; attempt < 2 && await page.evaluate(() => !!window.selectorVariantPreview.view.editor); attempt++) {
+        await page.keyboard.press('Escape')
+        await page.waitForTimeout(100)
+      }
       await page.waitForFunction(() => !window.selectorVariantPreview.view.editor)
       assert.equal(await page.evaluate(() => window.selectorVariantPreview.model.getItem(1, 'purinvpagesize')), 'H',
         'Real Tab accepts the editable code-table label and keeps the keyboard on its last field')

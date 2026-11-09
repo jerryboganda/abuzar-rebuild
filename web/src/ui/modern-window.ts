@@ -1,4 +1,5 @@
 import type { WinView } from './dom-ui.ts'
+import type { PBObject } from '../runtime/object.ts'
 import { windowSurfaceIssues, windowContentItems } from './window-surfaces.ts'
 import { modalWindowSurfaceByName } from './window-registry.ts'
 import { ModernDwView } from './modern-dwview.ts'
@@ -7,6 +8,43 @@ import type { GridBox } from './grid-plan.ts'
 import { useSourceTabOrder } from './source-tab-order.ts'
 
 let nextWindow = 0
+
+/**
+ * An embedded container (a user object, a tab page) keeps its own Classic layout, so its fields have no Modern caption. A
+ * field the source paints without a name takes the source text that captions it: the nearest text on its line to the left,
+ * else the nearest text directly above it (`w_graph_color`: "Red:" before the red value and its scroll bar).
+ */
+function nameEmbeddedFields(view: WinView, container: PBObject, identity: string): void {
+  const inside = (control: PBObject) => {
+    for (let owner = control.parent; owner; owner = owner.parent) if (owner === container) return true
+    return false
+  }
+  const box = (control: PBObject) => {
+    const value = (name: string) => Number(control.props.get(name) ?? 0) || 0
+    return { x: value('x'), y: value('y'), right: value('x') + value('width'), bottom: value('y') + value('height') }
+  }
+  const children = [...view.ctlViews].filter(([control]) => inside(control))
+  const texts = children.filter(([control, binding]) => control.native === 'statictext' && !!binding.el.textContent?.trim() &&
+    control.props.get('visible') !== false)
+  for (const [control, binding] of children) {
+    if (control.native === 'statictext') continue
+    const field = binding.el.matches('input,select,textarea') ? binding.el :
+      binding.el.querySelector<HTMLElement>('input:not([type=checkbox]):not([type=radio]),select,textarea')
+    if (!field || field.hasAttribute('aria-label') || field.hasAttribute('aria-labelledby') ||
+      (field as HTMLInputElement).labels?.length) continue
+    const own = box(control)
+    const peers = texts.filter(([text]) => text.parent === control.parent)
+      .map(([text, binding]) => ({ element: binding.el, name: text.name, at: box(text) }))
+    const left = peers.filter(({ at }) => at.right <= own.x + 4 && at.y < own.bottom && at.bottom > own.y)
+      .sort((a, b) => b.at.right - a.at.right)[0]
+    const above = peers.filter(({ at }) => at.bottom <= own.y + 4 && at.x < own.right && at.right > own.x)
+      .sort((a, b) => b.at.bottom - a.at.bottom)[0]
+    const caption = left ?? above
+    if (!caption) continue
+    caption.element.id ||= `${identity}-${caption.name}`
+    field.setAttribute('aria-labelledby', caption.element.id)
+  }
+}
 
 /** Reflow the existing controls; their runtime objects and event bindings stay intact. */
 export function applyModernWindow(view: WinView): boolean {
@@ -156,6 +194,8 @@ export function applyModernWindow(view: WinView): boolean {
     content.append(element)
     contentItems.set(name, element)
     itemControls.set(name, [name])
+    const container = [...view.ctlViews].find(([control]) => control.parent === view.w && control.name === name)?.[0]
+    if (container) nameEmbeddedFields(view, container, `${identity}-${name}`)
   }
   for (const option of surface.options ?? []) {
     const element = elements.get(option.control)!
@@ -238,10 +278,11 @@ export function applyModernWindow(view: WinView): boolean {
     close.replaceWith(button)
   }
   useSourceTabOrder(view.el, view.client, [...view.ctlViews].map(([control, binding]) => ({ element: binding.el, taborder: control.props?.get('taborder') })))
-  // A dialog with nothing to focus (a view-only window) can still be scrolled from the keyboard: the window itself takes the focus.
-  if (!view.client.querySelector('input:not(:disabled),select:not(:disabled),textarea:not(:disabled),button:not(:disabled),[tabindex]:not([tabindex="-1"])')) {
-    view.el.tabIndex = 0
-  }
+  // A dialog with no tab stop (a view-only window, or fields without a source TabOrder) can still be scrolled from the keyboard:
+  // the window itself takes the focus.
+  const tabStops = [...view.client.querySelectorAll<HTMLElement>('a[href],input,select,textarea,button,[tabindex]')]
+    .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled'))
+  if (!tabStops.length) view.el.tabIndex = 0
   return true
 }
 
