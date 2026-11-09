@@ -249,7 +249,7 @@ export async function checkEditableLookups(fixture, check, settle) {
   window.openEditableLookupPreview = async () => {
     await window.editableLookupPreview?.close()
     const host = document.createElement('div')
-    host.style.cssText = 'position:fixed;inset:16px;z-index:1000'
+    host.style.cssText = 'position:fixed;inset:16px;z-index:2147483000'
     document.body.append(host)
     control = new NDwBase(rt, 'dw_lookup_preview')
     control.props.set('hscrollbar', true)

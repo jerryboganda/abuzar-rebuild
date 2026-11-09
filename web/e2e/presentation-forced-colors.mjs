@@ -235,7 +235,7 @@ export async function checkForcedColors(page, output) {
         host.id = 'forced-color-popup'
         host.className = 'modern-surface'
         host.dataset.theme = theme
-        host.style.cssText = `position:fixed;left:16px;top:16px;width:${Math.min(600, width - 32)}px;height:3em;z-index:10000;--p-scale:${scale / 100}`
+        host.style.cssText = `position:fixed;left:16px;top:16px;width:${Math.min(600, width - 32)}px;height:3em;z-index:2147483000;--p-scale:${scale / 100}`
         const input = document.createElement('input')
         input.className = 'surface-editor'
         input.setAttribute('aria-label', 'Synthetic high-contrast choices')

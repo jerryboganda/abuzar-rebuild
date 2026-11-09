@@ -54,7 +54,7 @@ function makeControl(rt, model) {
 function mountPrintPages(pages, model, presentation) {
   const frame = document.createElement('iframe')
   frame.title = `Synthetic ${presentation} document preview`
-  frame.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;z-index:10000;background:white'
+  frame.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;z-index:2147483000;background:white'
   document.body.append(frame)
   const doc = frame.contentDocument
   const css = [...document.querySelectorAll('style')].map((style) => style.textContent).join('\n')

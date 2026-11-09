@@ -292,7 +292,7 @@ async function checkDerivedDataSurfacesImpl(fixture, check, settle, filter) {
     for (const name of source.surfaces.filter((item) => !filter || filter.includes(item))) {
       const label = `${name}/${modern ? 'Modern' : 'Classic'}`
       const host = document.createElement('div')
-      host.style.cssText = 'position:fixed;left:16px;top:16px;width:640px;height:520px;z-index:10000'
+      host.style.cssText = 'position:fixed;left:16px;top:16px;width:640px;height:520px;z-index:2147483000'
       document.body.append(host)
       let preview
       try {

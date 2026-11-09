@@ -587,7 +587,7 @@ export async function checkDataSurfaces(fixture, check, settle) {
     window.presentationSurfacePreview?.dispose()
     const host = document.createElement('div')
     host.id = 'presentation-surface-preview'
-    host.style.cssText = `position:fixed;left:16px;top:16px;width:${width}px;height:520px;z-index:10000`
+    host.style.cssText = `position:fixed;left:16px;top:16px;width:${width}px;height:520px;z-index:2147483000`
     document.body.append(host)
     const previewControl = new control.constructor(fixture.rt, 'dw_synthetic_visual')
     const model = modelFor(name, definitions[name].datawindow.processing === '1' ? 10000 : 1)

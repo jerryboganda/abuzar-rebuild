@@ -65,7 +65,7 @@ export async function checkCriteriaSurfaces(fixture, check, settle) {
     rt.onError = (error) => errors.push(String(error))
     const host = document.createElement('div')
     host.id = 'criteria-preview'
-    host.style.cssText = 'position:fixed;inset:16px;z-index:10000'
+    host.style.cssText = 'position:fixed;inset:16px;z-index:2147483000'
     document.body.append(host)
     const view = fixture.ui.createDwView(control, host)
     await view.render()
