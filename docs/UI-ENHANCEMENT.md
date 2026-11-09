@@ -22,13 +22,13 @@ instructions below; acceptance requirements and historical evidence are unchange
 **Source-derived Modern layouts now cover most windows; nothing new is browser-verified, and the enhancement remains incomplete and unreleased.**
 Measured from the working tree by `tools/parity/ui_completion_audit.mjs` (see
 `ui-completion-audit.md`, re-measured 2026-11-09 after the parity review fixes
-below): 2,036 of 2,062 inventoried windows (98.7%) have a Modern layout. 170 are
+below): 2,034 of 2,062 inventoried windows (98.6%) have a Modern layout. 170 are
 hand-reviewed (9 workspace/tool, 55 criteria, 4 calculator, 2 calendar and 100
-entry windows). 1,866 are generated from the recovered definitions by
-`web/tools/derive-*.ts`: 1,608 dialog and sheet windows and 258 entry masters (a
+entry windows). 1,864 are generated from the recovered definitions by
+`web/tools/derive-*.ts`: 1,606 dialog and sheet windows and 258 entry masters (a
 print/report or artwork-only DataWindow inside a window keeps its original
 element in the Modern frame; a report's own design is redesigned separately).
-The other 26 windows keep the labelled Classic compatibility layout; the open
+The other 28 windows keep the labelled Classic compatibility layout; the open
 causes are listed per window in `ui-derived-modal-windows-backlog.json` and
 `ui-derived-windows-backlog.json` (DataWindow definitions missing from the
 recovered source: `w_dashboard`, `w_populate_*`, `w_delete_due`; history and
@@ -37,11 +37,12 @@ visit viewers whose DataWindow paints a heading or value in its background layer
 orphan heading or button after the last field of its groupbox,
 `w_childerserver_controlpanel`; editable lists with report features,
 `w_salereturn_activeitemlist`, `w_saletemplate_saleestimates`; unsupported
-controls `w_graphviewer`, `w_sms_center`; others). For DataWindows, 3,294 of
-8,740 (37.7%) have a Modern surface: 275 reviewed and 3,019 generated (grids may
+controls `w_graphviewer`, `w_sms_center`; staggered rows the Modern grid does not
+reproduce, `w_arg_cust_sdate_ldate_v13`, `w_arg_customers_sdate_ldate_v7`; others). For DataWindows, 3,286 of
+8,740 (37.6%) have a Modern surface: 275 reviewed and 3,011 generated (grids may
 carry per-row button columns and multiline fields). Print, PDF and report
 layouts are exempt from structural parity (decision 16): 5,546 DataWindows are
-evidence-classified that way, so on-screen coverage is 3,031 of 3,194 (94.9%).
+evidence-classified that way, so on-screen coverage is 3,023 of 3,194 (94.7%).
 Before the review fixes the same tool measured 2,047 windows, 3,324 DataWindows
 and 3,037 of 3,158 on-screen DataWindows; the drop is the refused mappings
 listed under "Parity review fixes". Generated mappings are
@@ -221,9 +222,11 @@ Decisions recorded for future sessions:
    `d_smscenter_preview`, `w_arg_cust_sdate_ldate_v13`, `w_arg_customers_sdate_ldate_v7`,
    `w_arg_manfs_cats_classes_packs_dates_v3`. Cause class: source fields much shorter than a Modern
    field (for example a 17-unit computed flag beside 56-unit fields) or staggered by less than a
-   Modern line, so Modern's minimum field height changes which neighbours overlap; they are listed
-   for manual visual comparison against Classic and are not claimed as matching. The footers
-   (`d_*footer_view`) are transaction screens and need that review before any acceptance.
+   Modern line, so Modern's minimum field height changes which neighbours overlap.
+   Resolution (2026-11-09): a wrong structure is a defect, so the ten that still failed in CI run
+   42540521435 are refused by the generators (`STAGGERED_ROWS` in `derive-data-surfaces.ts`,
+   `STAGGERED_DIALOGS` in `derive-modal-windows.ts`) and keep the labelled Classic layout until the
+   grid planner reproduces staggered rows; the others were fixed or refused by the review fixes.
 18. Workflow parity on the real system (CI `e2e` job). The real application signs in against
    the Rust server and PostgreSQL (converted schema, seed and bootstrap data) and clicks every item
    of the menu observed in the original, once in Classic and once in Modern

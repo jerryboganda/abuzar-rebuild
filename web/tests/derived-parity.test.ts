@@ -75,12 +75,15 @@ test('painted background text and values are content: a DataWindow showing them 
 })
 
 test('dialog captions pair with the control beside them, not across another control (date and format criteria)', async () => {
-  const v13 = modal('w_arg_cust_sdate_ldate_v13')
-  assert.deepEqual(v13.fields.find((item) => item.control === 'em_enddate'), { control: 'em_enddate', label: 'st_2' })
-  assert.equal(v13.fields.find((item) => item.control === 'ddlb_format')?.label, undefined)
-  const wrong: WindowSurface = { ...v13, fields: v13.fields.map((item) => item.control === 'ddlb_format' ? { control: 'ddlb_format', label: 'st_2' } :
-    item.control === 'em_enddate' ? { control: 'em_enddate', name: 'Dates' } : item) }
-  assert.ok(windowSurfacePositionIssues(await geometry(v13.name), wrong).includes('Caption is not beside its field in the source: ddlb_format'))
+  // w_arg_cust_sdate_ldate_v13 had the format drop-down captioned "End Date:"; it now keeps Classic (staggered rows), and the same
+  // date and format captions are pinned on w_arg_cust_dates_caption_disc_terms, where the format drop-down got "Start Date:".
+  assert.equal(modal('w_arg_cust_sdate_ldate_v13'), undefined)
+  const terms = modal('w_arg_cust_dates_caption_disc_terms')
+  assert.deepEqual(terms.fields.find((item) => item.control === 'em_enddate'), { control: 'em_enddate', label: 'st_2' })
+  assert.equal(terms.fields.find((item) => item.control === 'ddlb_format')?.label, 'st_9')
+  const wrong: WindowSurface = { ...terms, fields: terms.fields.map((item) => item.control === 'ddlb_format' ? { control: 'ddlb_format', label: 'st_1' } :
+    item.control === 'em_startdate' ? { control: 'em_startdate', name: 'Dates' } : item) }
+  assert.ok(windowSurfacePositionIssues(await geometry(terms.name), wrong).includes('Caption is not beside its field in the source: ddlb_format'))
   const days = modal('w_arg_manfs_cats_classes_packs_dates_v3')
   assert.equal(days.fields.find((item) => item.control === 'em_days')?.label, 'st_4')
   assert.equal(days.fields.find((item) => item.control === 'em_startdate')?.label, 'st_1')
@@ -146,7 +149,7 @@ test('visible pictures, colour keys and progress bars are positioned content; hi
 })
 
 test('a groupbox keeps its caption with exactly the content it encloses', async () => {
-  const window = modal('w_arg_cust_sdate_ldate_v13')
+  const window = modal('w_arg_cust_dates_caption_disc_terms')
   assert.deepEqual(window.members, { gb_1: ['dw_selected'], gb_3: ['rb_originaldate', 'rb_lastsavingdate', 'rb_billingdate'], gb_2: ['em_startdate', 'em_enddate'] })
   const boxes = await geometry(window.name)
   assert.ok(windowSurfacePositionIssues(boxes, { ...window, members: { ...window.members, gb_2: ['em_startdate'] } })

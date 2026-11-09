@@ -83,8 +83,12 @@ function inheritedCaption(input: Box, statics: readonly Box[], ancestors: readon
   return undefined
 }
 
+const STAGGERED_DIALOGS: ReadonlySet<string> = new Set(['w_arg_cust_sdate_ldate_v13', 'w_arg_customers_sdate_ldate_v7'])
+
 export async function deriveModal(name: string, library: string, rt: Runtime, resolveSurface: Resolve, definitions: Map<string, DwDef>,
   ancestors: readonly (readonly ControlBox[])[] = []): Promise<ModalDerivation> {
+  // Dialogs whose staggered rows the Modern grid does not reproduce (structure gate, see derive-data-surfaces.ts STAGGERED_ROWS).
+  if (STAGGERED_DIALOGS.has(name)) return { reason: 'staggered rows the Modern grid does not reproduce (structure gate)' }
   let window: PBObject
   try { window = await rt.instantiate(name) } catch (error) { return { reason: `instantiate: ${(error as Error).message.slice(0, 80)}` } }
   try {

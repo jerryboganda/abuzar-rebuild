@@ -36,8 +36,19 @@ const ART = new Set(['bitmap', 'rectangle', 'roundrectangle', 'ellipse', 'line']
 
 export interface Derivation { surface?: DataSurface; reason?: string }
 
+/**
+ * Forms whose rows are staggered by less than a Modern line (a field between two rows, short flags beside full-height fields): the
+ * Modern grid does not reproduce which fields share a row in the original, as the structure gate of the browser pass measured
+ * (CI runs up to 42540521435).  A wrong structure is a defect, so they keep the labelled Classic layout until the planner can.
+ */
+export const STAGGERED_ROWS: ReadonlySet<string> = new Set([
+  'd_alnaseeb_deliveryorder_saleinvprint', 'd_mr_pc', 'd_normalpurchasereturnfooter', 'd_old_general1', 'd_opensalereturnfooter',
+  'd_patientvisit_obs_us', 'd_salereturnfooter_view', 'd_servicefooter_view',
+])
+
 /** Pairs every label with the column it describes using the geometry stored in the source definition. */
 export function derive(name: string, def: DwDef, options: { plainSeparators?: boolean } = {}): Derivation {
+  if (STAGGERED_ROWS.has(name)) return { reason: 'staggered rows the Modern grid does not reproduce (structure gate)' }
   const processing = Number(def.datawindow.processing ?? 0)
   if (processing !== 0 && processing !== 1) return { reason: `processing style ${processing}` }
   // A freeform ("tabular") DataWindow whose captions sit in a header band reads as a grid, as the original paints it.
