@@ -2067,6 +2067,10 @@ try {
       assert.equal(await page.evaluate(() => Number(window.associatedInvoicePreview.caller.model.getItem(1, 'netamt'))), 75.5,
         'Real typing reaches the original ItemChanged total query and shared caller buffer')
       await modal.getByRole('textbox', { name: 'Total Amount:', exact: true }).focus()
+      // the view repaints a change on the next frame: the total follows the accepted invoice then (it read 125.25 when sampled
+      // immediately in some runs and 75.50 in others)
+      await page.waitForFunction(() => window.associatedInvoicePreview.dw.root.querySelector('.surface-band [role=textbox]')
+        ?.textContent.trim() === '75.50', null, { timeout: 5000 }).catch(() => {})
       const appearance = await modal.evaluate((modal) => {
         const f = window.associatedInvoicePreview
         const total = f.dw.root.querySelector('.surface-band [role=textbox]')
