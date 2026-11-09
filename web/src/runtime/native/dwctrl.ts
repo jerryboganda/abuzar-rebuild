@@ -101,6 +101,9 @@ export class NDwObject implements Member {
   }
 }
 
+/** The controls that display one buffer (ShareData): a change made through any of them is shown by all, as in PowerBuilder. */
+const shareGroups = new WeakMap<object, Set<NDwBase>>()
+
 export class NDwBase extends PBObject {
   model: DwModel | null = null
   ready: Promise<void> = Promise.resolve()
@@ -120,6 +123,14 @@ export class NDwBase extends PBObject {
 
   changed(selection?: 'column'): void {
     for (const l of this.listeners) l(selection)
+    const buf = this.model?.buf
+    const group = buf ? shareGroups.get(buf) : undefined
+    if (!group) return
+    // the other controls sharing this buffer repaint the same change (their own listeners only: no echo back)
+    for (const other of group) {
+      if (other === this || other.destroyed || other.model?.buf !== buf) continue
+      for (const l of other.listeners) l()
+    }
   }
 
   bindTextEditor(model: DwModel, row: number, column: string, editor: DwTextEditor): () => void {
@@ -151,7 +162,10 @@ export class NDwBase extends PBObject {
     this.clearScriptText()
     this.textEditor = null
     try { this.changed() }
-    finally { this.listeners.clear() }
+    finally {
+      this.listeners.clear()
+      if (this.model) shareGroups.get(this.model.buf)?.delete(this)
+    }
   }
 
   private clearChildren(): void {
@@ -797,6 +811,10 @@ export class NDwBase extends PBObject {
     const o = await other.m()
     if (!o) return -1
     o.buf = m.buf
+    let group = shareGroups.get(m.buf)
+    if (!group) shareGroups.set(m.buf, group = new Set())
+    group.add(this)
+    group.add(other)
     other.changed()
     return 1
   }
@@ -804,6 +822,7 @@ export class NDwBase extends PBObject {
     const m = await this.m()
     if (m) {
       const b = m.buf
+      shareGroups.get(b)?.delete(this)
       m.buf = Object.assign(Object.create(Object.getPrototypeOf(b)), b)
       m.buf.primary = b.primary.slice()
     }

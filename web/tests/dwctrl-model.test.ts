@@ -97,3 +97,20 @@ test('SetColumn distinguishes an explicit selection from a redraw even for the s
   assert.equal(f.control.model?.col, 1)
   assert.deepEqual(changes, ['column', 'column', undefined])
 })
+
+test('a change through one DataWindow repaints every DataWindow sharing its buffer, until ShareDataOff', async () => {
+  const rt = new Runtime({ load: async () => undefined })
+  const def: DwDef = { datawindow: {}, bands: {}, table: { columns: [{ name: 'netamt', type: 'decimal(2)' }] },
+    objects: [{ name: 'netamt', type: 'column', band: 'detail' }] }
+  const primary = new NDwBase(rt, 'dw_header'), secondary = new NDwBase(rt, 'dw_viewheader')
+  primary.attach(new DwModel(rt, 'd_header', structuredClone(def)))
+  secondary.attach(new DwModel(rt, 'd_header', structuredClone(def)))
+  assert.equal(await primary.n_sharedata(secondary), 1)
+  let repaints = 0
+  secondary.listeners.add(() => repaints++)
+  primary.changed()
+  assert.equal(repaints, 1, 'the sharing view repaints the change made through the primary')
+  assert.equal(await secondary.n_sharedataoff(), 1)
+  primary.changed()
+  assert.equal(repaints, 1, 'after ShareDataOff the views are independent again')
+})
