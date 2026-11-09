@@ -562,6 +562,21 @@ async function checkItemSelectionInput(page) {
   } finally { await page.evaluate(() => window.criteriaWindowPreview.close()) }
 }
 
+// The criteria window's next control after `name` in the source TabOrder (visible, enabled; ties in document order, as the
+// app orders them): where Tab past a DataWindow's last field moves, as in PowerBuilder.
+const nextCriteriaControl = (name) => {
+  const f = window.criteriaWindowPreview
+  const order = (control) => Number(control?.props.get('taborder') ?? 0)
+  const own = f.window.children.get(name), element = f.el(name)
+  const later = (control) => order(control) > order(own) || order(control) === order(own) &&
+    !!(element.compareDocumentPosition(f.el(control.name)) & Node.DOCUMENT_POSITION_FOLLOWING)
+  const next = [...f.window.children.values()]
+    .filter((control) => control !== own && order(control) > 0 && control.props.get('visible') !== false &&
+      control.props.get('enabled') !== false && later(control))
+    .sort((a, b) => order(a) - order(b) || (f.el(a.name).compareDocumentPosition(f.el(b.name)) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))[0]
+  return !!next && f.el(next.name).contains(document.activeElement)
+}
+
 async function checkLookupCriteriaInput(page) {
   await page.setViewportSize({ width: 1366, height: 768 })
   for (const [name] of LOOKUP_CRITERIA_WINDOWS) {
@@ -587,15 +602,7 @@ async function checkLookupCriteriaInput(page) {
         await editor.press('Tab')
         // Tab past the lookup's only field moves on to the window's next control in the source tab order (the start date
         // where the dialog has dates: dw_control 10, em_startdate 20, ..., cb_ok 40), as PowerBuilder does.
-        await page.waitForFunction(() => {
-          const f = window.criteriaWindowPreview
-          const order = (control) => Number(control?.props.get('taborder') ?? 0)
-          const own = order(f.window.children.get('dw_control'))
-          const next = [...f.window.children.values()]
-            .filter((control) => order(control) > own && control.props.get('visible') !== false && control.props.get('enabled') !== false)
-            .sort((a, b) => order(a) - order(b))[0]
-          return !!next && f.el(next.name).contains(document.activeElement)
-        }, null, { timeout: 10000 })
+        await page.waitForFunction(nextCriteriaControl, 'dw_control', { timeout: 10000 })
           .catch(async (error) => {
             const state = await page.evaluate(() => {
               const f = window.criteriaWindowPreview, active = document.activeElement
@@ -819,8 +826,8 @@ async function checkDateChoiceInput(page) {
         await page.waitForFunction(() => window.criteriaWindowPreview.data.get('dw_price').dw.root.contains(document.activeElement),
           null, { timeout: 5000 })
         await page.keyboard.press('Tab')
-        await page.waitForFunction(() => window.criteriaWindowPreview.el('cb_ok') === document.activeElement,
-          null, { timeout: 5000 })
+        // past the price type's only field: the next control by TabOrder (dw_price shares 20 with the start date)
+        await page.waitForFunction(nextCriteriaControl, 'dw_price', { timeout: 5000 })
       } else if (owner.name === 'w_arg_sdate_cashflow_crosstab') {
         await form.getByRole('radio', { name: 'Cash Accounts', exact: true }).focus()
         await page.keyboard.press('ArrowRight')

@@ -39,8 +39,12 @@ export function sourceTabStops(root: HTMLElement, selector = FOCUSABLE): HTMLEle
 export function sourceTabNeighbour(root: HTMLElement, control: HTMLElement, dir: number, skip: (stop: HTMLElement) => boolean = () => false): HTMLElement | null {
   const outside = sourceTabStops(root).filter((stop) => !control.contains(stop) && !skip(stop))
   if (!outside.length) return null
+  // the control's place among the stops, ordered as sourceTabStops orders them: by rank, ties by document position
   const own = rank(control, root)
-  const after = outside.findIndex((stop) => compare(rank(stop, root), own) > 0)
+  const after = outside.findIndex((stop) => {
+    const order = compare(rank(stop, root), own)
+    return order > 0 || order === 0 && !!(control.compareDocumentPosition(stop) & Node.DOCUMENT_POSITION_FOLLOWING)
+  })
   if (dir > 0) return outside[after < 0 ? 0 : after]
   return outside[((after < 0 ? outside.length : after) - 1 + outside.length) % outside.length]
 }
