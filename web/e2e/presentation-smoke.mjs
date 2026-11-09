@@ -3458,7 +3458,19 @@ try {
           const bounds = active.getBoundingClientRect()
           return bounds.width > 0 && bounds.height > 0 && bounds.top >= 0 && bounds.bottom <= innerHeight &&
             bounds.left >= 0 && bounds.right <= innerWidth
-        }, { field, value }, { timeout: 5000 })
+        }, { field, value }, { timeout: 5000 }).catch(async (error) => {
+          const state = await page.evaluate((field) => {
+            const active = document.activeElement, bounds = active?.getBoundingClientRect()
+            const scrollers = []
+            for (let at = active?.parentElement; at; at = at.parentElement) {
+              const style = getComputedStyle(at)
+              if (/(auto|scroll|hidden)/.test(style.overflowY)) scrollers.push(`${at.tagName.toLowerCase()}.${String(at.className).split(' ')[0]} ${style.overflowY} ${at.scrollTop}/${at.scrollHeight - at.clientHeight}`)
+            }
+            return { value: window.presentationCalculatorPreview.model.getItem(1, field), active: active ? `${active.tagName}.${active.className} [${active.closest('[data-obj]')?.dataset.obj ?? ''}]` : null,
+              bounds: bounds?.toJSON(), viewport: [innerWidth, innerHeight], scrollers }
+          }, field)
+          throw new Error(`${name}/${width}/${scale}: the next field after Tab must be focused and visible: ${JSON.stringify(state)}`, { cause: error })
+        })
         await page.screenshot({ path: resolve(output, `${name}-${theme}-${scale}-${width}.png`) })
         const ok = form.getByRole('button', { name: 'Ok', exact: true })
         const cancel = form.getByRole('button', { name: 'Cancel', exact: true })
