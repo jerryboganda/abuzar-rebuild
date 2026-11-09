@@ -56,8 +56,16 @@ const openModal = async (fixture, name, sheet = false) => {
 // block rendering), so Retrieve returns zero rows while these checks run.
 const withoutDatabase = (impl) => async (...args) => {
   const original = DwModel.prototype.retrieve
+  const originalFetch = window.fetch
   DwModel.prototype.retrieve = async function () { return 0 }
-  try { return await impl(...args) } finally { DwModel.prototype.retrieve = original }
+  // A generated window's scripts may read settings files (FileOpen, ProfileString): in the synthetic pass every file is missing,
+  // answered here, never by a server (the pass must not reach one).
+  window.fetch = async (input, init) => {
+    const url = String(input?.url ?? input)
+    if (/\/api\/fs\//.test(url)) return new Response(JSON.stringify({ exists: false, ok: false }), { headers: { 'content-type': 'application/json' } })
+    return originalFetch(input, init)
+  }
+  try { return await impl(...args) } finally { DwModel.prototype.retrieve = original; window.fetch = originalFetch }
 }
 
 

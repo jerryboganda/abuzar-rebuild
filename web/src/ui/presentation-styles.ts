@@ -132,7 +132,7 @@ export const PRESENTATION_CSS = `
 .modern-window .pb-calendar [aria-selected=true]:focus-visible {outline-color:var(--p-on-accent);}
 .modern-window .pb-calendar [aria-disabled=true] {color:var(--p-muted);}
 .modern-window .window-field label .ctl {display:block;white-space:normal;overflow-wrap:anywhere;background:transparent!important;color:var(--p-text)!important;font-weight:600!important;text-align:left!important;}
-.modern-window input.ctl:not(.window-embedded *) {min-width:0;min-height:36px;padding:6px 10px;background:var(--p-surface)!important;border:1px solid var(--p-line)!important;border-radius:4px;}
+.modern-window :is(input,textarea).ctl:not(.window-embedded *) {min-width:0;min-height:36px;padding:6px 10px;background:var(--p-surface)!important;border:1px solid var(--p-line)!important;border-radius:4px;}
 .modern-window .window-actions {display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-top:24px;}
 .modern-window .window-actions button {width:auto!important;min-width:6em;min-height:36px;padding:6px 14px;border:1px solid var(--p-line);background:var(--p-surface);cursor:pointer;}
 .modern-window .window-actions button.default {background:var(--p-accent);color:var(--p-on-accent)!important;}
