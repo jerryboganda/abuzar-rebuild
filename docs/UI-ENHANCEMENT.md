@@ -281,6 +281,19 @@ Decisions recorded for future sessions:
    - Server: a decimal or NULL host variable that is an operand of arithmetic is substituted as a
      numeric value (`round(:ld_price * :ll_packunits, 2)` in the item price update failed in
      PostgreSQL; T-SQL converts implicitly). Everywhere else the substitution is unchanged.
+   - Server, checked read-only against the original's SQL Server 2022 (Windows auth, table-free
+     probes and Query Store metadata): PowerBuilder sends retrieval arguments as literals, and
+     `ORDER BY 'salerowid'` sorts by that select-list column (error 408 otherwise). The
+     populate-from-posted-invoices sort (`ORDER BY :ai_ordercol` in `d_postedsale_for_population`
+     and `d_postedsale_for_proformainvoice`, used by the sale, advanced sale and pro-forma windows)
+     was refused by PostgreSQL; a plain name there now names the output column. All original
+     logins are `us_english` (month first): sessions set `DateStyle 'ISO, MDY'`, so the dashboard
+     drill-downs' `CAST(:as_date AS DATETIME)` of a `mm/dd/yyyy` label no longer depends on the
+     PostgreSQL cluster locale.
+   - Modern keeps a field's source colours but draws black or white text where the source text
+     is unreadable on them (`w_graph_color`'s white-on-green channel field, 1.37:1); Classic is
+     unchanged. The accessibility step now scans every representative dialog instead of
+     stopping at the first appearance failure.
    - Open: the observed original shows "Sale And Return" where the recovered `m_mainmenu` sets
      "Sale And Return (One Category)" and no script renames it; the rebuild follows the recovered
      definition until the original can be checked.
