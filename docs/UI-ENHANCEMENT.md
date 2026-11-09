@@ -275,6 +275,15 @@ Decisions recorded for future sessions:
      could be drawn over an open menu or message box.
    - Tab after the last field of the last row accepts the entry and keeps the keyboard on that
      field (PowerBuilder); the synthetic pass now expects that for single-field lookups.
+   - Tab from a read-only or computed field (a Modern tab stop that is not the current column)
+     moves to the next enterable field after it in reading order (Shift+Tab: the previous one),
+     or into the current field; before, it moved on from the current column and could leave the
+     keyboard stuck (`w_discountcalculator`: focus on Name, current column Rate, the last).
+   - A user tab switch holds the new page (and its controls wherever the Modern layout placed
+     them) until SelectionChanged and what it posts have run, as PowerBuilder processes the next
+     input only then; a SetFocus aimed into the page is applied when it is released.
+   - Modern dialogs keep Tab in the window's source order and wrap to its first field; the
+     title-bar Close button is a mouse control outside the cycle (as in Windows).
    - Printing with "Print layout: Modern" never fails the print call: a document without a usable
      Modern template prints with the Classic layout and says so; preview templates are used only
      in the Modern workspace.
