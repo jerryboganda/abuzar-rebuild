@@ -1554,8 +1554,9 @@ export class DwView {
   async focusCurrent(fallback = false): Promise<boolean> {
     await this.ctl.ready
     // The keyboard goes by the current paint: a change still waiting to be painted (InsertRow, a tab page enabled just before
-    // SetFocus) is painted first, so the cells and their editability are those of the record now current.
-    if (this.scheduled || this.rendering) await this.render()
+    // SetFocus) is painted first, so the cells and their editability are those of the record now current.  Never while an editor is
+    // open: SelectText from GetFocus runs while the user types, and the entry must stay in its editor.
+    if ((this.scheduled || this.rendering) && !this.editor) await this.render()
     const m = this.ctl.model
     if (!m || m.row < 1 || m.row > m.rowCount() || m.col < 1) return false
     const name = m.colNames[m.col - 1]

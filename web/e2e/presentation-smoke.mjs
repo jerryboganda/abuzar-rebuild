@@ -1792,8 +1792,24 @@ try {
       }, { returns, theme, scale })
       const modal = page.locator('.presentation-modern-dialog[open]')
       const cash = modal.locator('[data-window-data=dw_cash]')
-      await cash.locator('[data-obj=cashtendered]').click()
-      await cash.locator('input').fill(returns ? '250' : '100'); await cash.locator('input').press('Tab')
+      // A trace of the cash DataWindow's editor, focus and paint, printed if the entry does not behave
+      await page.evaluate(() => {
+        const view = window.paymentPreview.views.dw_cash, log = window.__cashLog = []
+        const state = () => `editor=${view.editor ? `${view.editor.tagName}:${view.editObj}` : '-'} col=${view.ctl.model?.col} focus=${document.activeElement?.tagName}.${document.activeElement?.className ?? ''}`
+        for (const name of ['edit', 'focusCurrent', 'render', 'retainStaleDraft', 'rowClick']) {
+          const original = view[name]
+          if (typeof original !== 'function') continue
+          view[name] = function (...args) { log.push(`${name} ${state()}`); return original.apply(this, args) }
+        }
+        document.addEventListener('focusin', (event) => log.push(`focusin ${event.target?.tagName}.${event.target?.className ?? ''}`), { capture: true })
+      })
+      try {
+        await cash.locator('[data-obj=cashtendered]').click()
+        await cash.locator('input').fill(returns ? '250' : '100'); await cash.locator('input').press('Tab', { timeout: 10000 })
+      } catch (error) {
+        console.log('cash entry trace:\n' + (await page.evaluate(() => (window.__cashLog ?? []).join('\n'))))
+        throw error
+      }
       await page.waitForFunction((returns) => {
         const model = window.paymentPreview.controls.dw_cash.model
         return model.getItem(1, 'cashback') !== null && Number(model.getItem(1, 'cashback')) === (returns ? 0 : 30) &&
