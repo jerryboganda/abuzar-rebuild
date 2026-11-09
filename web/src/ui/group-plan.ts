@@ -1,3 +1,5 @@
+import { toStr } from '../runtime/values.ts'
+
 /** Group breaks of a grouped grid: the group bands shown before and after each data row, and the item prefix they add. */
 export interface GroupPlan {
   /** prefix[r] = display items (group bands and data rows) up to and including data row r (1-based; prefix[0] = 0) */
@@ -11,11 +13,12 @@ type Row = { v: unknown[] }
 
 /**
  * Same break rule as the Classic view: a group of level L spans consecutive rows that agree on the `by` columns of every
- * level up to L.  Only levels whose band the surface maps are shown.
+ * level up to L, compared by their text (a date by its date, a null as an empty value).  Only levels whose band the surface
+ * maps are shown.
  */
 export function buildGroupPlan(levels: readonly Level[], rows: readonly Row[], bands: ReadonlySet<string>): GroupPlan {
   const same = (a: Row, b: Row, level: number) => levels.filter((item) => item.level <= level).flatMap((item) => item.by)
-    .every((index) => a.v[index] === b.v[index] || a.v[index] !== null && b.v[index] !== null && String(a.v[index]) === String(b.v[index]))
+    .every((index) => toStr(a.v[index]) === toStr(b.v[index]))
   const plan: GroupPlan = { prefix: [0], heads: new Map(), tails: new Map() }
   for (let index = 0; index < rows.length; index++) {
     const heads = levels.filter((item) => bands.has(`header.${item.level}`) && (index === 0 || !same(rows[index - 1], rows[index], item.level)))

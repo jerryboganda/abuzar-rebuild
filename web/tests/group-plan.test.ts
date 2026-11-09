@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildGroupPlan, rowAtItem } from '../src/ui/group-plan.ts'
+import { PBDate, PBDateTime } from '../src/runtime/values.ts'
 
 const rows = ['A', 'A', 'B', 'C', 'C', 'C'].map((v) => ({ v: [v] }))
 const levels = [{ level: 1, by: [0] }]
@@ -35,4 +36,16 @@ test('multi-level groups nest: a break at level 1 also breaks level 2', () => {
   assert.deepEqual(plan.heads.get(2), ['header.2'])
   assert.deepEqual(plan.heads.get(3), ['header.1', 'header.2'])
   assert.deepEqual([1, 2, 3].map((row) => plan.tails.get(row)), [['trailer.2'], ['trailer.2'], ['trailer.2']])
+})
+
+test('date groups break on each date, as the Classic view compares their text', () => {
+  const dates = [PBDate.ymd(2026, 1, 1), PBDate.ymd(2026, 1, 1), PBDate.ymd(2026, 1, 2), new PBDateTime(PBDate.ymd(2026, 1, 3).n, 0)]
+  const plan = buildGroupPlan(levels, dates.map((v) => ({ v: [v] })), new Set(['header.1', 'trailer.1']))
+  assert.deepEqual([...plan.heads.keys()], [1, 3, 4])
+  assert.deepEqual([...plan.tails.keys()], [2, 3, 4])
+})
+
+test('a null and an empty value fall into one group, as in the Classic view', () => {
+  const plan = buildGroupPlan(levels, [null, '', undefined, 'A'].map((v) => ({ v: [v] })), new Set(['header.1']))
+  assert.deepEqual([...plan.heads.keys()], [1, 4])
 })

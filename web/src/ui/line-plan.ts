@@ -28,16 +28,22 @@ export function planLines(boxes: readonly PlanBox[]): PlanCell[][] {
     line.cells.sort((a, b) => a.left - b.left || a.top - b.top).map((cell) => ({ key: cell.key, weight: Math.max(1, cell.weight ?? cell.right - cell.left) })))
 }
 
-const num = (object: DwObject | undefined, key: string): number => {
-  const value = Number(object?.[key])
-  return Number.isFinite(value) ? value : 0
-}
-
-export function boxOf(def: DwDef, names: readonly (string | undefined)[], key: string, weightOf?: string): PlanBox | null {
+/**
+ * The source box of one or more objects.  With the DataWindow's runtime overrides, a script's Modify of visibility, position or
+ * size counts as it does for the Classic view (a column switched on at run time takes its place; a moved field is placed where
+ * the script put it).
+ */
+export function boxOf(def: DwDef, names: readonly (string | undefined)[], key: string, weightOf?: string,
+  overrides?: ReadonlyMap<string, string>): PlanBox | null {
+  const property = (object: DwObject, name: string) => overrides?.get(`${object.name.toLowerCase()}.${name}`) ?? object[name]
+  const num = (object: DwObject | undefined, name: string): number => {
+    const value = Number(object ? property(object, name) : undefined)
+    return Number.isFinite(value) ? value : 0
+  }
   const objects = names.flatMap((name) => {
     const found = name ? def.objects.find((object) => object.name.toLowerCase() === name.toLowerCase()) : undefined
     return found ? [found] : []
-  }).filter((object) => object.visible !== '0')
+  }).filter((object) => property(object, 'visible') !== '0')
   if (!objects.length) return null
   const left = Math.min(...objects.map((object) => num(object, 'x')))
   const top = Math.min(...objects.map((object) => num(object, 'y')))

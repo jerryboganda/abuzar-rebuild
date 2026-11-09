@@ -16,8 +16,9 @@ import { readFileBytes } from '../runtime/sysfiles.ts'
 import { commitDwValue, dwEditAutoSelect, dwEditorText, dwEditText, dwMultiline, dwMultilineDomText, dwMultilineText, dwTextLimit, sameDwColumn } from '../dw/edit.ts'
 import type { DwEditResult } from '../dw/edit.ts'
 import { choiceProperty, choiceSignature, choiceStyle, codeTable, sameChoiceValue, radioCaption, choiceEditText } from '../dw/choices.ts'
-import type { DwChoiceBinding, DwChoices } from '../dw/choices.ts'
+import type { DwChoice, DwChoiceBinding, DwChoices } from '../dw/choices.ts'
 import { DwChoiceEditor } from './dw-choice-editor.ts'
+import { numericSpin, stepNumber } from './numeric-spin.ts'
 import { lookupSurfaceIssues } from './data-surfaces.ts'
 import type { DataSurface } from './data-surfaces.ts'
 
@@ -144,6 +145,23 @@ export class DwView {
   private cancelFill: (() => void) | null = null
   private defaultKeys = new WeakMap<KeyboardEvent, Promise<boolean>>()
   private changingRow = false
+  /** the field the keyboard is on when it is not the current data column (a computed field, a button) */
+  protected navigation: { model: DwModel; row: number; column: number; name: string } | null = null
+  /** accepts the open text editor as the user's own focus change would (waits for its pending EditChanged) */
+  private acceptFromUi: (() => Promise<boolean>) | null = null
+  /** the field whose entry is being accepted because the user clicked elsewhere; a rejected entry may reopen there */
+  private leaving: { model: DwModel; row: number; object: string } | null = null
+  /** the press that a rejected entry refused: its click must not open the destination editor */
+  private refusedClick: { row: number; object: string | undefined } | null = null
+  /** mouse presses and double clicks run one after another, behind the entry being validated */
+  private pointerWork: Promise<void> = Promise.resolve()
+  private pointerDropped = false
+  /** a repaint is putting an existing draft back; it is not a new focus change */
+  protected restoringEditor = false
+  /** the spin arrows of a Classic numeric editor */
+  private spinArrows: HTMLElement | null = null
+  /** lookup choices checked against the detail columns a lookup browser shows */
+  private detailedChoices = new WeakMap<DwChoices, (choice: DwChoice) => void>()
 
   constructor(ctl: NDwBase, host: HTMLElement, observe = true) {
     this.ctl = ctl
@@ -163,7 +181,10 @@ export class DwView {
       const allowed = this.ctl.findRoutines('ue_dwnkey').length ?
         this.ctl.rt.fire(this.ctl, 'ue_dwnkey', [key, keyFlags(event)]).then((result) => toNum(result) !== 1) :
         Promise.resolve(true)
-      this.defaultKeys.set(event, allowed.catch((error) => { this.ctl.rt.onError(error); return false }))
+      const result = allowed.catch((error) => { this.ctl.rt.onError(error); return false })
+      this.defaultKeys.set(event, result)
+      // The DataWindow's own key processing follows its key event, which may claim the key by returning 1.
+      this.keyDefault(event, target === this.root ? null : (target as Element).closest<HTMLElement>('[data-obj]'), result)
     })
     if (observe) {
       this.bindAcceptance(ctl.model)
@@ -174,6 +195,107 @@ export class DwView {
 
   allowsDefaultKey(event: KeyboardEvent): Promise<boolean> {
     return this.defaultKeys.get(event) ?? Promise.resolve(false)
+  }
+
+  /**
+   * Keys pressed while the DataWindow has the keyboard but no editor is open (after Escape, on a read-only cell): Tab moves
+   * through the tab sequence, Enter or F2 opens the current field, and the arrow keys move a grid's current row and column.
+   * The key event (ue_dwnkey) runs first; returning 1 from it keeps the default processing from happening.
+   */
+  protected keyDefault(event: KeyboardEvent, cell: HTMLElement | null, allowed: Promise<boolean>): void {
+    const model = this.ctl.model
+    if (!model || this.recoveredDraft || event.altKey || event.ctrlKey || event.metaKey) return
+    const action = this.keyAction(event, model, cell)
+    if (!action) return
+    event.preventDefault()
+    void allowed.then(async (ok) => {
+      if (ok && !this.disposed && !this.ctl.destroyed && this.ctl.model === model) await action()
+    }).catch((error) => this.ctl.rt.onError(error))
+  }
+
+  protected keyAction(event: KeyboardEvent, model: DwModel, cell: HTMLElement | null): (() => Promise<unknown>) | null {
+    const button = cell instanceof HTMLButtonElement
+    // Tab on a button object moves on to the next control, as the window's tab order does.
+    if (event.key === 'Tab') return !button && this.hasTabColumns(model) ? () => this.tabNext(event.shiftKey ? -1 : 1) : null
+    if (event.shiftKey) return null
+    if (!button && (event.key === 'Enter' || event.key === 'F2')) return () => this.focusCurrent()
+    if (!this.gridKeys(model) || model.row < 1 || model.row > model.rowCount()) return null
+    const name = this.currentField(model)
+    if (!name) return null
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      const row = model.row + (event.key === 'ArrowDown' ? 1 : -1)
+      return row < 1 || row > model.rowCount() ? null : () => this.navigate(model, row, name)
+    }
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return null
+    return async () => {
+      const row = model.row
+      const fields = await this.displayFields(model, row)
+      const index = fields.indexOf(name)
+      const target = event.key === 'Home' ? fields[0] : event.key === 'End' ? fields.at(-1) :
+        fields[Math.max(0, Math.min(fields.length - 1, index + (event.key === 'ArrowRight' ? 1 : -1)))]
+      if (target && target !== name && model.row === row) await this.navigate(model, row, target)
+    }
+  }
+
+  /** a grid DataWindow: the arrow keys move its current row and column */
+  protected gridKeys(model: DwModel): boolean {
+    return num(model.def.datawindow, 'processing', 0) === 1
+  }
+
+  /** a DataWindow without any tab-sequenced column does not keep the Tab key */
+  private hasTabColumns(model: DwModel): boolean {
+    return model.def.objects.some((object) => object.type === 'column' &&
+      Number(splitExpr(model.overrides.get(`${object.name.toLowerCase()}.tabsequence`) ?? object.tabsequence).value) > 0)
+  }
+
+  /** the field the keyboard is on: the current column, or the computed field / button navigation moved to */
+  protected currentField(model: DwModel): string | undefined {
+    const focus = this.navigation
+    if (focus?.model === model && focus.row === model.row && focus.column === model.col) return focus.name
+    return model.col > 0 ? model.colNames[model.col - 1] : undefined
+  }
+
+  /** moves the keyboard to a field: row focus events for another row, item focus for a data column */
+  protected async navigate(model: DwModel, row: number, name: string): Promise<boolean> {
+    if (row !== model.row) {
+      if (!(await this.canChangeRow(model, row))) return false
+      model.row = row
+      await this.ctl.rt.fire(this.ctl, 'rowfocuschanged', [row])
+    }
+    if (this.disposed || this.ctl.model !== model || model.row !== row) return false
+    const field = name.toLowerCase()
+    const object = model.def.objects.find((item) => item.name.toLowerCase() === field)
+    const column = model.colIndex(field)
+    if (object?.type === 'column' && column >= 0) {
+      model.col = column + 1
+      await this.ctl.fireItemFocus(row, field)
+    }
+    if (this.disposed || this.ctl.model !== model || model.row !== row) return false
+    this.navigation = { model, row, column: model.col, name: field }
+    this.ctl.changed()
+    return true
+  }
+
+  /** the fields of a detail row from left to right as the grid shows them (columns, computed fields, buttons) */
+  protected async displayFields(model: DwModel, row: number): Promise<string[]> {
+    this.layout(model)
+    const fields: { name: string; x: number }[] = []
+    for (const source of model.def.objects) {
+      if (source.band !== 'detail' || !source.name || !['column', 'compute', 'button'].includes(source.type)) continue
+      const name = source.name.toLowerCase()
+      const geometry = ['x', 'width'].filter((key) => model.overrides.has(`${name}.${key}`))
+      const object = geometry.length ? { ...source, ...Object.fromEntries(geometry.map((key) => [key, model.overrides.get(`${name}.${key}`)!])) } as DwObject : source
+      if ((await this.prop(model, object, 'visible', row, 'detail')) === '0') continue
+      const shift = this.gridShift(object)
+      if (shift === null) continue
+      fields.push({ name, x: num(object, 'x') - shift })
+    }
+    return fields.sort((a, b) => a.x - b.x).map((field) => field.name)
+  }
+
+  /** the columns a script switched on after the grid was laid out: they are shown behind the visible ones, in this order */
+  protected movedColumns(): string[] {
+    return this.movedCols.map((column) => column.name)
   }
 
   dispose(): void {
@@ -510,8 +632,8 @@ export class DwView {
     if (m.row === f.row) el.classList.add('cur')
     if (m.buf.primary[f.row - 1]?.sel) el.classList.add('sel')
     if (interactive) {
-      el.addEventListener('mousedown', (ev) => void this.rowClick(m, f.row, ev))
-      el.addEventListener('dblclick', () => void this.ctl.rt.fire(this.ctl, 'doubleclicked', [0, 0, f.row, { name: '' }]))
+      el.addEventListener('mousedown', (ev) => this.pointerDown(m, f.row, ev))
+      el.addEventListener('dblclick', () => this.pointerDouble(m, f.row))
     }
     return el
   }
@@ -819,7 +941,11 @@ export class DwView {
       i = cols.length - 1
       row--
     }
-    if (row > m.rowCount() || row < 1) return
+    if (row > m.rowCount() || row < 1) {
+      // Past the last (or before the first) entry the keyboard stays on the current field, as in PowerBuilder.
+      await this.keepKeyboard(m)
+      return
+    }
     if (row !== m.row) {
       if (!(await this.canChangeRow(m, row))) return
       m.row = row
@@ -832,9 +958,16 @@ export class DwView {
     if (this.disposed || this.ctl.model !== m || m.row !== row || m.col !== column) return
     await this.paint(m)
     if (this.disposed || this.ctl.model !== m || m.row !== row || m.col !== column) return
-    const cell = this.root.querySelector(`.row[data-row="${row}"] .o[data-obj="${cols[i]}"]`) as HTMLElement | null
-    const object = m.def.objects.find((object) => object.name === cols[i])
+    const object = m.def.objects.find((object) => object.name.toLowerCase() === cols[i])
+    const cell = object ? this.cellOf(row, object.name) : null
     if (object && cell?.classList.contains('editable')) this.edit(m, object, row, cell)
+  }
+
+  /** Tab with nowhere to go: an entry just accepted reopens on its field instead of leaving the keyboard nowhere */
+  private async keepKeyboard(m: DwModel): Promise<void> {
+    const focus = document.activeElement
+    if (this.editor || this.disposed || this.ctl.model !== m || focus && focus !== document.body) return
+    await this.focusCurrent()
   }
 
   private focused = false
@@ -866,15 +999,53 @@ export class DwView {
       this.acceptanceBusy('Wait for the current field transition to finish before selecting another field.')
       return
     }
-    const target = (source ?? ev.target as HTMLElement).closest('[data-obj]') as HTMLElement | null
+    let target = (source ?? ev.target as HTMLElement).closest('[data-obj]') as HTMLElement | null
+    // A press inside the open editor (its text, check box, radio buttons or drop-down arrow) is a click on the edited column.
+    if (!source && row === this.editRow && this.ownsEditorTarget(ev.target)) target = this.cellOf(row, this.editObj) ?? target
+    // A disabled button object does not take the click.
+    if (target?.dataset.disabled === 'true') target = null
     const obj = target?.dataset.obj
     const destination = m.rowAt(row)
     const leavingChoice = !!this.choiceEdit && (this.editRow !== row || this.editObj !== obj)
+    // Focus leaving a typed entry accepts it first (ItemChanged, validation); a rejected entry keeps the focus.
+    const leavingText = !this.choiceEdit && !!this.acceptFromUi && !!this.editor && this.editor === this.textEditor &&
+      (this.editRow !== row || this.editObj !== obj)
     const changingRow = m.row !== row && this.ctl.findRoutines('rowfocuschanging').length > 0
-    const transition: DwView['choiceDestination'] = leavingChoice || changingRow ? { model: m, row, object: obj, activate: false } : null
+    const transition: DwView['choiceDestination'] = leavingChoice || leavingText || changingRow ? { model: m, row, object: obj, activate: false } : null
     this.choiceDestination = transition
     try {
+      // PowerBuilder's order: GetFocus (when the DataWindow did not have it), then Clicked while the current row and column are still
+      // the ones being left (scripts read GetRow() there as the old row: `SelectRow(GetRow(), false); SelectRow(row, true)`), and
+      // Clicked returning 1 keeps the focus where it is.  Only then is the pending entry accepted (ItemChanged), the row changed
+      // (RowFocusChanging / RowFocusChanged) and the clicked field opened.
+      if (!this.focused) {
+        this.focused = true
+        await this.ctl.rt.fire(this.ctl, 'getfocus')
+      }
+      if (this.disposed || this.ctl.destroyed || this.ctl.model !== m) return
+      const clicked = await this.ctl.rt.fire(this.ctl, 'clicked', [ev.offsetX, ev.offsetY, row, { name: obj ?? '' }])
+      if (this.disposed || this.ctl.destroyed) return
+      if (toNum(clicked) === 1) {
+        this.ctl.changed()
+        if (this.editor?.isConnected) this.editor.focus({ preventScroll: true })
+        return
+      }
+      // the script moved, replaced or removed what was clicked: the click has done what it can
+      if (this.ctl.model !== m || !destination || m.rowAt(row) !== destination) {
+        this.ctl.changed()
+        return
+      }
       if (leavingChoice && !(await this.choiceEdit!.accept(true))) return
+      if (leavingText) {
+        const accept = this.acceptFromUi!
+        this.leaving = { model: m, row: this.editRow, object: this.editObj }
+        let accepted = false
+        try { accepted = await accept() } finally { this.leaving = null }
+        if (!accepted) {
+          this.refusedClick = { row, object: obj }
+          return
+        }
+      }
       if (transition && (this.disposed || this.ctl.destroyed)) return
       if (transition && (this.ctl.model !== m || !destination || m.rowAt(row) !== destination)) {
         this.acceptanceBusy('The destination record changed while accepting the current entry. Select the destination again.')
@@ -887,17 +1058,10 @@ export class DwView {
         return
       }
       m.row = row
-      // Mouse focus raises source GetFocus; programmatic SetFocus during open does not.
-      if (!this.focused) {
-        this.focused = true
-        await this.ctl.rt.fire(this.ctl, 'getfocus')
-      }
-      if (transition && (this.disposed || this.ctl.destroyed || this.ctl.model !== m || m.row !== row || m.rowAt(row) !== destination)) return
       if (obj) {
         const ci = m.colIndex(obj)
         if (ci >= 0) m.col = ci + 1
       }
-      await this.ctl.rt.fire(this.ctl, 'clicked', [ev.offsetX, ev.offsetY, row, { name: obj ?? '' }])
       if (changedRow) await this.ctl.rt.fire(this.ctl, 'rowfocuschanged', [row])
       if (transition && (this.disposed || this.ctl.destroyed || this.ctl.model !== m || m.row !== row || m.rowAt(row) !== destination)) return
       // Keep an editable cell attached until its click opens the editor.
@@ -911,6 +1075,46 @@ export class DwView {
     } finally {
       if (this.choiceDestination === transition) this.choiceDestination = null
     }
+  }
+
+  /**
+   * A mouse press on a detail row (or a keyboard press of a button object).  Presses are processed in order, after any entry
+   * still being validated, as PowerBuilder processes them behind ItemChanged; a press that a rejected entry refuses is dropped.
+   */
+  protected pointerDown(m: DwModel, row: number, ev: MouseEvent, source?: HTMLElement): void {
+    if (!source) this.refusedClick = null
+    this.pointerWork = this.pointerWork.then(async () => {
+      this.pointerDropped = false
+      while (this.pendingEdits.size) {
+        if ((await Promise.all([...this.pendingEdits])).some((accepted) => !accepted)) {
+          this.pointerDropped = true
+          return
+        }
+      }
+      if (!this.disposed && !this.ctl.destroyed) await this.rowClick(m, row, ev, source)
+    }).catch((error) => this.ctl.rt.onError(error))
+  }
+
+  /** DoubleClicked follows the Clicked of its second press, and is dropped with that press */
+  protected pointerDouble(m: DwModel, row: number): void {
+    this.pointerWork = this.pointerWork.then(async () => {
+      if (this.pointerDropped || this.disposed || this.ctl.destroyed || this.ctl.model !== m) return
+      await this.ctl.rt.fire(this.ctl, 'doubleclicked', [0, 0, row, { name: '' }])
+    }).catch((error) => this.ctl.rt.onError(error))
+  }
+
+  /** the open editor, its drop-down arrow, detail button or spin arrows */
+  private ownsEditorTarget(node: EventTarget | null): boolean {
+    if (!(node instanceof Node) || !this.editor) return false
+    return this.editor.contains(node) || !!this.choiceEdit?.popup?.button.contains(node) ||
+      !!this.choiceEdit?.browse?.contains(node) || !!this.spinArrows?.contains(node)
+  }
+
+  /** the click that follows a press refused by a rejected entry */
+  protected takeRefusedClick(row: number, object: string): boolean {
+    const refused = this.refusedClick
+    this.refusedClick = null
+    return !!refused && refused.row === row && refused.object === object
   }
 
   protected async commitValue(m: DwModel, row: number, ci: number, o: DwObject, value: unknown, guard?: () => Promise<void>): Promise<DwEditResult> {
@@ -939,6 +1143,25 @@ export class DwView {
     } catch (error) {
       console.warn(`Unsupported DataWindow property: ${m.name}.${o.name}.${key}`, error)
       return value
+    }
+  }
+
+  /**
+   * The painted text of a text object.  A DataWindow text object may carry an expression after a tab (`"static~texpression"`);
+   * PowerBuilder paints the value of that expression, the static part only documents the design.  Thousands of reports use
+   * this for titles and Dr/Cr labels.  Painting the raw text showed `f_reporttitle(1)` instead of the title.
+   */
+  protected async textOf(m: DwModel, o: DwObject, row: number, band: string): Promise<string> {
+    const raw = (await this.prop(m, o, 'text', row, band)).replace(/~r~n/g, '\n')
+    const tab = raw.indexOf('\t')
+    if (tab < 0) return raw
+    const src = raw.slice(tab + 1).trim()
+    if (!src) return raw
+    try {
+      const v = await evalDw(compileDw(src), newCtx(m, row, band))
+      return v === null || v === undefined ? '' : toStr(v)
+    } catch {
+      return ''
     }
   }
 
@@ -1077,25 +1300,7 @@ export class DwView {
     st.lineHeight = st.height
     st.padding = '0 2px'
     if (o.type === 'text') {
-      // A DataWindow text object may carry an expression after a tab
-      // (`"static~texpression"`); PowerBuilder paints the value of that
-      // expression, the static part only documents the design.  Thousands of
-      // reports use this for titles and Dr/Cr labels.  Painting the raw text
-      // showed `f_reporttitle(1)` instead of the title.
-      const raw = (await this.prop(m, o, 'text', row, band)).replace(/~r~n/g, '\n')
-      const tab = raw.indexOf('\t')
-      let t = raw
-      if (tab >= 0) {
-        const src = raw.slice(tab + 1).trim()
-        if (src) {
-          try {
-            const v = await evalDw(compileDw(src), newCtx(m, row, band))
-            t = v === null || v === undefined ? '' : toStr(v)
-          } catch {
-            t = ''
-          }
-        }
-      }
+      const t = await this.textOf(m, o, row, band)
       setMnemonic(el, t)
       // a label wider than its box wraps at the words (the grid headers `Manufacturer Name`, `P/O Base Period (Days)` show on two lines)
       const boxW = sx(num(o, 'width')) - 4
@@ -1114,6 +1319,12 @@ export class DwView {
     if (o.type === 'button') {
       el.className += ' btn'
       el.textContent = o.text ?? ''
+      // Enabled=no (a runtime Modify) greys the button out and it no longer takes the click.
+      if (/^(no|false|0)$/i.test(await this.prop(m, o, 'enabled', row, band))) {
+        el.dataset.disabled = 'true'
+        el.setAttribute('aria-disabled', 'true')
+        st.color = '#a0a0a0'
+      }
       return el
     }
     let v: unknown = null
@@ -1177,13 +1388,19 @@ export class DwView {
         el.appendChild(Object.assign(document.createElement('span'), { className: 'dd-arrow' }))
       }
       else if (o['editmask.spin'] === 'yes') el.appendChild(Object.assign(document.createElement('span'), { className: 'dd-spin' }))
-      const protect = (await this.prop(m, o, 'protect', row, band)) === '1'
-      const tab = Number(await this.prop(m, o, 'tabsequence', row, band))
-      if (!protect && tab > 0) {
+      // A field the user cannot enter (protected, no tab sequence, read-only, display-only, a disabled control) opens no editor.
+      if (await this.canEdit(m, o, row)) {
         el.classList.add('editable')
         el.addEventListener('click', (event) => {
+          if (this.takeRefusedClick(row, o.name)) return
           const radio = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>('[data-radio-choice]') : null
+          const arrows = el.querySelector('.dd-spin')?.getBoundingClientRect()
+          const spin = arrows && arrows.width && event.clientX >= arrows.left ? (event.clientY < arrows.top + arrows.height / 2 ? 1 : -1) : 0
           this.edit(m, o, row, el, radio ? Number(radio.dataset.radioChoice) : true)
+          // A press on the spin arrows of a closed field opens it and takes the step, as the arrows of the open editor do.
+          if (spin && this.editor instanceof HTMLInputElement && this.editRow === row && this.editObj === o.name) {
+            this.stepText(m, o, row, this.editor, spin)
+          }
         })
       }
     }
@@ -1398,7 +1615,9 @@ export class DwView {
       }
       return
     }
-    this.edit(m, o, s.row, cell, false, false)
+    this.restoringEditor = true
+    try { this.edit(m, o, s.row, cell, false, false) }
+    finally { this.restoringEditor = false }
     const e = this.editor
     if (!(e instanceof HTMLInputElement || e instanceof HTMLTextAreaElement)) return
     e.value = s.value
@@ -1439,6 +1658,24 @@ export class DwView {
     this.checkTextEditor = null
     this.composingText = null
     this.syncFocusedText = null
+    this.acceptFromUi = null
+    this.spinArrows?.remove()
+    this.spinArrows = null
+  }
+
+  /** a choice editor whose value the user has not changed: its record went away, so it simply closes */
+  protected discardUnchangedChoiceEditor(): boolean {
+    const choice = this.choiceEdit
+    if (!choice || this.editor !== choice.element || this.editorDirty || choice.read() !== this.editorInitial ||
+      this.inputEventCount || this.pendingEdits.size) return false
+    const element = choice.element
+    this.cancelChoice()
+    this.detachTextEditor()
+    this.discardInputEvents()
+    this.acceptEdit = null
+    this.editor = null
+    element.remove()
+    return true
   }
 
   protected discardUnchangedTextEditor(): boolean {
@@ -1479,8 +1716,15 @@ export class DwView {
     return true
   }
 
+  /** the keyboard is (or was just) in this DataWindow, so a recovery notice may take it */
+  protected ownsKeyboard(): boolean {
+    const focus = document.activeElement
+    return !focus || focus === document.body || this.root.contains(focus)
+  }
+
   protected retainStaleDraft(value: string): void {
     if (this.disposed) return
+    const focused = this.ownsKeyboard()
     this.recoveredDraft = true
     this.cancelChoice()
     this.detachTextEditor()
@@ -1509,7 +1753,7 @@ export class DwView {
     }
     notice.append(message, label, discard)
     this.root.replaceChildren(notice)
-    text.focus()
+    if (focused) text.focus()
   }
 
   protected restoreRejectedText(text: string): void {
@@ -1716,15 +1960,16 @@ export class DwView {
       }
     }))
     const values = records.map((record) => columns.map((column) => record.v[column.index]))
-    const original = choices.validate
-    choices.validate = (choice) => {
-      original(choice)
+    // The detail columns are checked only for rows picked from the detail browser; the drop-down keeps its own rules.
+    const detailed = (choice: DwChoice) => {
+      choices.validate(choice)
       const index = choices.items.indexOf(choice), record = records[index]
       if (data.def !== definition || configuration() !== signature || !record ||
         columns.some((column, at) => !sameChoiceValue(record.v[column.index], values[index][at]))) {
         throw new Error('The lookup details changed. Press Escape and reopen the field before choosing a value.')
       }
     }
+    this.detailedChoices.set(choices, detailed)
     choices.grid = {
       title: surface.title,
       columns: columns.map(({ label, numeric }) => ({ label, numeric })),
@@ -1735,24 +1980,34 @@ export class DwView {
       read: async (index) => {
         const choice = choices.items[index]
         if (!choice) throw new Error('The requested lookup row is no longer available.')
-        choices.validate(choice)
+        detailed(choice)
         const row = data.buf.primary.indexOf(records[index]) + 1
         const result = await Promise.all(columns.map((column, at) =>
           this.display(data, column.object, values[index][at], row, column.object.band)))
-        choices.validate(choice)
+        detailed(choice)
         return result
       },
     }
   }
 
+  /** the choices as the detail browser sees them: a pick is also checked against the detail columns it showed */
+  protected detailChoices(choices: DwChoices): DwChoices {
+    const detailed = this.detailedChoices.get(choices)
+    return detailed ? { ...choices, validate: detailed } : choices
+  }
+
   protected edit(m: DwModel, o: DwObject, row: number, cell: HTMLElement, activate: boolean | number = false, focus = true): void {
     if (this.choiceDestination) {
-      const destination = this.choiceDestination
+      const destination = this.choiceDestination, leaving = this.leaving
       if (destination.model === m && destination.row === row && destination.object === o.name) {
         if (activate !== false) destination.activate = activate
+        return
       }
-      else this.acceptanceBusy('Wait for the current field transition to finish before selecting another field.')
-      return
+      // A rejected entry reopens on the field the user tried to leave.
+      if (!(leaving?.model === m && leaving.row === row && leaving.object === o.name)) {
+        this.acceptanceBusy('Wait for the current field transition to finish before selecting another field.')
+        return
+      }
     }
     if (this.changingRow || this.ctl.model !== m || m.row !== row) return
     if (this.choiceEdit && this.editor === this.choiceEdit.element) {
@@ -1770,6 +2025,17 @@ export class DwView {
         if (!ok || this.disposed || this.ctl.model !== m || m.row !== row || m.rowAt(row) !== destination || m.col !== m.colIndex(o.name) + 1) return
         const target = this.cellOf(row, o.name)
         if (target) this.edit(m, o, row, target, activate)
+      }).catch((error) => this.ctl.rt.onError(error))
+      return
+    }
+    // Moving the keyboard off a typed entry accepts it first (ItemChanged, validation); it is never silently dropped.
+    if (!this.restoringEditor && this.acceptFromUi && this.editor && this.editor === this.textEditor &&
+      (this.editRow !== row || this.editObj !== o.name)) {
+      const accept = this.acceptFromUi, destination = m.rowAt(row)
+      void accept().then((ok) => {
+        if (!ok || this.disposed || this.editor || this.ctl.model !== m || m.row !== row || m.rowAt(row) !== destination) return
+        const target = this.cellOf(row, o.name)
+        if (target) this.edit(m, o, row, target, activate, focus)
       }).catch((error) => this.ctl.rt.onError(error))
       return
     }
@@ -1896,6 +2162,7 @@ export class DwView {
     this.placeEditor(input, cell)
     this.editor = input
     this.textEditor = input
+    const arrows = input instanceof HTMLInputElement ? this.spinControl(input, m, o, row) : null
     const domText = (text: string) => multiline ? dwMultilineDomText(text) : text
     const readText = () => multiline ? dwMultilineText(input.value, sourceText) : input.value
     this.readTextEditor = readText
@@ -1963,6 +2230,7 @@ export class DwView {
       if (input.value !== domText(cur)) input.value = dwEditText(m, ci, o, input.value)
       const text = readText()
       if (input.isConnected) input.remove()
+      arrows?.remove()
       try {
         const targetObject = currentObject() ?? o
         const result = input.value !== domText(cur) ? await this.commitEditValue(m, row, ci, targetObject, text, guard) : 'accepted'
@@ -1998,6 +2266,7 @@ export class DwView {
         return !this.editor
       })())
     }
+    this.acceptFromUi = commitFromUi
     const normalizeText = () => {
       const text = input.value
       const normalized = dwEditText(m, ci, o, text)
@@ -2045,6 +2314,7 @@ export class DwView {
         this.discardInputEvents()
         release()
         if (input.isConnected) input.remove()
+        arrows?.remove()
         if (focused && !this.root.classList.contains('modern-surface')) {
           if (!this.root.hasAttribute('tabindex')) this.root.tabIndex = -1
           this.restoreCellFocus(this.root)
@@ -2068,7 +2338,64 @@ export class DwView {
         })
         return
       }
-      if (k) void this.ctl.rt.fire(this.ctl, 'ue_dwnkey', [k, keyFlags(ev)])
+      const spin = (ev.key === 'ArrowUp' || ev.key === 'ArrowDown') && !ev.altKey && !ev.ctrlKey && !ev.metaKey && !ev.shiftKey &&
+        input instanceof HTMLInputElement && numericSpin(currentObject() ?? o, m.kinds[ci], m.overrides).kind === 'number'
+      if (!spin) {
+        if (k) void this.ctl.rt.fire(this.ctl, 'ue_dwnkey', [k, keyFlags(ev)])
+        return
+      }
+      // A spin edit mask steps its value with Up and Down, after the key event (which may claim the key by returning 1).
+      ev.preventDefault()
+      const direction = ev.key === 'ArrowUp' ? 1 : -1
+      const step = () => this.stepText(m, currentObject() ?? o, row, input, direction)
+      const notified = k ? this.ctl.rt.fire(this.ctl, 'ue_dwnkey', [k, keyFlags(ev)]) : Promise.resolve(null)
+      if (!this.ctl.findRoutines('ue_dwnkey').length) {
+        step()
+        void notified.catch((error) => this.ctl.rt.onError(error))
+      } else void notified.then((result) => { if (toNum(result) !== 1) step() }).catch((error) => this.ctl.rt.onError(error))
     })
+  }
+
+  /**
+   * One step of a spin edit mask (Up/Down or its arrows): the draft changes, the buffer does not.  The step raises the same
+   * EditChanged as typing, and the value goes through the normal acceptance and validation when the field is left.
+   */
+  protected stepText(model: DwModel, object: DwObject, row: number, input: HTMLInputElement, direction: -1 | 1): boolean {
+    if (this.disposed || this.ctl.model !== model || this.editor !== input || this.editRow !== row ||
+      model.row !== row || model.col !== model.colIndex(object.name) + 1) return false
+    const config = numericSpin(object, model.kinds[model.colIndex(object.name)], model.overrides)
+    if (config.kind !== 'number') return false
+    const value = stepNumber(input.value, config, direction)
+    if (value === null) {
+      this.acceptanceBusy('Enter a valid number before using Increase or Decrease. The entry has not been changed.')
+      input.setAttribute('aria-invalid', 'true')
+      return false
+    }
+    input.value = value
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    input.focus({ preventScroll: true })
+    return true
+  }
+
+  /** the two arrows of a Classic spin editor, over its right edge as the closed field shows them */
+  protected spinControl(input: HTMLInputElement, m: DwModel, o: DwObject, row: number): HTMLElement | null {
+    if (numericSpin(o, m.kinds[m.colIndex(o.name)], m.overrides).kind !== 'number') return null
+    const arrows = document.createElement('span')
+    arrows.className = 'dw-spin-arrows'
+    arrows.setAttribute('aria-hidden', 'true')
+    const style = input.style
+    arrows.style.cssText = `position:absolute;left:calc(${style.left || '0px'} + ${style.width || '100%'} - 15px);top:${style.top || '0px'};` +
+      `height:${style.height || '100%'};width:14px;z-index:6;box-sizing:border-box;border-left:1px solid #adadad;cursor:default;` +
+      `background:#fdfdfd url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 10'%3E%3Cpath d='M1 4l3-3 3 3M1 6l3 3 3-3' fill='none' stroke='%23303030' stroke-width='1.2'/%3E%3C/svg%3E") center/8px 10px no-repeat`
+    arrows.addEventListener('mousedown', (event) => { event.preventDefault(); event.stopPropagation() })
+    arrows.addEventListener('dblclick', (event) => event.stopPropagation())
+    arrows.addEventListener('click', (event) => {
+      event.stopPropagation()
+      const box = arrows.getBoundingClientRect()
+      this.stepText(m, m.def.objects.find((x) => x.name === o.name) ?? o, row, input, event.clientY < box.top + box.height / 2 ? 1 : -1)
+    })
+    input.after(arrows)
+    this.spinArrows = arrows
+    return arrows
   }
 }

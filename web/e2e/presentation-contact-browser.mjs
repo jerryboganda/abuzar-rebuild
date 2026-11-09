@@ -124,7 +124,7 @@ export async function checkContactSurfaces(fixture, check, settle) {
   const modern = fixture.session.activeMode === 'modern'
   const browse = async (f) => {
     const select = await f.edit()
-    select.dispatchEvent(new KeyboardEvent('keydown', { key: 'F4', bubbles: true, cancelable: true }))
+    select.dispatchEvent(new KeyboardEvent('keydown', { key: 'F4', shiftKey: true, bubbles: true, cancelable: true }))
     await settle()
     const dialog = document.querySelector('.presentation-lookup[open]')
     if (!dialog) throw new Error('Missing reviewed contact lookup browser')

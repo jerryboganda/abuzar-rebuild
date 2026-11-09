@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { planLines, formLinePlan } from '../src/ui/line-plan.ts'
+import { planLines, formLinePlan, boxOf } from '../src/ui/line-plan.ts'
+import type { DwDef } from '../src/dw/def.ts'
 import { ALL_DATA_SURFACES } from '../src/ui/surface-registry.ts'
 import { loadDefinitions } from '../tools/derive-data-surfaces.ts'
 
@@ -41,4 +42,16 @@ test('every generated and reviewed form plans every visible field exactly once',
   }
   assert.ok(forms > 100, `forms checked: ${forms}`)
   console.log(`forms checked: ${forms}; forms with fields sharing a row: ${sideBySide}`)
+})
+
+test('runtime Modify of visibility and position places a field where the Classic view paints it', () => {
+  const def = { objects: [
+    { name: 'shown', type: 'column', band: 'detail', x: '10', y: '20', width: '100', height: '30', visible: '0' },
+    { name: 'moved', type: 'column', band: 'detail', x: '10', y: '20', width: '100', height: '30', visible: '1' },
+  ] } as unknown as DwDef
+  assert.equal(boxOf(def, ['shown'], 'shown'), null)
+  const overrides = new Map([['shown.visible', '1'], ['moved.x', '400'], ['moved.y', '90']])
+  assert.deepEqual(boxOf(def, ['shown'], 'shown', undefined, overrides), { key: 'shown', left: 10, top: 20, right: 110, bottom: 50 })
+  assert.deepEqual(boxOf(def, ['moved'], 'moved', undefined, overrides), { key: 'moved', left: 400, top: 90, right: 500, bottom: 120 })
+  assert.equal(boxOf(def, ['moved'], 'moved', undefined, new Map([['moved.visible', '0']])), null)
 })

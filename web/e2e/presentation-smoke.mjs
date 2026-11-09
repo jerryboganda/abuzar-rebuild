@@ -2982,7 +2982,7 @@ try {
             toggle.right <= details.left + .5
         }), 'The 1000% contact popup is viewport-clamped and its toggle cannot cover the details action')
         await record('Choices')
-        if (width === 1366) { await choice.focus(); await page.keyboard.press('F4') }
+        if (width === 1366) { await choice.focus(); await page.keyboard.press('Shift+F4') }
         else await grid.getByRole('button', { name: 'Browse Contact Card Code details', exact: true }).click()
         const lookup = page.getByRole('dialog', { name: 'Contact cards', exact: true })
         await lookup.waitFor({ state: 'visible' })

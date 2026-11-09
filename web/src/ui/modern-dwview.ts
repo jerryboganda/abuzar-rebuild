@@ -5,7 +5,7 @@ import type { DataSurface, DataSurfaceField } from './data-surfaces.ts'
 import type { NDwBase } from '../runtime/native/dwctrl.ts'
 import type { DwModel, DwRow } from '../dw/model.ts'
 import { buildGroupPlan, rowAtItem } from './group-plan.ts'
-import { boxOf } from './line-plan.ts'
+import { boxOf as sourceBoxOf } from './line-plan.ts'
 import { planGrid, applyGrid, anchoredBox, resolveAnchors } from './grid-plan.ts'
 import type { GridBox } from './grid-plan.ts'
 import type { GroupPlan } from './group-plan.ts'
@@ -13,7 +13,7 @@ import type { DwObject } from '../dw/def.ts'
 import { toStr } from '../runtime/values.ts'
 import { commitDwValue, dwRequired } from '../dw/edit.ts'
 import type { DwEditResult } from '../dw/edit.ts'
-import { numericSpin, spinNumber, stepNumber, canStepNumber } from './numeric-spin.ts'
+import { numericSpin, spinNumber, canStepNumber } from './numeric-spin.ts'
 import type { NumericSpin } from './numeric-spin.ts'
 import type { DwChoiceEditor } from './dw-choice-editor.ts'
 import { lookupDialog } from './dw-lookup-dialog.ts'
@@ -30,8 +30,9 @@ export class ModernDwView extends DwView {
   private contextSurface: DataSurface | null = null
   private contextLabels: ReadonlyMap<string, HTMLElement> = new Map()
   private identity = `data-surface-${++nextSurface}`
-  private bindings = new Map<string, { label: string; object: DwObject; suffix?: DwObject; numeric: boolean; spin: NumericSpin | null; choice: boolean; toggle: boolean; radio: boolean; multiline: boolean }>()
-  private navigation: { model: DwModel; row: number; column: number; name: string } | null = null
+  private bindings = new Map<string, { label: string; labelShown: boolean; object: DwObject; suffix?: DwObject; numeric: boolean; spin: NumericSpin | null; choice: boolean; toggle: boolean; radio: boolean; multiline: boolean }>()
+  /** a focus request (SetFocus, SelectText) made while an entry is being validated: it takes effect when validation ends */
+  private deferredEdit: { model: DwModel; object: string; row: number; activate: boolean | number } | null = null
   private columnSelected = false
   private boundModel: DwModel | null = null
   private boundRow: DwRow | undefined
@@ -62,7 +63,7 @@ export class ModernDwView extends DwView {
     const model = this.ctl.model
     const draft = this.takeEditor()
     if (draft && (this.ctl.destroyed || model !== this.boundModel || model?.rowAt(draft.row) !== this.boundRow)) {
-      if (!this.discardUnchangedTextEditor()) this.retainStaleDraft(draft.value)
+      if (!this.discardUnchangedTextEditor() && !this.discardUnchangedChoiceEditor()) this.retainStaleDraft(draft.value)
     }
     if (selection === 'column') {
       this.navigation = null
@@ -145,12 +146,27 @@ export class ModernDwView extends DwView {
     return accepted
   }
 
+  /** the row a label object is evaluated at: page header objects at row 0, as the Classic view paints them */
+  private labelRow(object: DwObject, row: number): number {
+    return object.band === 'header' || /^header\[\d+\]$/.test(object.band) ? 0 : row
+  }
+
+  /** the caption text as the Classic view paints it (a text object's expression is evaluated), without its mnemonic marker */
   private async label(model: DwModel, field: DataSurfaceField, row: number): Promise<string> {
     const external = this.contextSurface?.name === model.name ? this.contextLabels.get(field.object) : null
     if (external) return external.textContent?.trim() || field.label || ''
     const object = model.def.objects.find((item) => item.name.toLowerCase() === field.labelObject)
-    const text = object ? await this.prop(model, object, 'text', row, object.band) : field.label ?? ''
+    const at = object ? this.labelRow(object, row) : row
+    const text = !object ? field.label ?? '' : object.type === 'text' ? await this.textOf(model, object, at, object.band) :
+      await this.prop(model, object, 'text', at, object.band)
     return text.replace(/&&/g, '\0').replace(/&/g, '').replace(/\0/g, '&').trim() || field.label || ''
+  }
+
+  /** whether the source shows a field's caption (its own visibility expression); a hidden caption still names the field */
+  private async labelShown(model: DwModel, field: DataSurfaceField, row: number): Promise<boolean> {
+    if (this.contextSurface?.name === model.name && this.contextLabels.get(field.object)) return true
+    const object = field.labelObject ? model.def.objects.find((item) => item.name.toLowerCase() === field.labelObject) : undefined
+    return !object || await this.prop(model, object, 'visible', this.labelRow(object, row), object.band) !== '0'
   }
 
   protected override async paint(model: DwModel): Promise<void> {
@@ -162,19 +178,14 @@ export class ModernDwView extends DwView {
     const editor = this.editor
     const draft = this.takeEditor()
     if (draft && (this.boundModel !== model || model.rowAt(draft.row) !== this.boundRow)) {
-      if (!this.discardUnchangedTextEditor()) this.retainStaleDraft(draft.value)
+      if (!this.discardUnchangedTextEditor() && !this.discardUnchangedChoiceEditor()) this.retainStaleDraft(draft.value)
       else this.schedule()
       return
     }
     const surface = this.contextSurface?.name === model.name ? this.contextSurface : dataSurfaceByName(model.name)
     const issues = surface ? dataSurfaceIssues(model.def, surface, model.overrides) : []
     const preview = /^(yes|true|1)$/i.test(model.describe('datawindow.print.preview'))
-    const modern = !!surface && !issues.length && !preview
-    if (draft && !!this.surface !== modern) { this.retainStaleDraft(draft.value); return }
-    if (draft && modern) {
-      const object = model.def.objects.find((item) => item.name.toLowerCase() === draft.obj.toLowerCase())
-      if (!object || !(await this.canEdit(model, object, draft.row))) { this.retainStaleDraft(draft.value); return }
-    }
+    // An open draft survives a change of layout or protection exactly as in the Classic view: it is restored, not blocked.
     if (!surface || issues.length || preview) {
       this.revealEditor = null
       this.surface = null
@@ -222,6 +233,7 @@ export class ModernDwView extends DwView {
       const spin = field.kind === 'button' ? { kind: 'none' as const } : numericSpin(object, model.kinds[model.colIndex(field.object)], model.overrides)
       this.bindings.set(field.object, {
         object, label: await this.label(model, field, Math.max(1, model.row)),
+        labelShown: await this.labelShown(model, field, Math.max(1, model.row)),
         suffix: field.suffixObject ? model.def.objects.find((object) => object.name.toLowerCase() === field.suffixObject) : undefined,
         numeric: field.numeric ?? (!field.choice && ['number', 'decimal'].includes(model.kinds[model.colIndex(field.object)])),
         spin: spin.kind === 'number' ? spin : null,
@@ -231,13 +243,20 @@ export class ModernDwView extends DwView {
         multiline: !!field.multiline,
       })
     }
+    // A grid column a script switched on after the layout appears after the last visible column, as in the Classic grid.
+    const moved = surface.kind === 'grid' ? this.movedColumns().filter((name) => this.bindings.has(name)) : []
+    if (moved.length) {
+      const entries = [...this.bindings]
+      this.bindings = new Map([...entries.filter(([name]) => !moved.includes(name)),
+        ...moved.map((name) => entries.find(([key]) => key === name)!)])
+    }
     const body = document.createElement('div')
     body.className = surface.kind === 'grid' ? 'surface-body surface-body-grid' : 'surface-body'
     if (surface.kind === 'grid') {
       for (const caption of surface.captions ?? []) {
         const object = model.def.objects.find((item) => item.name.toLowerCase() === caption.object)!
-        if (await this.prop(model, object, 'visible', 1, 'header') === '0') continue
-        const text = await this.label(model, { object: caption.object, labelObject: caption.object }, 1)
+        if (await this.prop(model, object, 'visible', 0, 'header') === '0') continue
+        const text = await this.label(model, { object: caption.object, labelObject: caption.object }, 0)
         if (!text) continue
         const note = document.createElement('p')
         note.className = 'surface-caption'
@@ -272,8 +291,8 @@ export class ModernDwView extends DwView {
         label.id = `${this.identity}-${name}-heading`
         label.textContent = field.label
         const source = this.surface?.fields.find((item) => item.object === name)
-        // Hidden only while the source caption is blank; a script-set caption is painted.
-        if (source?.labelHidden && field.label === source.label) label.classList.add('presentation-visually-hidden')
+        // Hidden only while the source caption is blank or hidden by its own visibility; a script-set caption is painted.
+        if (source?.labelHidden && field.label === source.label || !field.labelShown) label.classList.add('presentation-visually-hidden')
         th.append(label)
         if (dwRequired(field.object, model.overrides)) th.append(this.requiredHint(`${this.identity}-${name}-required`))
         if (field.numeric) th.classList.add('surface-number')
@@ -403,6 +422,7 @@ export class ModernDwView extends DwView {
     tr.className = 'surface-group-row'
     tr.setAttribute('aria-rowindex', String(index))
     tr.dataset.groupBand = name
+    tr.dataset.groupRow = String(row)
     const cell = tr.insertCell()
     cell.colSpan = Math.max(1, this.bindings.size)
     const section = await this.makeTotals(model, band, row)
@@ -514,12 +534,9 @@ export class ModernDwView extends DwView {
     else element.setAttribute('aria-label', `${this.surface!.title}, row ${row}`)
     if (model.rowAt(row)?.sel) element.classList.add('sel')
     if (model.row === row) element.classList.add('cur')
-    element.addEventListener('mousedown', (event) => {
-      if (!this.committing) void this.rowClick(model, row, event).catch((error) => this.ctl.rt.onError(error))
-    })
-    element.addEventListener('dblclick', () => {
-      if (!this.committing) void this.ctl.rt.fire(this.ctl, 'doubleclicked', [0, 0, row, { name: '' }]).catch((error) => this.ctl.rt.onError(error))
-    })
+    // Presses wait behind an entry being validated instead of being dropped (shared with the Classic view).
+    element.addEventListener('mousedown', (event) => this.pointerDown(model, row, event))
+    element.addEventListener('dblclick', () => this.pointerDouble(model, row))
     const grouped = new Map<string, HTMLElement>()
     for (const group of this.surface!.groups ?? []) {
       if (group.object === '') {
@@ -581,22 +598,8 @@ export class ModernDwView extends DwView {
         const object = model.def.objects.find((object) => object.name.toLowerCase() === item.object)!
         if (await this.prop(model, object, 'visible', row, 'detail') === '0') continue
         const text = await this.label(model, { object: item.object, labelObject: item.object }, row)
-        const button = document.createElement('button')
-        button.type = 'button'
-        button.className = 'surface-button'
-        button.dataset.obj = item.object
-        button.textContent = text || item.object
-        button.disabled = await this.prop(model, object, 'enabled', row, 'detail') === 'no' || await this.prop(model, object, 'enabled', row, 'detail') === '0'
-        // A button press is one Clicked on the button object, not also a row click.
-        button.addEventListener('mousedown', (event) => event.stopPropagation())
-        button.addEventListener('click', () => {
-          if (this.committing) return
-          void (async () => {
-            model.row = row
-            await this.ctl.rt.fire(this.ctl, 'clicked', [0, 0, row, { name: item.object }])
-            this.ctl.changed()
-          })().catch((error) => this.ctl.rt.onError(error))
-        })
+        const button = this.dwButton(model, row, item.object, text || item.object,
+          /^(no|false|0)$/i.test(await this.prop(model, object, 'enabled', row, 'detail')))
         ;(before === undefined ? element : grouped.get(before) ?? element).append(button)
       }
     }
@@ -612,37 +615,30 @@ export class ModernDwView extends DwView {
       const external = !grid && this.surface === this.contextSurface ? this.contextLabels.get(name) : null
       const labelId = grid ? `${this.identity}-${name}-heading` : external?.id || `${this.identity}-${row}-${name}-label`
       if (external && this.contextLabels.size > 1) wrapper.append(external)
+      const source = this.surface?.fields.find((item) => item.object === name)
       if (!grid && !external?.id) {
+        // Each record's caption is its own (the source evaluates the caption, and its visibility, per row).
         const label = document.createElement('span')
         label.id = labelId
         label.className = 'surface-label'
-        label.textContent = field.label
-        const source = this.surface?.fields.find((item) => item.object === name)
-        if (source?.labelHidden && field.label === source.label) label.classList.add('presentation-visually-hidden')
+        const text = source ? await this.label(model, source, row) : field.label
+        label.textContent = text
+        const shown = source ? await this.labelShown(model, source, row) : true
+        if (source?.labelHidden && text === source.label || !shown) label.classList.add('presentation-visually-hidden')
         wrapper.append(label)
       }
-      if (grid && this.surface?.fields.find((item) => item.object === name)?.kind === 'button') {
-        // A per-row button: a real button that raises the Clicked event the Classic button raises for that object.
-        const source = await this.object(model, field.object, row, 'detail', (n) => n, (n) => n, null)
-        if (source) {
-          const button = document.createElement('button')
-          button.type = 'button'
-          button.className = 'surface-button'
-          button.dataset.obj = name
-          button.textContent = source.textContent?.trim() || field.label
-          button.setAttribute('aria-label', field.label)
-          const enabled = await this.prop(model, field.object, 'enabled', row, 'detail')
-          button.disabled = enabled === 'no' || enabled === '0'
-          button.addEventListener('mousedown', (event) => event.stopPropagation())
-          button.addEventListener('click', () => {
-            if (this.committing) return
-            void (async () => {
-              model.row = row
-              await this.ctl.rt.fire(this.ctl, 'clicked', [0, 0, row, { name }])
-              this.ctl.changed()
-            })().catch((error) => this.ctl.rt.onError(error))
-          })
-          wrapper.append(button)
+      if (grid && source?.kind === 'button') {
+        // A per-row button: the same button object (and Clicked) as the Classic view, pressed through the shared row click.
+        const button = await this.object(model, field.object, row, 'detail', (n) => n, (n) => n, null)
+        if (button) {
+          const text = button.textContent?.trim() || field.label
+          const control = this.dwButton(model, row, name, text, button.dataset.disabled === 'true')
+          // One keyboard entry point per grid: the arrow keys reach the row buttons.
+          control.tabIndex = -1
+          // The visible text names the button; its column heading describes it.
+          if (!button.textContent?.trim()) control.setAttribute('aria-label', field.label)
+          control.setAttribute('aria-describedby', `${this.identity}-${name}-heading`)
+          wrapper.append(control)
         }
         container.append(wrapper)
         continue
@@ -663,7 +659,7 @@ export class ModernDwView extends DwView {
       let description = external ? this.root.parentElement?.getAttribute('aria-describedby') : null
       let suffix: HTMLSpanElement | null = null
       if (field.suffix && await this.prop(model, field.suffix, 'visible', row, 'detail') !== '0') {
-        const text = await this.prop(model, field.suffix, 'text', row, 'detail')
+        const text = await this.textOf(model, field.suffix, row, 'detail')
         if (text.trim()) {
           suffix = document.createElement('span')
           suffix.className = 'surface-suffix'
@@ -754,33 +750,7 @@ export class ModernDwView extends DwView {
         this.navigation = { model, row, column: model.col, name }
         for (const cell of this.root.querySelectorAll<HTMLElement>('[role=gridcell]')) cell.tabIndex = cell === value ? 0 : -1
       })
-      value.addEventListener('keydown', (event) => {
-        if (event.target !== value || this.committing) return
-        const fields = [...this.bindings.keys()]
-        const index = fields.indexOf(name)
-        let targetRow = row
-        let targetName = name
-        if (event.key === 'ArrowDown') targetRow++
-        else if (event.key === 'ArrowUp') targetRow--
-        else if (event.key === 'ArrowRight') targetName = fields[Math.min(index + 1, fields.length - 1)]
-        else if (event.key === 'ArrowLeft') targetName = fields[Math.max(index - 1, 0)]
-        else if (event.key === 'Home') targetName = fields[0]
-        else if (event.key === 'End') targetName = fields.at(-1)!
-        else if (event.key === 'Enter' || event.key === 'F2' || event.key === ' ' && field.choice) {
-          event.preventDefault()
-          void this.rowClick(model, row, new MouseEvent('mousedown'), value).then(() => {
-            const cell = this.cell(row, name)
-            if (enabled && cell && this.ctl.model === model && model.row === row && model.col === model.colIndex(name) + 1) {
-              this.edit(model, field.object, row, cell, event.key === ' ' && field.toggle)
-            }
-          }).catch((error) => this.ctl.rt.onError(error))
-          return
-        } else return
-        if (!grid) return
-        event.preventDefault()
-        if (targetRow < 1 || targetRow > model.rowCount()) return
-        void this.moveTo(model, targetRow, targetName).catch((error) => this.ctl.rt.onError(error))
-      })
+      // Keys on the cell (Enter, F2, Space, arrows, Tab) are the DataWindow's shared key processing: see keyAction.
       if (field.spin) {
         value.classList.add('surface-spinner')
         const controls = document.createElement('span')
@@ -839,10 +809,14 @@ export class ModernDwView extends DwView {
     if (!surface) return
     const def = model.def
     const fieldOf = new Map(surface.fields.map((field) => [field.object, field]))
+    // Runtime Modify (visibility, position, size) arranges the form as the Classic view paints it.
+    const overrides = model.overrides
+    const boxOf = (definition: typeof def, names: readonly (string | undefined)[], key: string) => sourceBoxOf(definition, names, key, undefined, overrides)
     const lineBox = (name: string): GridBox | null => {
       const line = def.objects.find((object) => object.name.toLowerCase() === name)
-      if (!line || line.visible === '0') return null
-      const x1 = Number(line.x1), x2 = Number(line.x2), y1 = Number(line.y1), y2 = Number(line.y2)
+      const value = (key: string) => overrides.get(`${name}.${key}`) ?? line?.[key]
+      if (!line || value('visible') === '0') return null
+      const x1 = Number(value('x1')), x2 = Number(value('x2')), y1 = Number(value('y1')), y2 = Number(value('y2'))
       return [x1, x2, y1, y2].every(Number.isFinite) ? { key: '', left: Math.min(x1, x2), right: Math.max(x1, x2), top: Math.min(y1, y2), bottom: Math.max(y1, y2) + 1 } : null
     }
     // A field yields its editor box and its caption-anchored box; `resolveAnchors` keeps the wider one only where it takes no other editor's place.
@@ -950,63 +924,164 @@ export class ModernDwView extends DwView {
     return true
   }
 
+  /** Tab follows the shared Classic tab sequence (current-row editability, one row at a time, nothing past the end). */
   override async tabNext(direction: number): Promise<void> {
-    if (!this.surface) return super.tabNext(direction)
-    const model = this.ctl.model
-    if (!model || !model.rowCount() || this.stale) return
-    const columns = [...this.bindings.values()]
-    const ordered = await Promise.all(columns.map(async ({ object }) => ({
-      object, sequence: Number(await this.prop(model, object, 'tabsequence', model.row, object.band)),
-    })))
-    ordered.sort((a, b) => a.sequence - b.sequence)
-    const current = model.colNames[model.col - 1]
-    let row = Math.max(1, model.row)
-    let index = ordered.findIndex(({ object }) => object.name.toLowerCase() === current)
-    for (let steps = 0; steps < model.rowCount() * ordered.length; steps++) {
-      index += direction
-      if (index >= ordered.length) { index = 0; row++ }
-      if (index < 0) { index = ordered.length - 1; row-- }
-      if (row < 1 || row > model.rowCount()) break
-      const object = ordered[index].object
-      if (!(await this.canEdit(model, object, row))) continue
-      if (!(await this.moveTo(model, row, object.name))) return
-      const target = this.cell(row, object.name)
-      if (target) this.edit(model, object, row, target)
+    if (this.stale) return
+    return super.tabNext(direction)
+  }
+
+  protected override async navigate(model: DwModel, row: number, name: string): Promise<boolean> {
+    return this.surface ? this.moveTo(model, row, name) : super.navigate(model, row, name)
+  }
+
+  protected override async displayFields(model: DwModel, row: number): Promise<string[]> {
+    if (!this.surface) return super.displayFields(model, row)
+    return [...this.bindings.keys()].filter((name) => this.cell(row, name))
+  }
+
+  /**
+   * The shared key processing, for the field the keyboard is on: Enter, F2 (and Space on a choice) open it without a Clicked
+   * event; in a grid the arrows move the current row and column (the reading position only, in a tabular report or a group band).
+   */
+  protected override keyAction(event: KeyboardEvent, model: DwModel, cell: HTMLElement | null): (() => Promise<unknown>) | null {
+    if (!this.surface || this.stale || !cell || event.key === 'Tab') return super.keyAction(event, model, cell)
+    const rowElement = cell.closest<HTMLElement>('.row[data-row]')
+    const band = cell.closest<HTMLElement>('.surface-group-row')
+    if (!rowElement && !band || event.shiftKey) return null
+    const name = cell.dataset.obj ?? ''
+    const field = this.bindings.get(name)
+    const button = cell instanceof HTMLButtonElement
+    if (rowElement && !button && (event.key === 'Enter' || event.key === 'F2' || event.key === ' ' && field?.choice)) {
+      const row = Number(rowElement.dataset.row)
+      return () => this.activateCell(model, row, name, event.key === ' ' && !!field?.toggle)
+    }
+    if (this.surface.kind !== 'grid' || !['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return null
+    return () => this.navigateFrom(model, cell, event.key)
+  }
+
+  /** Enter on a field: the keyboard moves there (row and item focus, no Clicked) and its editor opens */
+  private async activateCell(model: DwModel, row: number, name: string, toggle: boolean): Promise<void> {
+    const field = this.bindings.get(name)
+    if (!field || field.object.type !== 'column' || !(await this.canEdit(model, field.object, row))) return
+    const current = () => !this.stale && this.ctl.model === model && model.row === row && model.col === model.colIndex(name) + 1
+    if (!current()) {
+      if (this.editor && !(await this.acceptPendingEdit())) return
+      if (!(await this.moveTo(model, row, name)) || !current()) return
+    }
+    const target = this.cell(row, name)
+    if (target) this.edit(model, field.object, row, target, toggle)
+  }
+
+  private async navigateFrom(model: DwModel, cell: HTMLElement, key: string): Promise<void> {
+    const from = cell.closest<HTMLElement>('tr')
+    if (!from || this.ctl.model !== model) return
+    const dataRow = from.matches('.row[data-row]') ? Number(from.dataset.row) : 0
+    const name = cell.dataset.obj ?? ''
+    if (key !== 'ArrowUp' && key !== 'ArrowDown') {
+      if (!dataRow) {
+        const values = [...from.querySelectorAll<HTMLElement>('[data-obj]')]
+        const index = values.indexOf(cell)
+        const next = key === 'Home' ? values[0] : key === 'End' ? values.at(-1) : values[index + (key === 'ArrowRight' ? 1 : -1)]
+        if (next) this.focusOnly(next)
+        return
+      }
+      const fields = await this.displayFields(model, dataRow)
+      const index = fields.indexOf(name)
+      const target = key === 'Home' ? fields[0] : key === 'End' ? fields.at(-1) :
+        fields[Math.max(0, Math.min(fields.length - 1, index + (key === 'ArrowRight' ? 1 : -1)))]
+      if (target && target !== name) await this.reach(model, dataRow, target)
       return
     }
-    const outside = [...document.querySelectorAll<HTMLElement>('input,button,select,textarea,[tabindex]')]
-      .filter((element) => !this.root.contains(element) && element.tabIndex >= 0
-        && !element.matches(':disabled') && element.getClientRects().length > 0)
-    const following = outside.filter((element) => !!(this.root.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING))
-    const preceding = outside.filter((element) => !!(this.root.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_PRECEDING))
-    const next = direction > 0 ? following[0] ?? outside[0] : preceding.at(-1) ?? outside.at(-1)
-    if (next) next.focus()
-    else { this.root.tabIndex = 0; this.root.focus() }
+    const direction = key === 'ArrowDown' ? 1 : -1
+    const rows = [...(from.parentElement?.children ?? [])].filter((tr): tr is HTMLElement =>
+      tr instanceof HTMLElement && tr.matches('.row[data-row], .surface-group-row'))
+    // The data row the key leads to: the next or previous record, or the record a group band stands beside.
+    const group = Number(from.dataset.groupRow), trailer = from.dataset.groupBand?.startsWith('trailer')
+    const row = dataRow ? dataRow + direction : direction > 0 ? (trailer ? group + 1 : group) : (trailer ? group : group - 1)
+    const reference = dataRow || group
+    // A group band between the two records is visited first (it is read only); a band of a farther, unrendered record is not.
+    const adjacent = rows[rows.indexOf(from) + direction]
+    if (adjacent?.matches('.surface-group-row') && Math.abs(Number(adjacent.dataset.groupRow) - reference) <= 1) {
+      const value = adjacent.querySelector<HTMLElement>('[data-obj]')
+      if (value) {
+        this.focusOnly(value)
+        return
+      }
+    }
+    const column = dataRow ? name : this.activeField(model) ?? ''
+    if (row >= 1 && row <= model.rowCount() && column) await this.reach(model, row, column)
+  }
+
+  /** a grid moves its current row and column; a tabular report only moves the reading position */
+  private async reach(model: DwModel, row: number, name: string): Promise<void> {
+    if (this.gridKeys(model)) {
+      await this.moveTo(model, row, name)
+      return
+    }
+    if (!this.cell(row, name)) {
+      this.root.scrollTop = Math.max(0, (this.plan?.prefix[row - 1] ?? row - 1) - 3) * this.rowHeight
+      await this.paint(model)
+    }
+    const target = this.cell(row, name)
+    if (target) this.focusOnly(target)
+  }
+
+  private focusOnly(target: HTMLElement): void {
+    this.restoreCellFocus(target)
+    this.revealFocus(target)
+  }
+
+  /** a button object: a press is the shared row click (Clicked on the button, row focus events), Enter or Space the same press */
+  private dwButton(model: DwModel, row: number, name: string, text: string, disabled: boolean): HTMLButtonElement {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = 'surface-button'
+    button.dataset.obj = name
+    button.textContent = text
+    if (disabled) {
+      button.dataset.disabled = 'true'
+      button.setAttribute('aria-disabled', 'true')
+      button.style.opacity = '0.55'
+    }
+    button.addEventListener('click', (event) => {
+      // A mouse press already ran on mousedown; only a keyboard press (detail 0) is a press of its own.
+      if (event.detail !== 0 || disabled) return
+      this.pointerDown(model, row, new MouseEvent('mousedown'), button)
+    })
+    return button
   }
 
   protected override edit(model: DwModel, object: DwObject, row: number, cell: HTMLElement, activate: boolean | number = false, focus = true): void {
     if (this.stale || this.changes.signal.aborted || this.ctl.model !== model) return
-    if (this.choiceDestination) { super.edit(model, object, row, cell, activate, focus); return }
-    if (this.committing) return
-    if (this.surface && this.editor && this.boundModel === model && this.boundRow === model.rowAt(row)
+    if (!this.choiceDestination && !this.restoringEditor && this.committing) {
+      // A focus request made by a script while an entry is being validated (SetColumn + SetFocus in ItemChanged) takes
+      // effect when the validation ends, as in the Classic view.
+      this.deferredEdit = { model, object: object.name, row, activate }
+      return
+    }
+    if (!this.choiceDestination && this.surface && this.editor && this.boundModel === model && this.boundRow === model.rowAt(row)
       && this.editRow === row && this.editObj === object.name) {
       this.editor.focus({ preventScroll: true })
       if (activate !== false) void this.choiceEdit?.activate(activate).catch((error) => this.ctl.rt.onError(error))
       return
     }
-    if (this.choiceEdit && this.editor === this.choiceEdit.element) {
-      super.edit(model, object, row, cell, activate, focus)
-      return
-    }
-    this.boundModel = model
-    this.boundRow = model.rowAt(row)
-    this.lookupNotice = ''
-    if (!this.surface) { super.edit(model, object, row, cell, activate, focus); return }
-    if (!cell.classList.contains('editable') || this.ctl.props.get('enabled') === false) return
+    if (!this.choiceDestination && !this.restoringEditor && this.surface &&
+      (!cell.classList.contains('editable') || this.ctl.props.get('enabled') === false)) return
+    const before = this.editor, record = model.rowAt(row)
     super.edit(model, object, row, cell, activate, focus)
-    this.editor?.addEventListener('keydown', (event) => {
+    const editor = this.editor
+    if (!editor || editor === before || this.editRow !== row || this.editObj !== object.name) return
+    this.boundModel = model
+    this.boundRow = record
+    this.lookupNotice = ''
+    if (this.surface) editor.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') { this.cell(row, object.name)?.focus(); this.schedule() }
     })
+  }
+
+  /** the Modern editor shows its spin buttons in the field (see makeRow); the steps are the shared ones */
+  protected override spinControl(input: HTMLInputElement, m: DwModel, o: DwObject, row: number): HTMLElement | null {
+    return this.surface ? null : super.spinControl(input, m, o, row)
   }
 
   protected override placeEditor(editor: HTMLElement, cell: HTMLElement): void {
@@ -1051,26 +1126,13 @@ export class ModernDwView extends DwView {
       cell.append(browse)
     }
     if (editor instanceof HTMLInputElement && this.bindings.get(cell.dataset.obj ?? '')?.spin) {
+      // Up and Down step the draft in the shared editor (after its key event), as in the Classic view.
       const model = this.ctl.model!
       const object = this.bindings.get(cell.dataset.obj!)!.object
-      const row = Number(cell.closest<HTMLElement>('[data-row]')?.dataset.row)
-      const revision = this.revision
       const sync = () => this.syncSpin(editor, cell, model, object)
       sync()
       editor.addEventListener('input', sync)
       editor.addEventListener('dwtextchange', sync)
-      editor.addEventListener('keydown', (event) => {
-        if (!['ArrowUp', 'ArrowDown'].includes(event.key) || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
-        const spin = numericSpin(object, model.kinds[model.colIndex(object.name)], model.overrides)
-        if (spin.kind === 'none' || this.plainSpin(object)) return
-        event.preventDefault()
-        if (revision !== this.revision) {
-          this.status.textContent = 'The layout changed. Try the adjustment again after it refreshes.'
-          return
-        }
-        this.adjustDraft(model, object, row, editor, event.key === 'ArrowUp' ? 1 : -1)
-        // The shared editor still dispatches the original ue_dwnkey exactly once.
-      })
     }
   }
 
@@ -1088,7 +1150,7 @@ export class ModernDwView extends DwView {
   protected override async browseChoices(editor: DwChoiceEditor): Promise<number | null> {
     if (!this.presentLookup || !editor.options?.grid || editor.signal.aborted) return null
     if (this.lookup) { this.lookup.element.focus(); return null }
-    const dialog = lookupDialog(editor.options, editor.popup?.open ? editor.popup.index : editor.selectedIndex,
+    const dialog = lookupDialog(this.detailChoices(editor.options), editor.popup?.open ? editor.popup.index : editor.selectedIndex,
       editor.signal, (error) => this.ctl.rt.onError(error))
     this.lookup = dialog
     try { return await this.presentLookup(dialog) }
@@ -1100,11 +1162,6 @@ export class ModernDwView extends DwView {
       }
       if (this.lookupNotice) this.status.textContent = this.lookupNotice
     }
-  }
-
-  /** The mapped field accepts the source's spin setting as plain editing, as the Classic view does. */
-  private plainSpin(object: DwObject): boolean {
-    return !!this.surface?.fields.find((field) => field.object === object.name.toLowerCase())?.spinPlain
   }
 
   private syncSpin(input: HTMLInputElement, cell: HTMLElement, model: DwModel, object: DwObject): void {
@@ -1122,27 +1179,14 @@ export class ModernDwView extends DwView {
     }
   }
 
+  /** a spin button press: the shared step of the open editor */
   private adjustDraft(model: DwModel, object: DwObject, row: number, input: HTMLInputElement, direction: -1 | 1): void {
     if (this.committing || this.stale || this.ctl.model !== model || model.rowAt(row) !== this.boundRow || this.editor !== input) return
     if (model.row !== row || model.col !== model.colIndex(object.name) + 1) {
       this.status.textContent = 'Select this field again before adjusting it; the current record or column has changed.'
       return
     }
-    const config = numericSpin(object, model.kinds[model.colIndex(object.name)], model.overrides)
-    if (config.kind === 'none' || this.plainSpin(object)) return
-    if (config.kind === 'unsupported') {
-      this.status.textContent = config.reason
-      return
-    }
-    const value = stepNumber(input.value, config, direction)
-    if (value === null) {
-      this.status.textContent = 'Enter a valid number before using Increase or Decrease. The entry has not been changed.'
-      input.setAttribute('aria-invalid', 'true')
-      return
-    }
-    input.value = value
-    input.dispatchEvent(new Event('input', { bubbles: true }))
-    input.focus({ preventScroll: true })
+    this.stepText(model, object, row, input, direction)
   }
 
   private async startStep(model: DwModel, object: DwObject, row: number, direction: -1 | 1, event: MouseEvent): Promise<void> {
@@ -1179,40 +1223,48 @@ export class ModernDwView extends DwView {
     if (!this.surface) return super.commitValue(model, row, column, object, value, guard)
     this.committing = true
     const record = this.boundRow
-    const editText = this.captureEditText(value)
+    let result: DwEditResult = 'rejected'
     try {
       if (this.ctl.model !== model || model.rowAt(row) !== record) {
         this.retainStaleDraft(toStr(value))
         return 'rejected'
       }
-      if (!(await this.canEdit(model, object, row))) throw new Error('This field is no longer editable. The entry was not applied.')
-      const result = await commitDwValue(this.ctl, model, row, column, object, value, async () => {
+      // The same acceptance as the Classic view: ItemChanged decides; a script that protects the field (or disables the
+      // control) while accepting it does not undo an accepted entry.
+      result = await commitDwValue(this.ctl, model, row, column, object, value, async () => {
         await guard?.()
         if (this.changes.signal.aborted || this.ctl.model !== model || model.rowAt(row) !== record || model.colIndex(object.name) !== column) {
           throw new Error('The record or layout changed during validation. The entry was not written to the data model.')
         }
-        if (!(await this.canEdit(model, object, row))) throw new Error('This field is no longer editable. The entry was not applied.')
       })
       if (result === 'accepted') this.status.textContent = 'Ready'
       if (result === 'discarded') this.status.textContent = 'The entry was rejected. The stored value was not replaced.'
-      if (result === 'rejected') {
-        const text = editText()
-        this.status.textContent = 'The entry was not accepted. Correct it or press Escape to cancel the edit.'
-        this.committing = false
-        const cell = this.cell(row, object.name)
-        if (cell) {
-          this.edit(model, object, row, cell)
-          this.restoreRejectedText(text)
-        }
-      }
+      // A rejected entry reopens on its field through the shared editor (when the field is still the current one).
+      if (result === 'rejected') this.status.textContent = 'The entry was not accepted. Correct it or press Escape to cancel the edit.'
       return result
     } catch (error) {
-      if (!this.changes.signal.aborted) this.retainStaleDraft(editText())
+      // A script error during validation rejects the entry, as in the Classic view; the editor reopens with the text.
+      result = 'rejected'
       this.ctl.rt.onError(error)
+      if (!this.stale) this.status.textContent = 'The entry was not accepted. Correct it or press Escape to cancel the edit.'
       return 'rejected'
     } finally {
       this.committing = false
+      this.replayDeferredEdit(result)
     }
+  }
+
+  /** a script's focus request held during validation: the editor opens where the script asked */
+  private replayDeferredEdit(result: DwEditResult): void {
+    const deferred = this.deferredEdit
+    this.deferredEdit = null
+    if (!deferred || this.stale || this.changes.signal.aborted || this.ctl.model !== deferred.model || deferred.model.row !== deferred.row) return
+    // A rejected entry keeps the focus: it reopens on its own field with the typed text.
+    if (result === 'rejected') return
+    if (this.editor && this.editor !== this.choiceEdit?.element) return
+    const object = deferred.model.def.objects.find((item) => item.name === deferred.object)
+    const target = this.cell(deferred.row, deferred.object)
+    if (object && target) this.edit(deferred.model, object, deferred.row, target, deferred.activate)
   }
 
   private staleValue = ''
@@ -1229,6 +1281,7 @@ export class ModernDwView extends DwView {
   }
 
   private showStaleDraft(): void {
+    const focused = this.ownsKeyboard()
     this.editor = null
     this.acceptEdit = null
     this.root.classList.add('modern-surface')
@@ -1255,6 +1308,7 @@ export class ModernDwView extends DwView {
     }
     notice.append(message, label, button)
     this.root.replaceChildren(notice)
-    input.focus()
+    // The notice takes the keyboard only from this DataWindow, never from another control or window.
+    if (focused) input.focus()
   }
 }

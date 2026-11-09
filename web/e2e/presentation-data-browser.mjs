@@ -91,7 +91,8 @@ export async function checkDataSurfaces(fixture, check, settle) {
   await submit(input, 'Edited synthetic name')
   check(form.getItem(1, 'name') === 'EDITED SYNTHETIC NAME' && events.filter((event) => event.name === 'itemchanged').length === 1,
     'Modern editor uses exactly one shared ItemChanged-to-model commit')
-  check(!view.root.contains(document.activeElement), 'Tab at the last form editor exits the DataWindow')
+  check(view.root.contains(document.activeElement) && view.root.querySelector('.surface-editor') === document.activeElement,
+    'Tab at the last form editor keeps the keyboard on that field, as in Classic and PowerBuilder')
   control.validateRules.set('name', 'len(gettext()) >= 3')
   input = await edit()
   await submit(input, 'x')
@@ -116,11 +117,12 @@ export async function checkDataSurfaces(fixture, check, settle) {
   form.modify("name.protect='0~tif(code > 0, 1, 0)'")
   control.changed()
   await settle()
-  check(view.root.querySelector('.surface-stale input')?.value === 'Draft across redraw'
+  input = view.root.querySelector('.surface-editor')
+  check(!view.root.querySelector('.surface-stale') && input?.value === 'Draft across redraw'
     && form.getItem(1, 'name') === 'CORRECTED SYNTHETIC NAME',
-    'A runtime protection expression retains its unapplied draft without writing it')
+    'A runtime protection expression keeps the open draft in its editor without writing it, as the Classic view does')
   form.modify('name.protect=0')
-  view.root.querySelector('.surface-stale button').click()
+  input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
   await settle()
   input = await edit()
   input.value = 'Draft from old definition'
@@ -209,13 +211,13 @@ export async function checkDataSurfaces(fixture, check, settle) {
   }
   input = await edit()
   input.value = 'Draft before readonly'
-  check(await control.n_accepttext() === -1 && form.getItem(1, 'name') === 'Replacement record'
-    && view.root.querySelector('.surface-stale input')?.value === 'Draft before readonly',
-    'A field made readonly by ItemChanged cannot write its pending entry')
+  check(await control.n_accepttext() === 1 && form.getItem(1, 'name') === 'Draft before readonly'
+    && !view.root.querySelector('.surface-stale'),
+    'An entry ItemChanged accepts is written even when the script makes the field read-only, as in Classic and PowerBuilder')
   fixture.rt.fire = fire
   fixture.rt.onError = onError
   form.modify('name.edit.readonly=no')
-  view.root.querySelector('.surface-stale button').click()
+  control.changed()
   await settle()
   // Pause one asynchronous paint to exercise typing and accepting while it is in flight.
   const pausePaint = async () => {
@@ -513,11 +515,12 @@ export async function checkDataSurfaces(fixture, check, settle) {
   input.value = '88'
   await control.n_modify('limit.editmask.spinincr=0')
   await settle()
-  check(view.root.querySelector('.surface-stale input')?.value === '88' &&
-    await control.n_accepttext() === -1 && detail.getItem(1, 'limit') === 1001,
-    'An unsupported spin change retains an existing draft instead of dropping or committing it')
+  const classicDraft = view.root.querySelector('.dw-edit')
+  check(!view.root.classList.contains('modern-surface') && !view.root.querySelector('.surface-stale') &&
+    classicDraft?.value === '88' && detail.getItem(1, 'limit') === 1001,
+    'An unsupported spin change keeps the open draft, unwritten, in the Classic layout instead of dropping or committing it')
+  classicDraft?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
   await control.n_modify('limit.editmask.spinincr=1')
-  view.root.querySelector('.surface-stale button').click()
   await settle()
   await control.n_deleterow(1)
   await settle()

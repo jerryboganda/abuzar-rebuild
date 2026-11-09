@@ -688,8 +688,9 @@ export async function checkChoiceEditors(check, settle) {
     const closeShortcut = new KeyboardEvent('keydown', { key: 'F4', ctrlKey: true, cancelable: true })
     browsing.editor.element.dispatchEvent(closeShortcut)
     check(!closeShortcut.defaultPrevented && browses === 0, 'Detailed browsing does not intercept the window close shortcut Ctrl+F4')
-    key(browsing, 'F4')
-    key(browsing, 'F4')
+    // The detail browser has its own shortcut (Shift+F4); F4 and Alt+Down keep their list meaning.
+    key(browsing, 'F4', true)
+    key(browsing, 'F4', true)
     await settle()
     check(browses === 1 && browsing.editor.browse.disabled && !(await browsing.editor.accept()) &&
       browsing.state.writes.length === 0, 'Repeated browse activation and programmatic acceptance cannot race an owned picker')
@@ -705,9 +706,9 @@ export async function checkChoiceEditors(check, settle) {
       matches: () => true, read: async (index) => [String(index)] } }),
     details: async () => cancelledDetails.promise,
   })
-  key(gone, 'F4')
+  key(gone, 'F4', true)
   await settle()
-  key(gone, 'F4')
+  key(gone, 'F4', true)
   await settle()
   gone.dispose()
   cancelledDetails.resolve(1)

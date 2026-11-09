@@ -143,11 +143,11 @@ export class DwChoiceEditor {
       this.browse.textContent = '...'
       this.browse.setAttribute('aria-label', 'Browse choice details')
       this.browse.setAttribute('aria-haspopup', 'dialog')
-      this.browse.setAttribute('aria-keyshortcuts', 'F4 Alt+ArrowDown')
+      this.browse.setAttribute('aria-keyshortcuts', 'Shift+F4')
       this.browse.disabled = true
       this.browse.addEventListener('mousedown', (event) => { event.preventDefault(); event.stopPropagation() })
       this.browse.addEventListener('click', (event) => { event.stopPropagation(); void this.showDetails() })
-      this.element.setAttribute('aria-description', 'Choose a value. F4 or Alt+Down opens choice details. Escape cancels. Tab accepts and moves on.')
+      this.element.setAttribute('aria-description', 'Choose a value. Shift+F4 opens choice details. Escape cancels. Tab accepts and moves on.')
     }
     this.element.addEventListener('change', () => {
       if (this.popup) return
@@ -160,8 +160,8 @@ export class DwChoiceEditor {
       if (!(event instanceof KeyboardEvent) || event.isComposing) return
       if (host.editable) { this.editableKey(event); return }
       if (this.popup) { this.listKey(event); return }
-      if (host.details && !event.ctrlKey && !event.metaKey && !event.shiftKey &&
-        (event.key === 'F4' && !event.altKey || event.altKey && event.key === 'ArrowDown')) {
+      // F4 and Alt+Down keep their list meaning; the detail browser has its own shortcut.
+      if (host.details && DwChoiceEditor.detailKey(event)) {
         event.preventDefault()
         event.stopPropagation()
         void this.showDetails()
@@ -179,6 +179,11 @@ export class DwChoiceEditor {
         void this.accept(true).then((ok) => { if (ok) return host.next(direction) }).catch((error) => host.error(error))
       }
     })
+  }
+
+  /** Shift+F4 opens the detail browser (F4 and Alt+Down open the list, as in the Classic view and PowerBuilder) */
+  static detailKey(event: KeyboardEvent): boolean {
+    return event.key === 'F4' && event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey
   }
 
   start(): void { this.loadingWork = this.load(false) }
@@ -286,7 +291,7 @@ export class DwChoiceEditor {
   private syncBrowse(): void {
     if (!this.browse) return
     this.browse.disabled = this.cancelled || this.loading || this.failed || this.browsing || !!this.accepting || !this.choices?.grid
-    this.browse.title = this.choices?.gridIssue ?? 'Browse choice details (F4)'
+    this.browse.title = this.choices?.gridIssue ?? 'Browse choice details (Shift+F4)'
   }
 
   private active(): boolean { return !this.cancelled && this.host.current() }
@@ -552,8 +557,7 @@ export class DwChoiceEditor {
 
   private listKey(event: KeyboardEvent): void {
     const plain = !event.ctrlKey && !event.metaKey && !event.altKey
-    const details = this.host.details && !event.ctrlKey && !event.metaKey && !event.shiftKey &&
-      (event.key === 'F4' && !event.altKey || event.altKey && event.key === 'ArrowDown')
+    const details = !!this.host.details && DwChoiceEditor.detailKey(event)
     const toggle = !this.host.showList && !event.ctrlKey && !event.metaKey && !event.shiftKey &&
       (event.key === 'F4' && !event.altKey || event.altKey && ['ArrowDown', 'ArrowUp'].includes(event.key))
     const handledKey = plain && (['ArrowDown', 'ArrowUp', 'Home', 'End', 'PageDown', 'PageUp', 'Enter', 'Tab', 'Escape'].includes(event.key) || event.key.length === 1)
@@ -570,11 +574,12 @@ export class DwChoiceEditor {
         this.host.status(this.loading ? 'Wait for the choices to load.' : 'Press Enter to retry loading the choices, or Escape to cancel.')
         return
       }
+      // The key event comes first, for every key; returning 1 from it keeps the list (or the detail browser) closed.
+      if (await this.host.key?.(event) || !this.active()) return
       if (details) {
         await this.showDetails()
         return
       }
-      if (await this.host.key?.(event) || !this.active()) return
       if (toggle) {
         if (event.key === 'ArrowUp' || event.key === 'F4' && this.popup?.open) this.popup?.close()
         else this.popup?.show()

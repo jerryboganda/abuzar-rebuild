@@ -65,7 +65,9 @@ export class DwChoicePopup {
       if (this.opened) this.close()
       else this.show()
     })
-    this.list.addEventListener('mousedown', (event) => event.preventDefault())
+    // The list is the drop-down's own window: picking or scrolling in it is not a click on the DataWindow (no Clicked).
+    this.list.addEventListener('mousedown', (event) => { event.preventDefault(); event.stopPropagation() })
+    this.list.addEventListener('dblclick', (event) => event.stopPropagation())
     this.list.addEventListener('click', (event) => {
       event.stopPropagation()
       const option = event.target instanceof Element ? event.target.closest<HTMLElement>('[role=option]') : null

@@ -107,15 +107,17 @@ export async function checkAutomaticChoices(fixture, check, settle) {
         check(f.view.choiceEdit.options.grid?.columns.map((field) => field.label).join() === 'Code,Name,Description' &&
           !!f.view.choiceEdit.browse && !f.view.choiceEdit.browse.disabled,
         'The generic-item lookup retains all three source detail columns through its bound detail browser')
-        key(input, 'F4'); await settle(); await settle()
+        key(input, 'F4', { shiftKey: true }); await settle(); await settle()
         const dialog = document.querySelector('.presentation-lookup[open]')
         check(dialog?.querySelectorAll('th').length === 3 && dialog.textContent.includes('Synthetic description 1'),
-          'F4 opens the actual three-column detail browser without changing the chosen key')
+          'Shift+F4 opens the actual three-column detail browser without changing the chosen key')
         if (!dialog) throw new Error('Automatic choice detail browser did not open')
         ;[...dialog.querySelectorAll('button')].find((button) => button.textContent === 'Cancel').click()
         await settle()
         check(selected(f) === initial && f.view.editor === input && f.view.choiceEdit.popup.open,
           'Cancelling detail browsing restores the focused automatic list without changing the record')
+        // The detail shortcut raised its own key event first; count the next key's event alone.
+        f.events.length = 0
       }
       f.state.handled = true
       key(input, 'ArrowDown'); await settle()
