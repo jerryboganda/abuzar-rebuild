@@ -22,10 +22,13 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
   const source = await (await fetch('./presentation-single-entry.json')).json()
   const surfaces = filter ? source.surfaces.filter((surface) => filter.includes(surface.name)) : source.surfaces
   const names = new Set(surfaces.map((surface) => surface.name))
+  // the definitions this check runs on; the browser preview registers them again, as later checks may replace an ancestor
+  const registered = []
   for (const definition of source.classes) {
     if (fixture.rt.classes.has(definition.name) && !names.has(definition.name) && definition.name !== 'w_single_entry') continue
     definition.routines = new Map(Object.entries(definition.routines).map(([owner, routines]) => [owner, new Map(Object.entries(routines))]))
     fixture.rt.classes.set(definition.name, definition)
+    registered.push(definition)
   }
   const oldFire = fixture.rt.fire
   const events = []
@@ -346,6 +349,8 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
         fixture.rt.classes.set(name, definition)
       }
       window.openPresentationSingleEntryPreview = async (name = 'w_message_form') => {
+        // the generated-window checks that ran since register their own w_single_entry: use the definitions checked here
+        for (const definition of registered) fixture.rt.classes.set(definition.name, definition)
         fixture.rt.fire = route
         try {
           events.length = 0

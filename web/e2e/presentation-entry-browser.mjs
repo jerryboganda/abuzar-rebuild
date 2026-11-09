@@ -522,6 +522,9 @@ export async function checkEntrySurfaces(fixture, check, settle) {
     await fallback.close()
     fixture.rt.classes.set(definition.name, definition)
     window.openPresentationEntryPreview = async () => {
+      // the generated-window checks that ran since register their own w_multi_entry (without the inherited Find scripts):
+      // use the definitions checked here
+      for (const definition of definitions) fixture.rt.classes.set(definition.name, definition)
       const preview = await open()
       window.presentationEntryPreview = preview
       return true
