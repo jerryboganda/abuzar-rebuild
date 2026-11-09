@@ -296,16 +296,32 @@ export class PresentationUi extends DomUi {
     host.replaceChildren()
     const root = this.commandRoot()
     const query = this.shell.querySelector('input')!.value.trim().toLowerCase()
-    const all = root ? menuCommands(root) : []
+    // Disabled items are listed greyed, as the menu bar shows them; check marks and accelerator text are shown as well.
+    const all = root ? menuCommands(root, { includeDisabled: true }) : []
     const matches = all.filter((command) => command.label.toLowerCase().includes(query))
     const browse = !query
-    status.textContent = browse ? `${all.length} available commands in ${menuModules(all).length} modules` :
-      matches.length > 80 ? `Showing 80 of ${matches.length} commands. Refine your search.` : `${matches.length} available commands`
+    const count = (list: typeof all) => list.filter((command) => !command.disabled).length
+    status.textContent = browse ? `${count(all)} available commands in ${menuModules(all).length} modules` :
+      matches.length > 80 ? `Showing 80 of ${matches.length} commands. Refine your search.` : `${count(matches)} available commands`
     const run = (command: (typeof all)[number], label: string) => {
       const button = document.createElement('button')
       button.className = 'presentation-command'
-      button.textContent = label
-      button.disabled = this.executing || this.hasModal()
+      if (command.checked) {
+        const mark = document.createElement('span')
+        mark.className = 'command-check'
+        mark.setAttribute('aria-hidden', 'true')
+        mark.textContent = '✓ '
+        button.append(mark)
+      }
+      button.append(label)
+      if (command.shortcut) {
+        const keys = document.createElement('span')
+        keys.className = 'command-shortcut'
+        keys.textContent = ` ${command.shortcut}`
+        button.append(keys)
+      }
+      if (command.checked) button.setAttribute('aria-description', 'checked')
+      button.disabled = this.executing || this.hasModal() || !!command.disabled
       button.onclick = async () => {
         if (this.executing || this.hasModal() || !root) return
         this.executing = true

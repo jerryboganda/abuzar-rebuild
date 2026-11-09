@@ -124,25 +124,35 @@ export function applyModernEntryWindow(view: WinView): boolean {
     const binding = view.ctlViews.get(control)
     return !!binding && !view.client.contains(binding.el) && (path.startsWith(`${listPath}.`) || path.startsWith(`${detailPath}.`))
   })
+  // On the List page, extras that sit above the list grid in the source (an invoice-number search on the Find row) are placed before
+  // the grid, the rest after it, so the vertical order of the page is kept.
+  const listTop = Number(controls.get(`${listPath}.dw_list`)?.props.get('y'))
+  const listGrid = element(`${listPath}.dw_list`)
   for (const page of [listPath, detailPath]) {
     const group = (page === listPath ? pages[1] : pages[0]).firstElementChild as HTMLElement | null
     const own = extras.filter(([path]) => path.startsWith(`${page}.`))
     if (!group || !own.length) continue
-    const boxes = own.flatMap(([path, control]) => {
+    const box = (path: string, control: PBObject) => {
       const x = Number(control.props.get('x')), y = Number(control.props.get('y'))
       const width = Number(control.props.get('width')), height = Number(control.props.get('height'))
-      return [x, y, width, height].every(Number.isFinite) ? [{ key: path, left: x, top: y, right: x + width, bottom: y + Math.max(1, height) }] : []
-    })
-    const container = document.createElement('div')
-    container.className = 'entry-extras'
-    const cells = new Map<string, HTMLElement>()
-    for (const [path, control] of own) {
-      const el = view.ctlViews.get(control)!.el
-      container.append(el)
-      cells.set(path, el)
+      return [x, y, width, height].every(Number.isFinite) ? { key: path, left: x, top: y, right: x + width, bottom: y + Math.max(1, height) } : null
     }
-    applyGrid(container, planGrid(boxes), cells)
-    group.append(container)
+    const above = page === listPath && Number.isFinite(listTop)
+      ? own.filter(([path, control]) => { const b = box(path, control); return !!b && b.bottom <= listTop }) : []
+    for (const [part, before] of [[above, true], [own.filter((entry) => !above.includes(entry)), false]] as const) {
+      if (!part.length) continue
+      const container = document.createElement('div')
+      container.className = 'entry-extras'
+      const cells = new Map<string, HTMLElement>()
+      for (const [path, control] of part) {
+        const el = view.ctlViews.get(control)!.el
+        container.append(el)
+        cells.set(path, el)
+      }
+      applyGrid(container, planGrid(part.flatMap(([path, control]) => { const b = box(path, control); return b ? [b] : [] })), cells)
+      if (before && listGrid.parentElement === group) group.insertBefore(container, listGrid)
+      else group.append(container)
+    }
   }
   findView.useContextSurface(ENTRY_FIND_SURFACE, new Map([['find', findLabel]]))
   for (const binding of scoped) if (binding.view instanceof ModernDwView) binding.view.useContextSurface(binding.surface)

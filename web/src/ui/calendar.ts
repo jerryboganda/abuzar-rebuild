@@ -220,9 +220,11 @@ export class CalendarView {
     this.grid.setAttribute('aria-label', this.title.textContent)
     this.previous.setAttribute('aria-label', this.mode === 'days' ? 'Previous month' : this.mode === 'months' ? 'Previous year' : 'Previous decade')
     this.next.setAttribute('aria-label', this.mode === 'days' ? 'Next month' : this.mode === 'months' ? 'Next year' : 'Next decade')
+    // One tab stop, the selected date, in both presentations, as the Windows month calendar: the header buttons are pointer controls
+    // and PageUp / PageDown (Ctrl for years) change the month from the keyboard.
     for (const button of [this.previous, this.title, this.next, this.today]) {
       button.disabled = disabled
-      button.tabIndex = this.modern && tabIndex >= 0 ? 0 : -1
+      button.tabIndex = -1
     }
     this.title.disabled ||= this.mode === 'years'
     this.previous.disabled ||= active.y === 1601 && (this.mode !== 'days' || active.m === 1)

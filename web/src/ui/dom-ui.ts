@@ -1169,9 +1169,8 @@ export class WinView {
         type TabItem = { po: PBObject; tab: HTMLElement; page: HTMLElement }
         const items: TabItem[] = []
         const visibleItems = () => items.filter((x) => !x.po.destroyed && x.po.props.get('visible') !== false)
-        const pageControls = (page: HTMLElement) => [...page.querySelectorAll<HTMLElement>('input,textarea,select,button,[tabindex]')]
-          .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled,[aria-disabled=true]') && element.getClientRects().length > 0)
-          .sort((a, b) => (a.tabIndex || Infinity) - (b.tabIndex || Infinity))
+        // in source tab order: data-tab carries TabOrder in Classic (where it equals tabindex) and in a reflowed Modern window
+        const pageControls = (page: HTMLElement) => sourceTabStops(page).filter((element) => !element.matches('[aria-disabled=true]'))
         const show = (n: number) => {
           const vs = visibleItems()
           const enabled = vs.filter((item) => tabAvailable(item.po))

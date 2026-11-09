@@ -20,6 +20,8 @@ export const PRESENTATION_CSS = `
 .presentation-sidebar p {margin:0;color:var(--p-muted);font-size:.86em;}
 .presentation-commands {display:flex;flex-direction:column;gap:5px;}
 .presentation-command {text-align:left;overflow-wrap:anywhere;}
+.presentation-command .command-shortcut {float:right;padding-inline-start:12px;color:var(--p-muted);}
+.presentation-command:disabled .command-shortcut {color:inherit;}
 .presentation-module {display:flex;flex-direction:column;gap:5px;}
 .presentation-module > summary {cursor:pointer;min-height:32px;padding:5px 10px;font-weight:600;overflow-wrap:anywhere;}
 .presentation-module > summary:focus-visible {outline:2px solid var(--p-accent);outline-offset:2px;}
@@ -99,6 +101,12 @@ export const PRESENTATION_CSS = `
 /* Reflowed controls only: a container kept as its original element (a tab control, an embedded DataWindow) keeps its own size and its
    children keep their Classic positions and colours inside it. */
 .modern-window .ctl:not(.window-embedded):not(.window-embedded *) {position:static!important;inset:auto!important;width:100%!important;height:auto!important;font:inherit!important;color:var(--p-text)!important;}
+/* A DataWindow host stays the containing block of its view: a view that falls back to Classic rendering (no surface for a dataobject a
+   script assigns, print preview) is positioned inside its box, never over the dialog. */
+.modern-window .ctl.window-data:not(.window-embedded):not(.window-embedded *) {position:relative!important;}
+/* disabled and default states win over the reflow colours above */
+.modern-window :is(input,textarea,select,button).ctl:disabled:not(.window-embedded *) {background:var(--p-canvas)!important;color:var(--p-muted)!important;cursor:default;}
+.modern-window .window-actions button.ctl.default:not(:disabled):not(.window-embedded *) {color:var(--p-on-accent)!important;}
 .modern-calendar-window.pbwin {width:min(27em,100%)!important;}
 .modern-calendar-window>.client {padding-inline:8px;}
 @media (max-width:400px) {.presentation-modern-dialog[open]:has(>.modern-calendar-window) {padding-inline:4px;}}
@@ -133,6 +141,8 @@ export const PRESENTATION_CSS = `
 .modern-entry-window>.tbar .ttl {font:inherit;font-weight:600;white-space:normal;overflow-wrap:anywhere;}
 .modern-entry-window>.client {background:var(--p-surface)!important;overflow:auto;padding:12px;min-height:0;}
 .modern-entry-window .entry-control {position:relative!important;inset:auto!important;width:100%!important;height:auto!important;min-width:0;font:inherit!important;color:var(--p-text)!important;background:transparent!important;}
+/* an extra DataWindow placed as a plain control (a detail list whose height a script sets) keeps a visible box, as in Classic */
+.modern-entry-window .entry-extras>.entry-control:has(>.dw:not(.modern-surface)) {min-height:10em;}
 .modern-entry-window .entry-tabs>.strip {height:auto;min-height:36px;gap:8px;border-bottom:1px solid var(--p-line);}
 .modern-entry-window .entry-tabs>.strip>.t {font:inherit;padding:8px 16px;margin:0;background:var(--p-canvas);border:1px solid var(--p-line);white-space:normal;min-width:5em;justify-content:center;}
 .modern-entry-window .entry-tabs>.strip>.t.on {background:var(--p-selected);outline:none;border-bottom:3px solid var(--p-accent);}

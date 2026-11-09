@@ -28,6 +28,24 @@ test('commands use full captions and exclude hidden or disabled ancestors', () =
   }
 })
 
+test('the full list shows disabled leaves greyed with check marks and shortcuts, never a disabled submenu, in menu-bar order', async () => {
+  const { menuBarOrder } = await import('../src/ui/menu-commands.ts')
+  const f = fixture()
+  f.item.props.set('checked', true)
+  assert.deepEqual(menuCommands(f.root, { includeDisabled: true }).map(({ label, checked, shortcut, disabled }) => ({ label, checked, shortcut, disabled })),
+    [{ label: 'Sales / Cash & Sale', checked: true, shortcut: 'F2', disabled: undefined }])
+  f.item.props.set('enabled', false)
+  assert.equal(menuCommands(f.root, { includeDisabled: true })[0].disabled, true)
+  assert.deepEqual(menuCommands(f.root), [])
+  f.item.props.set('enabled', true)
+  f.group.props.set('enabled', false)
+  assert.deepEqual(menuCommands(f.root, { includeDisabled: true }), [])
+  // a sheet's own Item menu follows File
+  const root = new PBObject(f.rt, 'sheet_menu', 'menu')
+  for (const name of ['m_file', 'm_edit', 'm_window', 'm_item']) root.children.set(name, Object.assign(new PBObject(f.rt, name, 'menu'), { name }))
+  assert.deepEqual(menuBarOrder(root).map((item) => item.className), ['m_file', 'm_item', 'm_edit', 'm_window'])
+})
+
 test('command execution fires Selected in order, then Clicked and posted work', async () => {
   const f = fixture()
   const events: string[] = []

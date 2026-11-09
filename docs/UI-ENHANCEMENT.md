@@ -21,24 +21,30 @@ instructions below; acceptance requirements and historical evidence are unchange
 
 **Source-derived Modern layouts now cover most windows; nothing new is browser-verified, and the enhancement remains incomplete and unreleased.**
 Measured from the working tree by `tools/parity/ui_completion_audit.mjs` (see
-`ui-completion-audit.md`): 2,045 of 2,062 inventoried windows (99.2%) have a
-Modern layout. 170 are hand-reviewed (9 workspace/tool, 55 criteria, 4
-calculator, 2 calendar and 100 entry windows). 1,875 are generated from the
-recovered definitions by `web/tools/derive-*.ts`: 1,618 dialog and sheet windows
-and 257 entry masters (a print/report or artwork-only DataWindow inside a window
-keeps its original element in the Modern frame; a report's own design is
-redesigned separately). The other 17 windows keep the labelled Classic
-compatibility layout; the open causes are listed per window in
-`ui-derived-modal-windows-backlog.json` and `ui-derived-windows-backlog.json`
-(DataWindow definitions missing from the recovered source: `w_dashboard`,
-`w_populate_*`, `w_delete_due`; header-text forms `w_visit*`; a dropdown in a
-totals band `w_prodbuffer`, `w_serviceresult_form`; a blob column `w_doctor_form`;
-unsupported controls `w_graphviewer`, `w_sms_center`; others). For DataWindows,
-3,319 of 8,740 (38.0%) have a Modern surface: 275 reviewed and 3,044 generated
-(grids may carry per-row button columns and multiline fields). Print, PDF and
-report layouts are exempt from structural parity (decision 16): 5,582
-DataWindows are evidence-classified that way, so on-screen coverage is 3,033 of
-3,158 (96.0%). Generated mappings are
+`ui-completion-audit.md`, re-measured 2026-11-09 after the parity review fixes
+below): 2,036 of 2,062 inventoried windows (98.7%) have a Modern layout. 170 are
+hand-reviewed (9 workspace/tool, 55 criteria, 4 calculator, 2 calendar and 100
+entry windows). 1,866 are generated from the recovered definitions by
+`web/tools/derive-*.ts`: 1,608 dialog and sheet windows and 258 entry masters (a
+print/report or artwork-only DataWindow inside a window keeps its original
+element in the Modern frame; a report's own design is redesigned separately).
+The other 26 windows keep the labelled Classic compatibility layout; the open
+causes are listed per window in `ui-derived-modal-windows-backlog.json` and
+`ui-derived-windows-backlog.json` (DataWindow definitions missing from the
+recovered source: `w_dashboard`, `w_populate_*`, `w_delete_due`; history and
+visit viewers whose DataWindow paints a heading or value in its background layer,
+`w_visithistory`, `w_itemtransferhistory`, `w_pendingdueinfo` and others; an
+orphan heading or button after the last field of its groupbox,
+`w_childerserver_controlpanel`; editable lists with report features,
+`w_salereturn_activeitemlist`, `w_saletemplate_saleestimates`; unsupported
+controls `w_graphviewer`, `w_sms_center`; others). For DataWindows, 3,294 of
+8,740 (37.7%) have a Modern surface: 275 reviewed and 3,019 generated (grids may
+carry per-row button columns and multiline fields). Print, PDF and report
+layouts are exempt from structural parity (decision 16): 5,546 DataWindows are
+evidence-classified that way, so on-screen coverage is 3,031 of 3,194 (94.9%).
+Before the review fixes the same tool measured 2,047 windows, 3,324 DataWindows
+and 3,037 of 3,158 on-screen DataWindows; the drop is the refused mappings
+listed under "Parity review fixes". Generated mappings are
 validated against the source and re-validated at runtime, but they are **not
 individually reviewed and have no browser evidence**. Verified complete Modern
 screens and accepted workflows remain zero.
@@ -57,16 +63,69 @@ that names every item left on the Classic layout and the reason:
 
 | Generator | Output | Result |
 |---|---|---|
-| `derive-data-surfaces.ts` | `derived-data-surfaces.ts`, `ui-derived-surfaces-backlog.json` | 2,298 DataWindow surfaces; 5,391 pending (4,540 with report-style header, footer, summary or background objects, 494 with groups the form layout cannot hold, 147 crosstabs) |
-| `derive-entry-windows.ts` | `derived-entry-windows.ts`, `ui-derived-windows-backlog.json` | 248 of 262 non-reviewed entry masters; 14 pending, mostly on an unmapped hosted DataWindow |
-| `derive-modal-windows.ts` | `derived-modal-windows.ts`, `ui-derived-modal-windows-backlog.json` | 1,540 of 1,628 non-reviewed dialog and sheet windows; 88 pending (86 unmapped DataWindow, 2 unsupported control) |
+| `derive-data-surfaces.ts` | `derived-data-surfaces.ts`, `ui-derived-surfaces-backlog.json` | 2,358 global DataWindow surfaces; 5,330 pending (4,281 with report-style header data, 495 with groups the form layout cannot hold, 157 with a heading or value in the background layer, 147 crosstabs) |
+| `derive-entry-windows.ts` | `derived-entry-windows.ts`, `ui-derived-windows-backlog.json` | 258 of 262 non-reviewed entry masters; 4 pending on an unmapped hosted DataWindow |
+| `derive-modal-windows.ts` | `derived-modal-windows.ts`, `ui-derived-modal-windows-backlog.json` | 1,608 of 1,628 non-reviewed dialog and sheet windows; 20 pending (18 unmapped DataWindow, 2 unsupported control) |
 
 `tests/derived-surfaces.test.ts` checks that each generated file matches a fresh
 run, that every surface passes `dataSurfaceIssues` and `windowSurfaceIssues`
 against the real runtime tree, and that the generators **reproduce the
-reviewed mappings they can derive**: 236 DataWindow surfaces, 48 of 50 reviewed
-criteria layouts (the two exceptions are hidden-control caption pairings named
-in the test) and every reviewed entry control tree and detail order.
+reviewed mappings they can derive**: every comparable reviewed DataWindow
+surface, all 55 reviewed criteria layouts (hidden inherited captions included)
+and every reviewed entry control tree and detail order.
+`tests/derived-parity.test.ts` checks every generated surface and window against
+the source-position validators (`dataSurfacePositionIssues`,
+`windowSurfacePositionIssues`) and pins each defect of the 2026-11-09 parity
+review on its real definition.
+
+### Parity review fixes (2026-11-09)
+
+A review of the generators against the recovered definitions found captions
+paired with the wrong field, fields shown that Classic hides and the reverse,
+and controls moved out of their source place. Fixed in the generators and
+validators, regenerated, and refused (Classic layout kept) where no correct
+mapping exists:
+
+1. A hidden grid column owns the header painted exactly over it (PowerBuilder
+   hides the header with the column), so a column a script shows gets its source
+   header, not its raw name, and the header is never a loose caption above the
+   grid (`d_item_update`). A free header over a hidden tabular column is refused.
+2. A header or detail band without height paints nothing: its objects are
+   decorations, never captions or fields, and they no longer make a form a grid
+   (`d_arg_region` was a one-column grid headed by a hidden "Category").
+3. Text, columns and computed values in the background layer are painted content
+   (a "Patient Name: ..." heading): the DataWindow is refused instead of dropping
+   them as decorations (`d_visithistory`, `d_view_item_satisfiable`).
+4. Dialog captions pair globally by cost with the closed height of a drop-down
+   and never across another control; hidden inherited controls take the pairing
+   of the ancestor that places them (`w_arg_cust_sdate_ldate_v13`,
+   `w_arg_manfs_cats_classes_packs_dates_v3`, `w_arg_accounts`).
+5. A visibility that is the constant 0 (`1~t0`) hides an object for good, and
+   alternative fields painted over each other share their one source caption
+   (`d_inpatientsalereturn`, `d_serviceorderheader`, `d_receiptheader`).
+6. A trailing text named after the field it follows (`<column>_t`) is that
+   field's suffix, not the next field's caption (`d_patientvisit_gyn_us`).
+7. A command button the source places among the content keeps its position
+   (`buttons`); only the window's own button row or column is `actions`.
+8. Visible pictures, colour keys and progress bars are positioned content
+   (`artwork`); hidden ones stay `auxiliary`.
+9. Each groupbox records the content it encloses (`members`); Modern keeps the
+   box caption with exactly those controls, and the main frame labels the whole
+   content only when it encloses all of it.
+10. A heading or button of a grouped form stays in its groupbox, or the form is
+    refused (`d_adjustmentpreferences`).
+11. Document classification no longer exempts an on-screen DataWindow with
+    enterable columns, and letterhead evidence ignores per-row detail lookups
+    (`d_guestroom_detail`, `d_emp_employee`, `d_cashactivitymonitorlist`).
+12. Form fields read row by row (jitter of a few units no longer reorders a row),
+    a report title never heads the first grid column, and the dead column-named
+    path of the modal generator is removed.
+
+Position checks run in the generators and the tests; the runtime keeps the
+structural checks, because a script may re-lay controls while a window opens.
+Caption visibility expressions at run time and the run-time order of a column a
+script switches on are owned by the DataWindow renderer and are not part of these
+generator fixes.
 
 Decisions recorded for future sessions:
 
@@ -182,6 +241,41 @@ Decisions recorded for future sessions:
    0 violations after the scroll-region fix. This compares what the
    commands do, not every field edit inside a window; data-entry workflows inside windows are
    covered by the synthetic browser suite, not by this crawl.
+   Run 42535404058 (commit `825c25c0`) compared 0 items: a probe added to the crawl threw at the
+   first item and the step piped into `tee` without `pipefail`, so it reported success. Both are
+   fixed (`6a0994c2`: the probe, and bash with pipefail as the workflow default shell).
+19. Behaviour reference (2026-11-09, A-Z review of the Modern frontend and the shared runtime
+   views). The reference for behaviour is the original PowerBuilder application; Classic is the
+   rebuild's baseline. Where Classic itself departed from PowerBuilder, the shared code was fixed
+   so both presentations behave like the original, never Modern alone:
+   - DataWindow click order: GetFocus (when the DataWindow lacked it), then Clicked while
+     GetRow()/GetColumn() are still the row and column being left (Clicked returning 1 keeps the
+     focus), then the pending entry is accepted (ItemChanged/ItemError), then
+     RowFocusChanging/RowFocusChanged, then the clicked field opens. Evidence:
+     `w_backupinfo_for_verificatioin` dw_backupinfo.clicked runs
+     `selectrow(getrow(), false); selectrow(row, true)`, which only works with the old row
+     current. Before, a click on another cell discarded the typed entry (no ItemChanged) and
+     Clicked saw the new row. The order against the running original is still to be observed
+     in the final pass.
+   - Tab order: Modern windows keep the source TabOrder (`data-tab`, `source-tab-order.ts`) for
+     Tab, Shift+Tab, Send()-based Enter navigation and tab-page entry; a container's controls are
+     ranked by the container's order first; tab stops without a TabOrder stay out of the sequence.
+   - Message boxes follow the Windows rules in both presentations: Escape answers Cancel or the
+     only button and nothing else, an out-of-range default focuses the first button, an empty
+     title stays empty. A dialog can no longer close while its script waits.
+   - Focus after a message box or response window returns to the control that had it and its
+     GetFocus runs (PowerBuilder behaviour; Classic leaves the focus on the page). Classic menu
+     accelerators now wait while a response window or message box is open; the Classic frame
+     menu still takes mouse clicks then (recorded, not changed: it would change Classic's look).
+   - Printing with "Print layout: Modern" never fails the print call: a document without a usable
+     Modern template prints with the Classic layout and says so; preview templates are used only
+     in the Modern workspace.
+   - Server: a decimal or NULL host variable that is an operand of arithmetic is substituted as a
+     numeric value (`round(:ld_price * :ll_packunits, 2)` in the item price update failed in
+     PostgreSQL; T-SQL converts implicitly). Everywhere else the substitution is unchanged.
+   - Open: the observed original shows "Sale And Return" where the recovered `m_mainmenu` sets
+     "Sale And Return (One Category)" and no script renames it; the rebuild follows the recovered
+     definition until the original can be checked.
 9. The Modern workspace sidebar now browses the live menu by module (collapsed
    groups, lazily filled, open state retained) as well as searching it; availability
    is still the live visible/enabled state, rechecked before every command.
