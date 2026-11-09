@@ -161,7 +161,9 @@ async fn open_session(State(st): State<AppState>, Json(req): Json<OpenReq>) -> R
         return Err(ApiError::Bad(format!("too many open sessions ({max}); close windows or raise MAX_SESSIONS (PostgreSQL max_connections)")));
     }
     let mut conn = PgConnection::connect(&st.database_url).await.map_err(db_err)?;
-    conn.execute("SET standard_conforming_strings = on; SET search_path TO dbo, public;").await.map_err(db_err)?;
+    // DateStyle MDY: the original's logins are all us_english (dateformat mdy), so date text such as the dashboard's
+    // `CAST('11/09/2026' AS DATETIME)` is month first there; PostgreSQL would otherwise follow the cluster's locale.
+    conn.execute("SET standard_conforming_strings = on; SET search_path TO dbo, public; SET DateStyle = 'ISO, MDY';").await.map_err(db_err)?;
     let sid = uuid::Uuid::new_v4().to_string();
     let s = Session { conn, autocommit: req.autocommit, in_tx: false, dirty: false, last_used: Instant::now() };
     st.sessions.lock().await.insert(sid.clone(), Arc::new(Mutex::new(s)));

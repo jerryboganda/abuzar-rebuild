@@ -45,9 +45,16 @@ const bad: { dw: string; error: string }[] = []
 for (const [name, e] of Object.entries(sql.dw)) {
   const def = defOf(name)
   const decl = def ? argList(def) : []
-  const params = e.params.map((p) => {
+  const params = e.params.map((p, index) => {
     const a = decl.find((d) => d.name === p.toLowerCase())
-    return defaultFor(a ? a.type : 'number')
+    const value = defaultFor(a ? a.type : 'number')
+    if (value !== '') return value
+    // string arguments in the two shapes the scripts fill with something other than free text: a column name the rows
+    // are sorted by (`ORDER BY :ai_ordercol`), and a date label read as a datetime (us_english, month first)
+    const placeholder = new RegExp(`\\$${index + 1}(?!\\d)`)
+    if (new RegExp(`order\\s+by\\s+${placeholder.source}`, 'i').test(e.sql)) return def?.table?.columns?.[0]?.name ?? value
+    if (new RegExp(`\\(${placeholder.source}\\)::timestamp`, 'i').test(e.sql)) return '01/02/2026'
+    return value
   })
   tried++
   try {

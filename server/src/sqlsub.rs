@@ -132,6 +132,42 @@ fn in_list_context(b: &[u8], i: usize, j: usize) -> bool {
     p >= 2 && b[p - 2..p].eq_ignore_ascii_case(b"in") && (p == 2 || !(b[p - 3].is_ascii_alphanumeric() || b[p - 3] == b'_'))
 }
 
+/// true when the placeholder at `b[i..j]` is a whole `ORDER BY` item on its own (`ORDER BY $2`, `ORDER BY $2 DESC`)
+fn order_by_context(b: &[u8], i: usize, j: usize) -> bool {
+    let mut p = i;
+    while p > 0 && b[p - 1].is_ascii_whitespace() {
+        p -= 1;
+    }
+    if p < 2 || !b[p - 2..p].eq_ignore_ascii_case(b"by") || (p > 2 && (b[p - 3].is_ascii_alphanumeric() || b[p - 3] == b'_')) {
+        return false;
+    }
+    p -= 2;
+    let end = p;
+    while p > 0 && b[p - 1].is_ascii_whitespace() {
+        p -= 1;
+    }
+    if p == end || p < 5 || !b[p - 5..p].eq_ignore_ascii_case(b"order") || (p > 5 && (b[p - 6].is_ascii_alphanumeric() || b[p - 6] == b'_')) {
+        return false;
+    }
+    let mut k = j;
+    while k < b.len() && b[k].is_ascii_whitespace() {
+        k += 1;
+    }
+    k == b.len() || matches!(b[k], b',' | b')' | b';') || b[k].is_ascii_alphabetic()
+}
+
+/// The `ORDER BY` item for a string argument.  PowerBuilder substitutes it as a string literal and SQL Server sorts by the
+/// select-list column of that name (`ORDER BY 'salerowid'`, any case; anything else is error 408), which PostgreSQL reads
+/// as a constant.  A plain name becomes that output column (lower case, as the translated aliases are); other text stays a
+/// literal and is refused there as well.
+fn order_by_item(v: &Value, n: usize) -> Result<String, SubError> {
+    match v {
+        Value::String(s) if !s.is_empty() && s.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'_')
+            && !s.as_bytes()[0].is_ascii_digit() => Ok(format!("\"{}\"", s.to_ascii_lowercase())),
+        _ => literal(v, n),
+    }
+}
+
 /// true when the placeholder at `b[i..j]` is compared as a scalar (`col = $1`, `col <> $1`) or cast as one (`($1)::numeric`):
 /// PowerBuilder substitutes a one-member list argument there as that member.
 fn scalar_context(b: &[u8], i: usize, j: usize) -> bool {
@@ -224,6 +260,7 @@ pub fn substitute(sql: &str, params: &[Value]) -> Result<String, SubError> {
                         // `col = :list` with one member: the member itself, as PowerBuilder substitutes it
                         Value::Array(items) if items.len() == 1 && scalar_context(b, i, j) => out.push_str(&literal(&items[0], n)?),
                         _ if arithmetic_context(b, i, j) => out.push_str(&arithmetic_literal(v, n)?),
+                        Value::String(_) if order_by_context(b, i, j) => out.push_str(&order_by_item(v, n)?),
                         _ => out.push_str(&literal(v, n)?),
                     }
                     last = j;
@@ -289,6 +326,23 @@ mod tests {
         // a comment next to a placeholder is not an operator; a string stays a string even in arithmetic
         assert_eq!(substitute("select $1 -- c\n, /* c */ $2, $3 * 2", &[json!(null), json!(null), json!("4")]).unwrap(), "select NULL -- c\n, /* c */ NULL, '4' * 2");
         assert_eq!(substitute("select $1 * 2", &[json!({"$dec": "1e5"})]), Err(SubError::Unsupported(1)));
+    }
+
+    #[test]
+    fn a_string_argument_sorting_by_itself_names_the_output_column() {
+        // d_postedsale_for_population: `ORDER BY :ai_ordercol` with "salerowid" / "itemname" / "aliasname"
+        let sql = "select x from (select 1 as salerowid) as t ORDER BY $1";
+        assert_eq!(substitute(sql, &[json!("SaleRowID")]).unwrap(), "select x from (select 1 as salerowid) as t ORDER BY \"salerowid\"");
+        assert_eq!(substitute("order  by\n $1 desc, b", &[json!("itemname")]).unwrap(), "order  by\n \"itemname\" desc, b");
+        // a position stays a position; text that is not a name stays a literal (refused, as SQL Server refuses it)
+        assert_eq!(substitute("order by $1", &[json!(2)]).unwrap(), "order by 2");
+        assert_eq!(substitute("order by $1", &[json!("a b")]).unwrap(), "order by 'a b'");
+        assert_eq!(substitute("order by $1", &[json!("x\"; drop")]).unwrap(), "order by 'x\"; drop'");
+        // inside an expression, or after another word ending in "order by", it is an ordinary literal
+        assert_eq!(substitute("order by case lower($1) when 'a' then 1 end", &[json!("A")]).unwrap(), "order by case lower('A') when 'a' then 1 end");
+        assert_eq!(substitute("order by $1 || 'x'", &[json!("a")]).unwrap(), "order by 'a' || 'x'");
+        assert_eq!(substitute("where reorder by $1", &[json!("a")]).unwrap(), "where reorder by 'a'");
+        assert_eq!(substitute("group by $1", &[json!("a")]).unwrap(), "group by 'a'");
     }
 
     #[test]
