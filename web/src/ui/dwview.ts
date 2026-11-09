@@ -964,7 +964,9 @@ export class DwView {
       row--
     }
     if (row > m.rowCount() || row < 1) {
-      // Past the last (or before the first) entry the keyboard stays on the current field, as in PowerBuilder.
+      // Past the last (or before the first) entry PowerBuilder moves on to the window's next (previous) control; a DataWindow
+      // outside a window, or alone in it, keeps the keyboard on the current field.
+      if (this.ctl.rt.ui?.tabOut?.(this.ctl, dir)) return
       await this.keepKeyboard(m)
       return
     }
@@ -1010,7 +1012,7 @@ export class DwView {
     const target = !origin ? undefined : dir > 0 ? candidates.find((object) => compare(object, origin) > 0)
       : candidates.filter((object) => compare(object, origin) < 0).at(-1)
     if (target && row >= 1 && row <= m.rowCount()) await this.tabTo(m, row, target.name.toLowerCase())
-    else await this.focusCurrent()
+    else if (!this.ctl.rt.ui?.tabOut?.(this.ctl, dir)) await this.focusCurrent()
   }
 
   /** Tab with nowhere to go: an entry just accepted reopens on its field instead of leaving the keyboard nowhere */

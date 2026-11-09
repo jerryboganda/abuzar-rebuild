@@ -18,7 +18,7 @@ import { TabSelection, tabAvailable } from './tab-selection.ts'
 import { DropdownView } from './dropdown.ts'
 import { NCalendar } from '../runtime/native/calendar.ts'
 import { CalendarView } from './calendar.ts'
-import { sourceTabStops } from './source-tab-order.ts'
+import { sourceTabNeighbour, sourceTabStops } from './source-tab-order.ts'
 
 let nextTabControl = 0
 let nextRadioGroup = 0
@@ -199,6 +199,23 @@ export class DomUi implements UiHost {
     if (!v?.dw) return false
     return v.dw.focusCurrent(fallback)
   }
+  /**
+   * Tab past the last field of the last row of a DataWindow (Shift+Tab before its first): PowerBuilder moves on to the next
+   * (previous) control in the window's tab order, which the recovered Enter handlers rely on (`send(handle(dw), 256, 9, ...)`
+   * in 431 DataWindow events). False when the DataWindow is not in a window or nothing else takes Tab.
+   */
+  tabOut(o: PBObject, dir: number): boolean {
+    for (const wv of this.views.values()) {
+      const cv = wv.ctlViews.get(o)
+      if (!cv || !wv.client.contains(cv.el)) continue
+      const next = sourceTabNeighbour(wv.client, cv.el, dir, (stop) => stop.getAttribute('role') === 'tab')
+      if (!next) return false
+      next.focus()
+      return next.contains(document.activeElement)
+    }
+    return false
+  }
+
   /** The SetFocus a script aimed into a tab page that is held while its SelectionChanged scripts run. */
   private heldFocus: PBObject | null = null
   private elementOf(o: PBObject): HTMLElement | undefined {

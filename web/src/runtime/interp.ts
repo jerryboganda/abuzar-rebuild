@@ -23,6 +23,8 @@ export interface UiHost {
   activate?(w: NWindow): void
   focus?(object: PBObject): void
   focusDw?(object: PBObject, fallback?: boolean): Promise<boolean>
+  /** Tab past the last field of a DataWindow (Shift+Tab before its first): focus the window's next (previous) control */
+  tabOut?(object: PBObject, dir: number): boolean
   focused?(): PBObject | null
   selectText?(object: PBObject, start: number, length: number): void
   sendKey?(object: unknown, key: number): Promise<void> | void

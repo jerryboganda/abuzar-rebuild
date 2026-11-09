@@ -32,6 +32,19 @@ export function sourceTabStops(root: HTMLElement, selector = FOCUSABLE): HTMLEle
     .map((entry) => entry.element)
 }
 
+/**
+ * The tab stop after (`dir` 1) or before (-1) a control in the source order, outside the control itself, wrapping inside the
+ * window: where Tab past the last field of a DataWindow (Shift+Tab before its first) goes. Null when nothing else takes Tab.
+ */
+export function sourceTabNeighbour(root: HTMLElement, control: HTMLElement, dir: number, skip: (stop: HTMLElement) => boolean = () => false): HTMLElement | null {
+  const outside = sourceTabStops(root).filter((stop) => !control.contains(stop) && !skip(stop))
+  if (!outside.length) return null
+  const own = rank(control, root)
+  const after = outside.findIndex((stop) => compare(rank(stop, root), own) > 0)
+  if (dir > 0) return outside[after < 0 ? 0 : after]
+  return outside[((after < 0 ? outside.length : after) - 1 + outside.length) % outside.length]
+}
+
 /** Record each control's source TabOrder, flatten positive tabindex values to 0, and let Tab follow the source order. */
 export function useSourceTabOrder(view: HTMLElement, client: HTMLElement, controls: Iterable<{ element: HTMLElement; taborder: unknown }>): void {
   for (const { element, taborder } of controls) {

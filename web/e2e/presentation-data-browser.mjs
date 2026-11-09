@@ -91,8 +91,9 @@ export async function checkDataSurfaces(fixture, check, settle) {
   await submit(input, 'Edited synthetic name')
   check(form.getItem(1, 'name') === 'EDITED SYNTHETIC NAME' && events.filter((event) => event.name === 'itemchanged').length === 1,
     'Modern editor uses exactly one shared ItemChanged-to-model commit')
-  check(view.root.contains(document.activeElement) && view.root.querySelector('.surface-editor') === document.activeElement,
-    'Tab at the last form editor keeps the keyboard on that field, as in Classic and PowerBuilder')
+  const reference = fixture.ui.views.get(fixture.sale).ctlViews.get(fixture.sale.children.get('sle_reference')).el
+  check(reference.contains(document.activeElement) && !view.root.querySelector('.surface-editor'),
+    'Tab past the last field of the last row moves on to the window\'s next tab stop, as PowerBuilder does')
   control.validateRules.set('name', 'len(gettext()) >= 3')
   input = await edit()
   await submit(input, 'x')

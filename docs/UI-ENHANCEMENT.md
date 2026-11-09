@@ -273,8 +273,13 @@ Decisions recorded for future sessions:
      Classic looks the same). The window z-order is renumbered before it reaches the menus (1000)
      and message boxes (2000); it grew by one per window press and, in a long session, sheets
      could be drawn over an open menu or message box.
-   - Tab after the last field of the last row accepts the entry and keeps the keyboard on that
-     field (PowerBuilder); the synthetic pass now expects that for single-field lookups.
+   - Tab after the last field of the last row accepts the entry and moves on to the window's next
+     control in the source tab order (Shift+Tab before the first field: the previous control), as
+     PowerBuilder does: 431 recovered DataWindow Enter handlers send Tab to their own DataWindow
+     (`send(handle(this), 256, 9, ...)`) to reach the next control, which only works that way
+     (`w_arguements.dw_control` → the dates and OK). A DataWindow outside a window, or alone in
+     it, keeps the keyboard on its field. (An interim rule from the DataWindow review kept the
+     keyboard on the field in every case; it was reversed on this evidence.)
    - Tab from a read-only or computed field (a Modern tab stop that is not the current column)
      moves to the next enterable field after it in reading order (Shift+Tab: the previous one),
      or into the current field; before, it moved on from the current column and could leave the
