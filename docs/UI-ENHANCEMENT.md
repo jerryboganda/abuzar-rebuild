@@ -289,6 +289,12 @@ Decisions recorded for future sessions:
      input only then; a SetFocus aimed into the page is applied when it is released.
    - Modern dialogs keep Tab in the window's source order and wrap to its first field; the
      title-bar Close button is a mouse control outside the cycle (as in Windows).
+   - ShareData: a change made through one DataWindow repaints every DataWindow sharing the
+     buffer (until ShareDataOff). The associated-invoice dialog showed the previous total after
+     its ItemChanged wrote the new one through the caller DataWindow.
+   - A Modern editor opened by Tab or Enter is scrolled into view when it takes the focus (it is
+     focused without the browser's scroll); at 683x384 and 200% the next calculator field was
+     half hidden below the dialog.
    - Printing with "Print layout: Modern" never fails the print call: a document without a usable
      Modern template prints with the Classic layout and says so; preview templates are used only
      in the Modern workspace.
