@@ -216,7 +216,15 @@ export class DwView {
   protected keyAction(event: KeyboardEvent, model: DwModel, cell: HTMLElement | null): (() => Promise<unknown>) | null {
     const button = cell instanceof HTMLButtonElement
     // Tab on a button object moves on to the next control, as the window's tab order does.
-    if (event.key === 'Tab') return !button && this.hasTabColumns(model) ? () => this.tabNext(event.shiftKey ? -1 : 1) : null
+    if (event.key === 'Tab') {
+      if (button || !this.hasTabColumns(model)) return null
+      const dir = event.shiftKey ? -1 : 1
+      // A read-only or computed field the keyboard is on (not the current column) moves on from where it is.
+      const field = cell?.closest<HTMLElement>('[data-obj]')
+      const name = field?.dataset.obj?.toLowerCase()
+      const row = Number(field?.closest<HTMLElement>('[data-row]')?.dataset.row ?? model.row)
+      return name && name !== this.currentField(model)?.toLowerCase() ? () => this.tabFromField(model, name, row, dir) : () => this.tabNext(dir)
+    }
     if (event.shiftKey) return null
     if (!button && (event.key === 'Enter' || event.key === 'F2')) return () => this.focusCurrent()
     if (!this.gridKeys(model) || model.row < 1 || model.row > model.rowCount()) return null
@@ -960,21 +968,49 @@ export class DwView {
       await this.keepKeyboard(m)
       return
     }
+    await this.tabTo(m, row, cols[i])
+  }
+
+  /** Move the current row and column to an enterable field (row focus events first, then ItemFocusChanged) and open it. */
+  private async tabTo(m: DwModel, row: number, name: string): Promise<void> {
     if (row !== m.row) {
       if (!(await this.canChangeRow(m, row))) return
       m.row = row
       await this.ctl.rt.fire(this.ctl, 'rowfocuschanged', [row])
     }
     if (this.disposed || this.ctl.model !== m || m.row !== row) return
-    m.col = m.colIndex(cols[i]) + 1
+    m.col = m.colIndex(name) + 1
     const column = m.col
-    await this.ctl.fireItemFocus(row, cols[i])
+    await this.ctl.fireItemFocus(row, name)
     if (this.disposed || this.ctl.model !== m || m.row !== row || m.col !== column) return
     await this.paint(m)
     if (this.disposed || this.ctl.model !== m || m.row !== row || m.col !== column) return
-    const object = m.def.objects.find((object) => object.name.toLowerCase() === cols[i])
+    const object = m.def.objects.find((object) => object.name.toLowerCase() === name)
     const cell = object ? this.cellOf(row, object.name) : null
     if (object && cell?.classList.contains('editable')) this.edit(m, object, row, cell)
+  }
+
+  /**
+   * Tab from a field the keyboard reached without it being the current column (a read-only value or a computed field, which are
+   * tab stops of the Modern form): the next enterable field after it in reading order (the previous one with `dir` = -1), as the
+   * form reads; with none, the DataWindow's current field. The keyboard is never left on a field that Tab cannot leave.
+   */
+  private async tabFromField(m: DwModel, from: string, row: number, dir: number): Promise<void> {
+    const currentRow = m.row, currentColumn = m.col
+    const cols = await this.tabColumns(m)
+    if (this.disposed || this.ctl.model !== m || m.row !== currentRow || m.col !== currentColumn) return
+    const objectOf = (name: string) => m.def.objects.find((object) => object.name.toLowerCase() === name)
+    const origin = objectOf(from)
+    const place = (object: DwObject) => [Number(object.y) || 0, Number(object.x) || 0]
+    const compare = (a: DwObject, b: DwObject) => {
+      const [ay, ax] = place(a), [by, bx] = place(b)
+      return ay - by || ax - bx
+    }
+    const candidates = origin ? cols.map(objectOf).filter((object): object is DwObject => !!object && object.band === origin.band) : []
+    const target = !origin ? undefined : dir > 0 ? candidates.find((object) => compare(object, origin) > 0)
+      : candidates.filter((object) => compare(object, origin) < 0).at(-1)
+    if (target && row >= 1 && row <= m.rowCount()) await this.tabTo(m, row, target.name.toLowerCase())
+    else await this.focusCurrent()
   }
 
   /** Tab with nowhere to go: an entry just accepted reopens on its field instead of leaving the keyboard nowhere */
