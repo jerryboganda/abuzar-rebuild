@@ -1068,6 +1068,7 @@ export class ModernDwView extends DwView {
     if (!this.choiceDestination && this.surface && this.editor && this.boundModel === model && this.boundRow === model.rowAt(row)
       && this.editRow === row && this.editObj === object.name) {
       this.editor.focus({ preventScroll: true })
+      if (!this.restoringFocus && document.activeElement === this.editor) this.revealFocus(this.editor)
       if (activate !== false) void this.choiceEdit?.activate(activate).catch((error) => this.ctl.rt.onError(error))
       return
     }
@@ -1077,6 +1078,9 @@ export class ModernDwView extends DwView {
     super.edit(model, object, row, cell, activate, focus)
     const editor = this.editor
     if (!editor || editor === before || this.editRow !== row || this.editObj !== object.name) return
+    // The editor is focused without the browser's scroll-into-view (no jump on repaint): a field Tab or Enter opened below the
+    // visible part of a dialog or page is brought into view, as a focused field must stay visible.
+    if (focus && !this.restoringFocus && editor.contains(document.activeElement)) this.revealFocus(document.activeElement as HTMLElement)
     this.boundModel = model
     this.boundRow = record
     this.lookupNotice = ''
