@@ -161,6 +161,11 @@ export function applyModernWindow(view: WinView): boolean {
     const element = elements.get(option.control)!
     // An option keeps its source tab stop: one without a TabOrder is not a tab stop, as in Classic.
     element.classList.add('window-option')
+    // An option the source paints without text (its caption is a separate text, or none) still needs a name: its control name.
+    const input = element.querySelector('input')
+    if (input && !element.textContent?.trim() && !input.hasAttribute('aria-label') && !input.hasAttribute('aria-labelledby')) {
+      input.setAttribute('aria-label', option.control.replace(/^(rb|cbx|cb|chk|ck)_/i, '').replace(/_/g, ' '))
+    }
     content.append(element)
     contentItems.set(option.control, element)
     itemControls.set(option.control, [option.control])
@@ -233,6 +238,10 @@ export function applyModernWindow(view: WinView): boolean {
     close.replaceWith(button)
   }
   useSourceTabOrder(view.el, view.client, [...view.ctlViews].map(([control, binding]) => ({ element: binding.el, taborder: control.props?.get('taborder') })))
+  // A dialog with nothing to focus (a view-only window) can still be scrolled from the keyboard: the window itself takes the focus.
+  if (!view.client.querySelector('input:not(:disabled),select:not(:disabled),textarea:not(:disabled),button:not(:disabled),[tabindex]:not([tabindex="-1"])')) {
+    view.el.tabIndex = 0
+  }
   return true
 }
 

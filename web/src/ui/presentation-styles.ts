@@ -96,12 +96,12 @@ export const PRESENTATION_CSS = `
 /* A container or rich control kept as its original element (a tab control with its pages) scrolls inside the dialog instead of widening it. */
 /* The container takes its cell's width (its source width would widen the dialog past a narrow screen) and keeps its own height; its
    children keep their Classic positions inside it and scroll there. */
-.modern-window .window-embedded {position:relative!important;left:auto!important;top:auto!important;width:100%!important;max-width:100%;min-width:0;}
+.modern-window .window-embedded {position:relative!important;left:auto!important;top:auto!important;width:100%!important;max-width:100%;min-width:0;color:#000;background-color:#f0f0f0;color-scheme:light;}
 /* Only a container (tab control, user object) scrolls; a link or text control never becomes a scroll region a keyboard cannot reach. */
 .modern-window .window-embedded[data-embedded-scroll] {max-height:calc(100vh - 14em);overflow:auto;}
 .modern-window .window-caption {white-space:normal;overflow-wrap:anywhere;background:transparent!important;color:var(--p-text)!important;}
 .modern-window .window-option {display:flex;align-items:center!important;gap:8px;min-height:36px;padding:6px 0!important;white-space:normal;overflow-wrap:anywhere;background:transparent!important;color:var(--p-text)!important;}
-.modern-window .window-option input {flex:none;accent-color:var(--p-accent);}
+.modern-window .window-option input {flex:none;accent-color:var(--p-accent);inline-size:24px;block-size:24px;margin:0;}
 .modern-window .window-option span {outline:none!important;}
 .modern-window .window-option:has(input:focus-visible) {outline:2px solid var(--p-accent);outline-offset:2px;}
 .modern-window[data-density=comfortable] .window-option {min-height:42px;}

@@ -1540,9 +1540,18 @@ try {
   })
   const pageErrors = []
   const forbidden = []
+  // Settings files a window's scripts read (FileOpen, ProfileString) do not exist in the synthetic pass: the read is answered here as
+  // a missing file and listed in the result; every other server API (the database above all) stays forbidden.
+  const fileReads = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
   await page.route('**/*', (route) => {
     const url = new URL(route.request().url())
+    if (url.origin === origin && url.pathname === '/api/fs/read') {
+      let path = ''
+      try { path = String(JSON.parse(route.request().postData() || '{}').path ?? '') } catch { /* unreadable body */ }
+      fileReads.push(path)
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: false }) })
+    }
     if (url.origin !== origin || url.pathname.startsWith('/api/')) {
       forbidden.push(url.pathname)
       return route.abort()
@@ -1609,6 +1618,7 @@ try {
   assert.deepEqual(result.errors, [], 'Runtime fixture errors must not be hidden by passing assertions')
   assert.deepEqual(pageErrors, [])
   assert.deepEqual(forbidden, [], 'Synthetic checks must not access a database or external server')
+  if (fileReads.length) console.log(`Settings files read by window scripts (answered as missing): ${fileReads.length} (${[...new Set(fileReads)].slice(0, 10).join(', ')})`)
   assert.equal(await page.evaluate(() => window.fixtureNativeAccess), 0, 'Injected theme fixture must not access native globals')
   const nativeRequests = await page.evaluate(() => window.presentationNativeThemes.length)
   if (focusedSingleEntry) {
