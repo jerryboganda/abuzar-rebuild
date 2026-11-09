@@ -332,10 +332,14 @@ async function captureCalendars(page, output, dataWindow = false) {
       }))
       assert.ok(cells.every((cell) => cell.textWidth + 4 <= cell.width && cell.contrast >= 4.5),
         `All calendar dates fit and meet contrast: ${JSON.stringify({ theme, scale, width, forced, cells })}`)
+      // The month calendar is one tab stop, the selected date (the Today and header buttons are pointer controls, as in the
+      // Windows month calendar): Tab moves on to OK, the next control (w_calendar: mc_calendar 10, cb_ok 20, cb_cancel 30).
       await page.keyboard.press('Tab')
-      assert.match(await page.evaluate(() => document.activeElement.textContent), /^Today:/)
-      await page.keyboard.press('Tab')
-      assert.equal(await page.evaluate(() => document.activeElement.textContent), 'Ok')
+      await page.waitForFunction(() => document.activeElement?.textContent?.trim() === 'Ok', null, { timeout: 5000 })
+        .catch(async (error) => {
+          const active = await page.evaluate(() => document.activeElement?.outerHTML?.slice(0, 300) ?? null)
+          throw new Error(`Calendar ${theme}/${scale}/${width}: Tab from the selected date must reach OK; focus on ${active}`, { cause: error })
+        })
       assert.ok(await page.evaluate(() => {
         const r = document.activeElement.getBoundingClientRect()
         return r.top >= 0 && r.bottom <= innerHeight
