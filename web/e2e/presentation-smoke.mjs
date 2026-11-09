@@ -449,14 +449,15 @@ async function captureCriteriaWindows(page, output, surfaces = CRITERIA_WINDOW_S
             surface.name === 'w_arg_zone_sdate_ldate_top_n_customer' ?
               ['dw_control', 'em_startdate', 'em_enddate', 'dw_custcount', 'cb_ok', 'cb_cancel'] :
               ['em_startdate', ...(surface.name === 'w_arg_sdate_ldate' ? ['em_enddate'] : []), 'cb_ok', 'cb_cancel']
-          // The lists name each window's tab stops; Tab visits them in the source TabOrder (none = last, as 9999), e.g.
-          // w_arg_subacc_sdate_ldate: dw_control 10, em_startdate 20, em_enddate 30, cb_ok 40, cb_cancel 50.
+          // The lists name each window's controls; Tab visits those with a source TabOrder, in that order (e.g.
+          // w_arg_subacc_sdate_ldate: dw_control 10, em_startdate 20, em_enddate 30, cb_ok 40, cb_cancel 50). A control
+          // without one (w_arg_sale_sdate_ldate's cbx_cash / cbx_credit) is skipped by Tab, as in PowerBuilder.
           const tabOrders = await page.evaluate((names) => {
             const f = window.criteriaWindowPreview
-            return Object.fromEntries(names.map((name) => [name, Number(f.window.children.get(name)?.props.get('taborder') ?? 0) || 9999]))
+            return Object.fromEntries(names.map((name) => [name, Number(f.window.children.get(name)?.props.get('taborder') ?? 0)]))
           }, [...new Set(stops)])
-          const order = stops.map((name, index) => ({ name, index })).sort((a, b) => tabOrders[a.name] - tabOrders[b.name] || a.index - b.index)
-            .map((entry) => entry.name)
+          const order = stops.map((name, index) => ({ name, index })).filter(({ name }) => tabOrders[name] > 0)
+            .sort((a, b) => tabOrders[a.name] - tabOrders[b.name] || a.index - b.index).map((entry) => entry.name)
           // start on the last stop: the first Tab wraps to the first, wherever the layout draws it
           await page.evaluate((name) => {
             const f = window.criteriaWindowPreview, element = f.view.ctlViews.get(f.window.children.get(name)).el
@@ -471,7 +472,13 @@ async function captureCriteriaWindows(page, output, surfaces = CRITERIA_WINDOW_S
               return (field ? control.querySelector(`.surface-value[data-obj="${field}"]`) : control)
                 ?.contains(document.activeElement)
             }, { name, field: numericOwner && name === 'dw_control' ?
-              surface.data[0].surface.fields[numericColumn++].object : null }, { timeout: 5000 })
+              surface.data[0].surface.fields[numericColumn++].object : null }, { timeout: 5000 }).catch(async (error) => {
+              const active = await page.evaluate(() => {
+                const element = document.activeElement
+                return element ? `${element.tagName.toLowerCase()}[${element.closest('[data-obj]')?.dataset.obj ?? ''}] tab=${element.closest('[data-tab]')?.dataset.tab ?? ''}` : null
+              })
+              throw new Error(`keyboard traversal expected ${name} (order ${JSON.stringify(order)}, TabOrders ${JSON.stringify(tabOrders)}), focus on ${active}`, { cause: error })
+            })
           }
           // the title-bar Close button is a mouse control outside the cycle: Tab wraps to the first control in source order
           await page.keyboard.press('Tab')
