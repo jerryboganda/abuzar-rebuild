@@ -1,5 +1,5 @@
 import type { WinView } from './dom-ui.ts'
-import { windowSurfaceIssues } from './window-surfaces.ts'
+import { windowSurfaceIssues, windowContentItems } from './window-surfaces.ts'
 import { modalWindowSurfaceByName } from './window-registry.ts'
 import { ModernDwView } from './modern-dwview.ts'
 import { planGrid, applyGrid, anchoredBox, resolveAnchors } from './grid-plan.ts'
@@ -42,7 +42,22 @@ export function applyModernWindow(view: WinView): boolean {
     legend.id = `${identity}-${name}`
     return { frame, legend }
   }
-  if (surface.frame) {
+  // A groupbox with recorded members keeps its caption with exactly the content it encloses in the source (a positioned group of its
+  // own); the main frame labels the whole content only when it encloses all of it, or when its members are not recorded.
+  const members = surface.members ?? {}
+  const holds = (frame: string): Set<string> => {
+    const held = new Set<string>()
+    const walk = (name: string) => { for (const member of members[name] ?? []) { held.add(member); walk(member) } }
+    walk(frame)
+    return held
+  }
+  const mainHoldsAll = !!surface.frame && windowContentItems(surface).every((item) => holds(surface.frame!).has(item))
+  const containers = new Set([
+    ...(surface.frame && members[surface.frame]?.length && !mainHoldsAll ? [surface.frame] : []),
+    ...(surface.frames ?? []).filter((name) => members[name]?.length),
+  ])
+  if (surface.frame && containers.has(surface.frame)) sourceFrame(surface.frame)
+  else if (surface.frame) {
     const { frame, legend } = sourceFrame(surface.frame)
     content.setAttribute('role', 'group')
     content.setAttribute('aria-labelledby', legend.id)
@@ -148,8 +163,54 @@ export function applyModernWindow(view: WinView): boolean {
     contentItems.set(option.control, element)
     itemControls.set(option.control, [option.control])
   }
-  for (const name of surface.contentOrder ?? []) content.append(contentItems.get(name)!)
-  arrangeGrid(view, content, contentItems, itemControls, new Set([...(surface.embedded ?? []), ...data.map((binding) => binding.control)]))
+  // A command button the source places among the content (a "...." picker beside its option) and visible artwork (a photo, a colour
+  // key, a progress bar) keep their source position in the content.
+  for (const [names, className] of [[surface.buttons ?? [], 'window-button'], [surface.artwork ?? [], 'window-artwork']] as const) {
+    for (const name of names) {
+      const element = elements.get(name)!
+      element.classList.add(className)
+      content.append(element)
+      contentItems.set(name, element)
+      itemControls.set(name, [name])
+    }
+  }
+  const flexible = new Set([...(surface.embedded ?? []), ...data.map((binding) => binding.control)])
+  const order = [...(surface.contentOrder ?? [])]
+  // The main frame is not in the content order: as a positioned group it stands where its first member stands.
+  if (surface.frame && containers.has(surface.frame)) {
+    const held = holds(surface.frame)
+    const first = order.findIndex((name) => held.has(name))
+    order.splice(first < 0 ? order.length : first, 0, surface.frame)
+  }
+  const heldBy = new Map<string, string>()
+  for (const frame of containers) for (const member of members[frame]) heldBy.set(member, frame)
+  const built = new Set<string>()
+  const build = (frame: string) => {
+    if (built.has(frame)) return
+    built.add(frame)
+    for (const member of members[frame]) if (containers.has(member)) build(member)
+    const element = elements.get(frame)!
+    const group = document.createElement('div')
+    group.className = 'window-fields window-frame-group'
+    group.dataset.windowFrame = frame
+    group.setAttribute('role', 'group')
+    group.setAttribute('aria-labelledby', element.querySelector('legend')!.id)
+    group.append(element)
+    const inner = new Map<string, HTMLElement>()
+    for (const name of order) {
+      if (heldBy.get(name) !== frame || !contentItems.has(name)) continue
+      group.append(contentItems.get(name)!)
+      inner.set(name, contentItems.get(name)!)
+    }
+    // The members are arranged inside the box by their source positions; the caption stays on the box's first row.
+    arrangeGrid(view, group, inner, itemControls, flexible, containers)
+    contentItems.set(frame, group)
+    itemControls.set(frame, [frame])
+    flexible.add(frame)
+  }
+  for (const frame of containers) build(frame)
+  for (const name of order) if (!heldBy.has(name)) content.append(contentItems.get(name)!)
+  arrangeGrid(view, content, new Map([...contentItems].filter(([name]) => !heldBy.has(name))), itemControls, flexible, containers)
   const actions = document.createElement('footer')
   actions.className = 'window-actions'
   for (const name of surface.actions) actions.append(elements.get(name)!)
@@ -182,10 +243,12 @@ export function applyModernWindow(view: WinView): boolean {
  * (controls that share a row share it, a tall list beside stacked fields spans them, columns follow the source widths).  The DOM
  * order, and so the tab order, is untouched.  A window whose controls carry no usable geometry keeps the single-column flow.
  */
-function arrangeGrid(view: WinView, content: HTMLElement, items: Map<string, HTMLElement>, controls: Map<string, string[]>, flexible: ReadonlySet<string>): void {
+function arrangeGrid(view: WinView, content: HTMLElement, items: ReadonlyMap<string, HTMLElement>, controls: ReadonlyMap<string, readonly string[]>,
+  flexible: ReadonlySet<string>, frames: ReadonlySet<string> = new Set()): void {
   const read = (name: string) => {
     const control = view.w.children?.get(name)
-    if (!control?.props || control.props.get('visible') === false) return null
+    // A groupbox that holds positioned members keeps its source area even while its own caption is hidden: its members may be visible.
+    if (!control?.props || control.props.get('visible') === false && !frames.has(name)) return null
     const box = { x: Number(control.props.get('x')), y: Number(control.props.get('y')), width: Number(control.props.get('width')), height: Number(control.props.get('height')) }
     // A drop-down's stored height includes its open list; it occupies one line when closed, as Classic paints it.
     if (/dropdown|combobox/.test(String(control.native ?? ''))) box.height = Math.min(box.height, 80)

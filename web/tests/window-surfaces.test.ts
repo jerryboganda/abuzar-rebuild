@@ -68,7 +68,7 @@ for (const surface of CRITERIA_WINDOW_SURFACES) {
       for (const order of [surface.contentOrder.slice(1), [...surface.contentOrder, surface.contentOrder[0]],
         surface.contentOrder.map((name, index) => index ? name : 'cb_ok')]) {
         assert.ok(windowSurfaceIssues(controls, { ...surface, contentOrder: order })
-          .includes('Content order must include every field, caption, frame, list, DataWindow and option once'))
+          .includes('Content order must include every field, caption, frame, list, DataWindow, option, button and artwork once'))
       }
     }
     for (const data of surface.data ?? []) for (const label of data.labels ?? []) {

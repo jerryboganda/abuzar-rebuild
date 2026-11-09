@@ -1,5 +1,5 @@
-import type { DwDef } from '../dw/def.ts'
-import { colKind } from '../dw/def.ts'
+import type { DwDef, DwObject } from '../dw/def.ts'
+import { colKind, splitExpr } from '../dw/def.ts'
 import { numericSpin } from './numeric-spin.ts'
 import { choiceStyle } from '../dw/choices.ts'
 import type { DwChoiceBinding } from '../dw/choices.ts'
@@ -50,6 +50,96 @@ export interface DataSurface {
   /** A grid with a multiline field shows each row this many single-line heights tall (the source's detail band height). */
   rowLines?: number
   grouped?: boolean
+}
+
+// Source geometry shared by the generators (web/tools/derive-*.ts) and the validators below, so a mapping is judged by the same rules
+// that produced it.  Coordinates are the recovered PowerBuilder units of the definition.
+const at = (object: DwObject | undefined, key: string) => Number(object?.[key] ?? 0)
+const rightOf = (object: DwObject) => at(object, 'x') + at(object, 'width')
+const bottomOf = (object: DwObject) => at(object, 'y') + at(object, 'height')
+const middleOf = (object: DwObject) => at(object, 'y') + at(object, 'height') / 2
+const sharedHeight = (a: DwObject, b: DwObject) => Math.min(bottomOf(a), bottomOf(b)) - Math.max(at(a, 'y'), at(b, 'y'))
+
+/** A visibility that is always off: `0`, or an expression that is the constant 0 (`1<TAB>0`). Other expressions are dynamic. */
+export function alwaysHidden(visible: string | undefined): boolean {
+  if (visible === undefined) return false
+  if (visible.trim() === '0') return true
+  const { expr } = splitExpr(visible)
+  return expr !== undefined && /^\s*0\s*$/.test(expr)
+}
+
+/**
+ * An object the source never paints: it starts at or below the bottom of its band, or it sits in a header or detail band without height
+ * (the Classic view hides such a band).  Totals bands without height stay mapped: the renderer skips them while their height is 0.
+ */
+export function clippedObject(def: DwDef, object: DwObject): boolean {
+  const props = def.bands[object.band]
+  if (!props || Array.isArray(props) || props.height === undefined || props.height === '') return false
+  const height = Number(props.height)
+  if (!Number.isFinite(height)) return false
+  if (height === 0) return object.band === 'header' || object.band === 'detail'
+  return height > 0 && Number(object.y ?? 0) >= height
+}
+
+/** A caption on the field's own row, ending left of it. */
+export function captionBeside(text: DwObject, field: DwObject): boolean {
+  return Math.abs(middleOf(text) - middleOf(field)) <= Math.max(at(field, 'height'), 40) && rightOf(text) <= at(field, 'x') + 8
+}
+
+/**
+ * A caption stacked directly above its field: left edges aligned (within half the narrower of the two), a short gap.  A heading that
+ * spans the form is not the caption of whichever field happens to sit below it.
+ */
+export function captionAbove(text: DwObject, field: DwObject): boolean {
+  return bottomOf(text) <= at(field, 'y') + 8 && at(field, 'y') - bottomOf(text) <= Math.max(at(field, 'height') * 2, 120) &&
+    Math.abs(at(text, 'x') - at(field, 'x')) <= Math.max(Math.min(at(text, 'width'), at(field, 'width')) * 0.5, 100)
+}
+
+/** Another field sits between a row caption and the field: that nearer field owns the caption. */
+export function fieldBetween(text: DwObject, field: DwObject, peers: readonly DwObject[]): boolean {
+  return peers.some((other) => other !== field && at(other, 'x') >= rightOf(text) - 8 && rightOf(other) <= at(field, 'x') + 8 &&
+    sharedHeight(other, field) >= 0.5 * Math.min(at(other, 'height'), at(field, 'height')) && sharedHeight(other, text) > 0)
+}
+
+/** Trailing text directly beside its field on the same row ("%", "Customer(s)", "(L)"). */
+export function suffixBeside(text: DwObject, field: DwObject): boolean {
+  return Math.abs(middleOf(text) - middleOf(field)) <= Math.max(at(field, 'height'), 40) && at(text, 'x') >= rightOf(field) - 8 &&
+    at(text, 'x') - rightOf(field) <= 120
+}
+
+/** Two fields painted over each other (mutually exclusive alternatives a script or expression switches between). */
+export function sameBox(a: DwObject, b: DwObject): boolean {
+  const width = Math.min(rightOf(a), rightOf(b)) - Math.max(at(a, 'x'), at(b, 'x'))
+  const height = sharedHeight(a, b)
+  return width > 0 && height > 0 && width * height > 0.5 * Math.min(at(a, 'width') * at(a, 'height'), at(b, 'width') * at(b, 'height'))
+}
+
+/** Same row for reading order: the vertical extents share most of the shorter one. */
+function sameReadingRow(a: DwObject, b: DwObject): boolean {
+  return sharedHeight(a, b) >= 0.6 * Math.min(Math.max(1, at(a, 'height')), Math.max(1, at(b, 'height')))
+}
+
+/** Reading order of a form: rows top to bottom (fields sharing a row despite a few units of jitter stay one row), left to right. */
+export function readingOrder<T extends DwObject>(objects: readonly T[]): T[] {
+  const rows: T[][] = []
+  for (const object of [...objects].sort((a, b) => at(a, 'y') - at(b, 'y') || at(a, 'x') - at(b, 'x'))) {
+    const row = rows.at(-1)
+    if (row && row.some((member) => sameReadingRow(member, object))) row.push(object)
+    else rows.push([object])
+  }
+  return rows.flatMap((row) => row.sort((a, b) => at(a, 'x') - at(b, 'x') || at(a, 'y') - at(b, 'y')))
+}
+
+/** PowerBuilder's grid hides a column's header with the column; the header is the text painted exactly over it. */
+export function exactHeader(text: DwObject, column: DwObject): boolean {
+  return Math.abs(at(text, 'x') - at(column, 'x')) <= 2 && Math.abs(at(text, 'width') - at(column, 'width')) <= 10
+}
+
+/** The smallest groupbox of the detail band that holds the centre of an object. */
+export function holderBox(boxes: readonly DwObject[], object: DwObject): DwObject | undefined {
+  const cx = at(object, 'x') + at(object, 'width') / 2, cy = middleOf(object)
+  return boxes.filter((box) => cx >= at(box, 'x') && cx <= rightOf(box) && cy >= at(box, 'y') && cy <= bottomOf(box))
+    .sort((a, b) => at(a, 'width') * at(a, 'height') - at(b, 'width') * at(b, 'height'))[0]
 }
 
 const accountChoice: DwChoiceBinding = { kind: 'lookup', name: 'ddd_allaccounts', dataColumn: 'acccode', displayColumn: 'name' }
@@ -276,17 +366,30 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
     issues.push('Row lines need a grid with a multiline field')
   }
   if (!surface.fields.length && !(surface.kind === 'form' && (surface.buttons?.length || surface.captions?.length))) issues.push('No fields mapped')
+  // An object the source never paints (below its band, or in a header or detail band without height) is decoration, never content.
+  const painted = (name: string | undefined) => {
+    const object = name ? objects.get(name) : undefined
+    if (object && clippedObject(def, object)) issues.push(`Not painted by the source: ${name}`)
+  }
+  // A caption may name several fields only when they are painted over each other (alternatives the source switches between).
+  const labelOwners = new Map<string, string>()
   for (const field of surface.fields) {
     const object = objects.get(field.object)
     if (!object || object.type !== (field.kind === 'computed' ? 'compute' : field.kind === 'button' ? 'button' : 'column') || object.band !== 'detail') issues.push(`Unsupported field: ${field.object}`)
     if (field.kind === 'button' && surface.kind !== 'grid') issues.push(`Button fields require a grid layout: ${field.object}`)
     if (used.has(field.object)) issues.push(`Duplicate field: ${field.object}`)
     used.add(field.object)
+    painted(field.object)
     if (field.labelObject) {
       const label = objects.get(field.labelObject)
       if (!label || label.type !== 'text' || label.band !== (field.labelBand ?? (processing === 1 ? 'header' : 'detail'))) issues.push(`Unsupported label: ${field.labelObject}`)
       if (!label?.text?.trim() && !field.label?.trim()) issues.push(`Missing label: ${field.object}`)
-      if (used.has(field.labelObject)) issues.push(`Duplicate label: ${field.labelObject}`)
+      const owner = labelOwners.get(field.labelObject)
+      const shared = owner !== undefined && !!object && !!objects.get(owner) && sameBox(objects.get(owner)!, object)
+      if (used.has(field.labelObject) && !shared) issues.push(`Duplicate label: ${field.labelObject}`)
+      // A reviewed one-row criteria form may name its field by a header text (`labelBand: 'header'`), which its window replaces by an
+      // external caption; every other caption must be one the source paints.
+      if (owner === undefined) { labelOwners.set(field.labelObject, field.object); if (!(surface.kind === 'form' && field.labelBand === 'header')) painted(field.labelObject) }
       used.add(field.labelObject)
     } else if (!field.label?.trim()) issues.push(`Missing label: ${field.object}`)
     if (field.labelHidden && !field.label?.trim()) issues.push(`Hidden label needs an accessible name: ${field.object}`)
@@ -297,6 +400,7 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
       if (!suffix || suffix.type !== 'text' || suffix.band !== 'detail') issues.push(`Unsupported suffix: ${field.suffixObject}`)
       if (used.has(field.suffixObject)) issues.push(`Duplicate suffix: ${field.suffixObject}`)
       used.add(field.suffixObject)
+      painted(field.suffixObject)
     }
     if (object) {
       const style = choiceStyle(object, overrides)
@@ -358,6 +462,7 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
         if (!object || object.type !== 'groupbox' || object.band !== 'detail') issues.push(`Unsupported group: ${group.object}`)
         if (used.has(group.object)) issues.push(`Duplicate group: ${group.object}`)
         used.add(group.object)
+        painted(group.object)
       }
       if (!group.fields.length) issues.push(`Empty group: ${group.object}`)
       grouped.push(...group.fields)
@@ -377,6 +482,7 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
       }
       if (used.has(separator.object)) issues.push(`Duplicate separator: ${separator.object}`)
       used.add(separator.object)
+      painted(separator.object)
       const position = separator.before === undefined ? surface.fields.length :
         surface.fields.findIndex((field) => field.object === separator.before)
       if (position < 0 || position <= previous) issues.push(`Invalid separator order: ${separator.object}`)
@@ -390,7 +496,12 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
       if (!object || object.type !== 'text' || object.band !== captionBand) issues.push(`Unsupported caption: ${caption.object}`)
       if (used.has(caption.object)) issues.push(`Duplicate caption: ${caption.object}`)
       used.add(caption.object)
+      painted(caption.object)
       if (caption.before !== undefined && !surface.fields.some((field) => field.object === caption.before)) issues.push(`Invalid caption position: ${caption.object}`)
+      // A grid's column header travels with its column: the header of a hidden column is never a free caption.
+      const column = surface.kind === 'grid' && object ? def.objects.find((item) => (item.type === 'column' || item.type === 'compute') &&
+        item.band === 'detail' && alwaysHidden(item.visible) && exactHeader(object, item)) : undefined
+      if (column && !alwaysHidden(object!.visible)) issues.push(`Header of a hidden column mapped as a caption: ${caption.object}`)
     }
   }
   if (surface.buttons) {
@@ -400,16 +511,17 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
       if (!object || object.type !== 'button' || object.band !== 'detail') issues.push(`Unsupported button: ${button.object}`)
       if (used.has(button.object)) issues.push(`Duplicate button: ${button.object}`)
       used.add(button.object)
+      painted(button.object)
       if (button.before !== undefined && !surface.fields.some((field) => field.object === button.before)) issues.push(`Invalid button position: ${button.object}`)
     }
   }
   for (const name of surface.decorations ?? []) {
     const object = objects.get(name)
-    const band = object && def.bands[object.band]
-    const clippedHeight = band && !Array.isArray(band) ? Number(band.height ?? 0) : 0
-    const clipped = !!object && clippedHeight > 0 && Number(object.y ?? 0) >= clippedHeight
-    // Static artwork, or any object the source clips below its band, is accounted for and not painted.
-    if (!object || !(clipped || object.band === 'background' || (object.type === 'line' || ['bitmap', 'rectangle', 'roundrectangle', 'ellipse'].includes(object.type) && !['summary', 'footer'].includes(object.band)))) issues.push(`Unsupported decoration: ${name}`)
+    const clipped = !!object && clippedObject(def, object)
+    // Static artwork, or any object the source never paints (below its band, or in a header or detail band without height), is accounted
+    // for and not painted.  Text, columns and computed values in the background layer are painted content, never decoration.
+    const art = !!object && (object.type === 'line' || ['bitmap', 'rectangle', 'roundrectangle', 'ellipse'].includes(object.type) && !['summary', 'footer'].includes(object.band))
+    if (!object || !(clipped || art)) issues.push(`Unsupported decoration: ${name}`)
     if (used.has(name)) issues.push(`Duplicate decoration: ${name}`)
     used.add(name)
   }
@@ -457,6 +569,72 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
     }
   }
   for (const object of def.objects) if (!used.has(object.name.toLowerCase())) issues.push(`Unmapped object: ${object.name}`)
+  return issues
+}
+
+/**
+ * Position checks of a mapping against the geometry of its definition: every caption, suffix and column header must sit where the source
+ * paints it for that field, captions stay in the groupbox that holds them, and the presentation order follows the source reading order.
+ * The generators refuse any mapping that fails them (it keeps the Classic layout).  The runtime keeps to the structural checks of
+ * `dataSurfaceIssues`, because a script may re-lay a definition's objects while it runs.
+ */
+export function dataSurfacePositionIssues(def: DwDef, surface: DataSurface): string[] {
+  const issues: string[] = []
+  const objects = new Map(def.objects.map((object) => [object.name.toLowerCase(), object]))
+  const fieldObjects = surface.fields.flatMap((field) => objects.get(field.object) ?? [])
+  const peersOf = (object: DwObject) => fieldObjects.filter((other) => alwaysHidden(other.visible) === alwaysHidden(object.visible))
+  const visibleIn = (names: readonly string[]) => names.flatMap((name) => objects.get(name) ?? []).filter((object) => !alwaysHidden(object.visible))
+  if (surface.kind === 'form') {
+    const groupboxes = def.objects.filter((object) => object.type === 'groupbox' && object.band === 'detail')
+    const groupOf = new Map<string, string>()
+    for (const group of surface.groups ?? []) for (const name of group.fields) groupOf.set(name, group.object)
+    const valid = (text: DwObject, field: DwObject) => captionBeside(text, field) && !fieldBetween(text, field, peersOf(field)) || captionAbove(text, field)
+    for (const field of surface.fields) {
+      const object = objects.get(field.object)
+      if (!object) continue
+      const label = field.labelObject ? objects.get(field.labelObject) : undefined
+      // Only a caption painted in the detail band beside its field has a source position to compare (a reviewed header caption has none).
+      if (label?.band === 'detail') {
+        const sharers = surface.fields.filter((other) => other.labelObject === field.labelObject).flatMap((other) => objects.get(other.object) ?? [])
+        if (!sharers.some((other) => valid(label, other))) issues.push(`Caption is not beside its field in the source: ${field.object}`)
+        // A trailing text the painter named after the field it follows (<column>_t) is that field's suffix, not the next field's caption.
+        const owner = surface.fields.find((other) => other !== field && `${other.object}_t` === field.labelObject && objects.get(other.object))
+        if (owner && suffixBeside(label, objects.get(owner.object)!) && !/:\s*$/.test(label.text ?? '')) issues.push(`Caption belongs to another field: ${field.object}`)
+        const box = surface.groups ? holderBox(groupboxes, label) : undefined
+        if (box && box.name.toLowerCase() !== groupOf.get(field.object)) issues.push(`Caption sits in another group: ${field.object}`)
+      }
+      const suffix = field.suffixObject ? objects.get(field.suffixObject) : undefined
+      if (suffix && !suffixBeside(suffix, object)) issues.push(`Suffix is not beside its field in the source: ${field.object}`)
+    }
+    for (const names of surface.groups ? surface.groups.map((group) => group.fields) : [surface.fields.map((field) => field.object)]) {
+      const visible = visibleIn(names)
+      for (let index = 1; index < visible.length; index++) {
+        const [before, after] = [visible[index - 1], visible[index]]
+        if (sameReadingRow(before, after) && rightOf(after) <= at(before, 'x')) issues.push(`Field order differs from the source reading order: ${after.name.toLowerCase()}`)
+      }
+    }
+    if (surface.groups) {
+      // A heading or button stays in the groupbox that holds it (or outside every box when no box holds it).
+      for (const item of [...surface.captions ?? [], ...surface.buttons ?? []]) {
+        const object = objects.get(item.object)
+        if (!object) continue
+        const box = holderBox(groupboxes, object)?.name.toLowerCase() ?? ''
+        const placed = item.before === undefined ? '' : groupOf.get(item.before)
+        if (placed !== box) issues.push(`Placed outside the groupbox that holds it: ${item.object}`)
+      }
+    }
+  } else {
+    for (const field of surface.fields) {
+      const label = field.labelObject ? objects.get(field.labelObject) : undefined, object = objects.get(field.object)
+      if (label && object && Math.min(rightOf(label), rightOf(object)) - Math.max(at(label, 'x'), at(object, 'x')) <= 0) {
+        issues.push(`Column header is not above its column: ${field.object}`)
+      }
+    }
+    const visible = visibleIn(surface.fields.map((field) => field.object))
+    for (let index = 1; index < visible.length; index++) {
+      if (at(visible[index], 'x') < at(visible[index - 1], 'x')) issues.push(`Column order differs from the source: ${visible[index].name.toLowerCase()}`)
+    }
+  }
   return issues
 }
 

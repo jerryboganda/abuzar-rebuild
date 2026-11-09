@@ -21,11 +21,106 @@ export interface WindowSurface {
   sheet?: true
   /** Containers and rich controls kept as their original element (with their own children) inside the Modern frame. */
   embedded?: readonly string[]
+  /** Command buttons the source places among the content (a "...." picker beside its option, a Retrieve beside the criteria): they keep
+   * their source position; only the buttons of the window's own button row or column are `actions`. */
+  buttons?: readonly string[]
+  /** Visible pictures, drawn rectangles and progress bars (a photo, a colour key, a progress bar): kept as their original element at their
+   * source position.  Hidden ones are `auxiliary`. */
+  artwork?: readonly string[]
+  /** The content each groupbox (`frame` or `frames`) encloses in the source, by the centre of each item and innermost box only: the box
+   * keeps its caption with exactly these controls.  A frame without an entry keeps the plain caption placement. */
+  members?: Readonly<Record<string, readonly string[]>>
 }
 
 export const EMBEDDED_NATIVES: readonly string[] = ['tab', 'userobject', 'olecustomcontrol', 'richtextedit', 'listview', 'statichyperlink']
 /** A DataWindow may also be embedded when the source assigns its object at run time. */
 const EMBEDDABLE_NATIVES: readonly string[] = [...EMBEDDED_NATIVES, 'datawindow']
+export const ARTWORK_NATIVES: readonly string[] = ['picture', 'rectangle', 'hprogressbar']
+
+/** A window control's source geometry (PowerBuilder units), as the generator and the position checks read it. */
+export interface ControlBox { name: string; native: string; x: number; y: number; width: number; height: number; hidden: boolean }
+
+// Controls that own the row they stand on: a caption cannot reach past one of them to a farther control.
+const ROW_OWNERS: readonly string[] = ['editmask', 'singlelineedit', 'dropdownlistbox', 'multilineedit', 'listbox', 'datawindow', 'checkbox',
+  'radiobutton', 'commandbutton', 'monthcalendar', ...EMBEDDED_NATIVES]
+/** A drop-down's stored height includes its open list; it occupies one line when closed, as Classic paints it. */
+export const closedHeight = (box: ControlBox) => /dropdown|combobox/.test(box.native) ? Math.min(box.height, 80) : box.height
+const rightEdge = (box: ControlBox) => box.x + box.width
+const bottomEdge = (box: ControlBox) => box.y + closedHeight(box)
+const middle = (box: ControlBox) => box.y + closedHeight(box) / 2
+const rowShare = (a: ControlBox, b: ControlBox) => Math.min(bottomEdge(a), bottomEdge(b)) - Math.max(a.y, b.y)
+
+/** Another control stands on the row between a caption and its target. */
+export function controlBetween(text: ControlBox, target: ControlBox, boxes: readonly ControlBox[]): boolean {
+  return boxes.some((other) => other !== target && other !== text && ROW_OWNERS.includes(other.native) && other.hidden === target.hidden &&
+    other.x >= rightEdge(text) - 8 && rightEdge(other) <= target.x + 8 && rowShare(other, text) > 0 &&
+    rowShare(other, target) >= 0.5 * Math.min(closedHeight(other), closedHeight(target)))
+}
+
+/** A caption on the control's own row, starting left of it, with no other control between them. */
+export function windowCaptionBeside(text: ControlBox, target: ControlBox, boxes: readonly ControlBox[]): boolean {
+  return Math.abs(middle(text) - middle(target)) <= Math.max(closedHeight(target), 60) && text.x < target.x - 4 && !controlBetween(text, target, boxes)
+}
+
+/** A caption stacked above the control, sharing part of its width, with a short gap. */
+export function windowCaptionAbove(text: ControlBox, target: ControlBox): boolean {
+  return Math.min(rightEdge(text), rightEdge(target)) - Math.max(text.x, target.x) > 0 && bottomEdge(text) <= target.y + 16 && target.y - bottomEdge(text) <= 200
+}
+
+/** A window caption that names a field of the DataWindow beside it: left of the DataWindow, within its rows, nothing between. */
+export function windowDataCaption(text: ControlBox, data: ControlBox, boxes: readonly ControlBox[]): boolean {
+  return rightEdge(text) <= data.x + 16 && middle(text) >= data.y - 60 && middle(text) <= data.y + data.height + 60 && !controlBetween(text, data, boxes)
+}
+
+/**
+ * A command button the source places among the content rather than in the window's button row or column: a visible groupbox encloses
+ * it (a "...." picker in its option box), or visible content stands both above and below it, or on its own row both left and right of
+ * it.  OK and Cancel under the content, or a column of buttons beside it, are the window's actions.
+ */
+export function amongContent(button: ControlBox, boxes: readonly ControlBox[]): boolean {
+  const content = boxes.filter((box) => !box.hidden && box !== button && box.native !== 'commandbutton' && box.width > 0 && box.height > 0)
+  const cx = button.x + button.width / 2, cy = middle(button)
+  if (content.some((box) => box.native === 'groupbox' && cx >= box.x && cx <= rightEdge(box) && cy >= box.y && cy <= box.y + box.height)) return true
+  const others = content.filter((box) => box.native !== 'groupbox')
+  if (others.some((box) => bottomEdge(box) <= button.y + 8) && others.some((box) => box.y >= bottomEdge(button) - 8)) return true
+  const row = others.filter((box) => rowShare(box, button) >= 0.5 * Math.min(closedHeight(box), closedHeight(button)))
+  return row.some((box) => rightEdge(box) <= button.x + 8) && row.some((box) => box.x >= rightEdge(button) - 8)
+}
+
+/**
+ * The groupbox that holds each item: the one enclosing the largest share of the item (at least half of it; a box that encloses it whole
+ * wins over one it only overlaps), the innermost on a tie.  Overlapping alternative boxes (a "Date" and an "Invoice" box a script
+ * switches between) so keep each control with the box it stands in.  A groupbox may hold another groupbox only whole, never itself.
+ */
+export function frameMembers(frames: readonly string[], items: readonly string[], boxes: readonly ControlBox[]): Record<string, string[]> {
+  const byName = new Map(boxes.map((box) => [box.name, box]))
+  const area = (box: ControlBox) => Math.max(1, box.width) * Math.max(1, closedHeight(box))
+  const share = (box: ControlBox, item: ControlBox) => {
+    const width = Math.min(rightEdge(box) + 8, rightEdge(item)) - Math.max(box.x - 8, item.x)
+    const height = Math.min(box.y + box.height + 8, bottomEdge(item)) - Math.max(box.y - 8, item.y)
+    return width > 0 && height > 0 ? Math.min(1, width * height / area(item)) : 0
+  }
+  const holders = frames.flatMap((name) => byName.get(name) ?? [])
+  const members: Record<string, string[]> = {}
+  for (const name of items) {
+    const item = byName.get(name)
+    if (!item) continue
+    const frame = frames.includes(name)
+    const holder = holders.map((box) => ({ box, share: share(box, item) }))
+      .filter(({ box, share }) => box !== item && (frame ? share >= 0.999 && area(box) > area(item) : share >= 0.5))
+      .sort((a, b) => b.share - a.share || area(a.box) - area(b.box))[0]?.box
+    if (holder) (members[holder.name] ??= []).push(name)
+  }
+  return members
+}
+
+/** Every content item of a window surface (what `contentOrder` and frame `members` may name). */
+export function windowContentItems(surface: WindowSurface): string[] {
+  return [...surface.fields.map((field) => field.control), ...(surface.captions ?? []), ...(surface.frames ?? []),
+    ...(surface.lists ?? []).map((list) => list.control), ...(surface.calendars ?? []), ...(surface.embedded ?? []),
+    ...(surface.data ?? []).map((data) => data.control), ...(surface.options ?? []).map((option) => option.control),
+    ...(surface.buttons ?? []), ...(surface.artwork ?? [])]
+}
 
 export const LOOKUP_CRITERIA_WINDOWS = [
   ['w_arg_acc_sdate_ldate', 'd_arg_acc'],
@@ -1172,6 +1267,31 @@ export function windowSurfaceIssues(
     used.add(name)
   }
   for (const action of surface.actions) use(action, ['commandbutton'])
+  for (const name of surface.buttons ?? []) use(name, ['commandbutton'])
+  for (const name of surface.artwork ?? []) use(name, ARTWORK_NATIVES)
+  if (surface.members) {
+    const frames = [...(surface.frame ? [surface.frame] : []), ...(surface.frames ?? [])]
+    const content = new Set(windowContentItems(surface))
+    const held = new Set<string>()
+    for (const [frame, members] of Object.entries(surface.members)) {
+      if (!frames.includes(frame)) issues.push(`Members of an unmapped frame: ${frame}`)
+      if (!members.length) issues.push(`Empty frame members: ${frame}`)
+      for (const member of members) {
+        if (member === frame || !content.has(member) && !frames.includes(member)) issues.push(`Unsupported frame member: ${frame}.${member}`)
+        if (held.has(member)) issues.push(`Duplicate frame member: ${member}`)
+        held.add(member)
+      }
+    }
+    // Frames nest without a cycle: following the holder of each frame always ends outside every frame.
+    const holderOf = new Map(Object.entries(surface.members).flatMap(([frame, members]) => members.filter((member) => frames.includes(member)).map((member) => [member, frame] as const)))
+    for (const frame of frames) {
+      const seen = new Set<string>()
+      for (let at: string | undefined = frame; at; at = holderOf.get(at)) {
+        if (seen.has(at)) { issues.push(`Frames enclose each other: ${frame}`); break }
+        seen.add(at)
+      }
+    }
+  }
   const labels = new Set<string>()
   for (const data of surface.data ?? []) for (const label of data.labels ?? []) {
     if (data.surface.kind !== 'form' || !surface.captions?.includes(label.control) ||
@@ -1184,14 +1304,59 @@ export function windowSurfaceIssues(
     labels.add(label.control)
   }
   if (surface.contentOrder) {
-    const content = [...surface.fields.map((field) => field.control), ...(surface.captions ?? []), ...(surface.frames ?? []),
-      ...(surface.lists ?? []).map((list) => list.control), ...(surface.calendars ?? []), ...(surface.embedded ?? []),
-      ...(surface.data ?? []).map((data) => data.control), ...(surface.options ?? []).map((option) => option.control)]
+    const content = windowContentItems(surface)
     if (surface.contentOrder.length !== content.length || new Set(surface.contentOrder).size !== content.length ||
       surface.contentOrder.some((name) => !content.includes(name))) {
-      issues.push('Content order must include every field, caption, frame, list, DataWindow and option once')
+      issues.push('Content order must include every field, caption, frame, list, DataWindow, option, button and artwork once')
     }
   }
   for (const control of controls) if (!used.has(control.name)) issues.push(`Unmapped control: ${control.name}`)
+  return issues
+}
+
+/**
+ * Position checks of a window mapping against the source geometry of its controls: every field caption and external DataWindow caption
+ * sits beside or above what it names with no other control between, a command button in the action row is not one the source places
+ * among the content, and each frame's members are exactly the content it encloses.  The generator refuses any mapping that fails them
+ * (the window keeps its Classic layout).  The runtime keeps to the structural checks of `windowSurfaceIssues`, because a script may move
+ * controls while the window opens.
+ */
+export function windowSurfacePositionIssues(boxes: readonly ControlBox[], surface: WindowSurface, ancestors: readonly (readonly ControlBox[])[] = []): string[] {
+  const issues: string[] = []
+  const box = new Map(boxes.map((item) => [item.name, item]))
+  const valid = (text: ControlBox, target: ControlBox, geometry: readonly ControlBox[]) => windowCaptionBeside(text, target, geometry) || windowCaptionAbove(text, target)
+  for (const field of surface.fields) {
+    const target = box.get(field.control), text = field.label ? box.get(field.label) : undefined
+    if (!target || !text || valid(text, target, boxes)) continue
+    // A hidden inherited field keeps the caption the nearest ancestor that places it gives it (`ancestors`, nearest first).
+    const placing = target.hidden && text.hidden ? ancestors.find((geometry) => geometry.some((item) => item.name === target.name)) : undefined
+    const inherited = placing && placing.find((item) => item.name === text.name)
+    if (!(placing && inherited && valid(inherited, placing.find((item) => item.name === target.name)!, placing))) {
+      issues.push(`Caption is not beside its field in the source: ${field.control}`)
+    }
+  }
+  for (const data of surface.data ?? []) {
+    const target = box.get(data.control)
+    // A hidden inherited DataWindow is captioned as the nearest ancestor that places it captions it.
+    const placing = target?.hidden ? ancestors.find((geometry) => geometry.some((item) => item.name === target.name)) : undefined
+    for (const label of data.labels ?? []) {
+      const text = box.get(label.control)
+      if (!target || !text) continue
+      const inherited = placing?.find((item) => item.name === text.name)
+      const ok = placing ? !!inherited && text.hidden && windowDataCaption(inherited, placing.find((item) => item.name === target.name)!, placing) :
+        windowDataCaption(text, target, boxes)
+      if (!ok) issues.push(`Caption is not beside its DataWindow in the source: ${data.control}.${label.field}`)
+    }
+  }
+  for (const action of surface.actions) {
+    const button = box.get(action)
+    if (button && !button.hidden && amongContent(button, boxes)) issues.push(`A button the source places among the content is in the action row: ${action}`)
+  }
+  if (surface.members) {
+    const frames = [...(surface.frame ? [surface.frame] : []), ...(surface.frames ?? [])]
+    const expected = frameMembers(frames, [...windowContentItems(surface), ...(surface.frame ? [surface.frame] : [])], boxes)
+    const key = (members: Readonly<Record<string, readonly string[]>>) => JSON.stringify(Object.keys(members).sort().map((name) => [name, [...members[name]].sort()]))
+    if (key(surface.members) !== key(expected)) issues.push('Frame members differ from the content each groupbox encloses in the source')
+  }
   return issues
 }

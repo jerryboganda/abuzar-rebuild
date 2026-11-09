@@ -100,6 +100,12 @@ jobs:
           python3 tools/build_sql_tables.py data/sql web/public/data/sql.json
           node web/tools/build-classes.ts data/src/objects data/src/scripts web/public/data/classes data/src/menu_trees
           mkdir -p web/public/data/dw && cp data/src/dw/* web/public/data/dw/ && cp data/src/names/names.json web/public/data/
+      - name: Generated Modern layouts and the document classification are current (regenerated from the recovered sources)
+        working-directory: web
+        run: |
+          for tool in classify-documents derive-data-surfaces derive-entry-windows derive-modal-windows; do
+            node tools/$tool.ts --check > /dev/null || { echo "::error::web/tools/$tool.ts --check: the generated files are stale"; exit 1; }
+          done
       - name: Build synthetic browser fixture
         run: node web/tools/build-static.ts web/dist
       - name: Install Chromium

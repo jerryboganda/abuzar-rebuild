@@ -11,7 +11,10 @@ import type { DwDef, DwObject } from '../src/dw/def.ts'
 import { choiceStyle } from '../src/dw/choices.ts'
 import { dwMultiline } from '../src/dw/edit.ts'
 import { numericSpin } from '../src/ui/numeric-spin.ts'
-import { DATA_SURFACES, dataSurfaceIssues } from '../src/ui/data-surfaces.ts'
+import {
+  DATA_SURFACES, dataSurfaceIssues, dataSurfacePositionIssues, alwaysHidden, clippedObject, captionBeside, captionAbove, fieldBetween,
+  suffixBeside, sameBox, readingOrder, exactHeader, holderBox,
+} from '../src/ui/data-surfaces.ts'
 import { ENTRY_WINDOW_SURFACES, WINDOW_SURFACES, CALCULATOR_WINDOW_SURFACES, CRITERIA_WINDOW_SURFACES } from '../src/ui/window-surfaces.ts'
 import type { DataSurface, DataSurfaceField } from '../src/ui/data-surfaces.ts'
 
@@ -38,12 +41,8 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
   const processing = Number(def.datawindow.processing ?? 0)
   if (processing !== 0 && processing !== 1) return { reason: `processing style ${processing}` }
   // A freeform ("tabular") DataWindow whose captions sit in a header band reads as a grid, as the original paints it.
-  // An object placed below its band's height is clipped by the original and never painted.
-  const clippedOf = (object: DwObject) => {
-    const props = def.bands[object.band]
-    const height = props && !Array.isArray(props) ? Number(props.height ?? 0) : 0
-    return height > 0 && Number(object.y ?? 0) >= height
-  }
+  // An object placed below its band's height, or in a header or detail band without height, is never painted by the original.
+  const clippedOf = (object: DwObject) => clippedObject(def, object)
   const clipped = def.objects.filter(clippedOf)
   const live = def.objects.filter((object) => !clippedOf(object))
   const tabular = processing === 0 && live.some((object) => object.type === 'text' && object.band === 'header') &&
@@ -61,7 +60,7 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
       object.type === 'text' && object.band === labelBand ||
       kind === 'form' && (object.type === 'groupbox' || object.type === 'line') && object.band === 'detail' ||
       kind === 'form' && object.type === 'button' && object.band === 'detail' ||
-      object.band === 'background' ||
+      // Text, columns and computed values in the background layer are painted content (a heading such as "Item Name: ..."), not artwork.
       ART.has(object.type) && (object.band === 'detail' || object.band === 'header' || object.band === 'background') ||
       object.type === 'line' && (totalBands as readonly string[]).includes(object.band) ||
       kind === 'grid' && (object.type === 'text' || object.type === 'compute') && (totalBands as readonly string[]).includes(object.band) ||
@@ -78,43 +77,58 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
   const separatorLines = new Set(lines.map((line) => line.name))
   if (!fields.length && !(kind === 'form' && (inBand('detail', 'button').length || texts.length))) return { reason: 'no fields' }
   const columnOf = (object: DwObject) => def.table.columns.find((column) => column.name.toLowerCase() === object.name.toLowerCase())
-  const hidden = (object: DwObject) => object.visible === '0'
+  // A visibility that is the constant 0 (`1<TAB>0`) hides the object for good: it never owns a caption a visible field shows.
+  const hidden = (object: DwObject) => alwaysHidden(object.visible)
   const taken = new Set<string>()
   const labelOf = new Map<string, DwObject>()
   const suffixOf = new Map<string, DwObject>()
   const visibleFields = fields
   const right = (object: DwObject) => num(object, 'x') + num(object, 'width')
   if (kind === 'grid') {
+    const overlapOf = (text: DwObject, field: DwObject) => Math.min(right(field), right(text)) - Math.max(num(field, 'x'), num(text, 'x'))
+    // PowerBuilder's grid hides a column's header with the column, so a hidden column owns the visible header painted exactly over it.
+    const ownsHeader = (text: DwObject, field: DwObject) => hidden(text) === hidden(field) ||
+      processing === 1 && hidden(field) && !hidden(text) && exactHeader(text, field)
+    // The header that covers the column best (the shared part of the narrower of the two); a text that heads several columns (a report
+    // title, a group caption) loses a tie to the column's own header, and a lower header row (nearer the detail band) wins the rest.
+    const spans = (text: DwObject) => fields.filter((field) => overlapOf(text, field) > 0.5 * num(field, 'width')).length
+    const rank = (text: DwObject, field: DwObject) => [
+      Math.round(100 * overlapOf(text, field) / Math.max(1, Math.min(num(text, 'width'), num(field, 'width')))), -spans(text), overlapOf(text, field), num(text, 'y'),
+    ]
+    const better = (a: number[], b: number[]) => { for (let index = 0; index < a.length; index++) if (a[index] !== b[index]) return a[index] > b[index]; return false }
     for (const field of visibleFields) {
-      const left = num(field, 'x'), end = right(field)
-      let best: DwObject | undefined, bestOverlap = 0
+      let best: DwObject | undefined, bestRank: number[] = []
       for (const text of texts) {
-        if (taken.has(text.name) || hidden(text) !== hidden(field)) continue
-        const overlap = Math.min(end, right(text)) - Math.max(left, num(text, 'x'))
-        if (overlap > bestOverlap) { best = text; bestOverlap = overlap }
+        if (taken.has(text.name) || !ownsHeader(text, field) || overlapOf(text, field) <= 0) continue
+        const score = rank(text, field)
+        if (!best || better(score, bestRank)) { best = text; bestRank = score }
       }
       if (best) { labelOf.set(field.name, best); taken.add(best.name) }
     }
+    // A free tabular header painted over a hidden column has no Modern place: the column is left out, the text would float above it.
+    const orphan = texts.find((text) => !taken.has(text.name) && !hidden(text) && fields.some((field) => hidden(field) && exactHeader(text, field)))
+    if (orphan) return { reason: 'header over a hidden column' }
   } else {
     // Labels sit left of their field on the same row; suffixes sit to the right on the same row.
-    const sameRow = (text: DwObject, field: DwObject) => hidden(text) === hidden(field) &&
-      Math.abs(centreY(text) - centreY(field)) <= Math.max(num(field, 'height'), 40)
+    const sameRow = (text: DwObject, field: DwObject) => hidden(text) === hidden(field) && captionBeside(text, field)
+    const bottom = (object: DwObject) => num(object, 'y') + num(object, 'height')
+    const stackedAbove = (text: DwObject, field: DwObject) => hidden(text) === hidden(field) && captionAbove(text, field)
+    // A caption cannot be paired with a field when another field sits between them on that row: that field owns the caption.
+    const between = (text: DwObject, field: DwObject) => fieldBetween(text, field, visibleFields.filter((other) => hidden(other) === hidden(field)))
+    // A trailing text the painter named after the field it follows (<column>_t, "(L)" after the length) is that field's suffix; taken
+    // first, it is never read as the caption of the next field on the row.
+    for (const field of visibleFields) {
+      const own = texts.find((text) => text.name.toLowerCase() === `${field.name.toLowerCase()}_t` && hidden(text) === hidden(field) &&
+        suffixBeside(text, field) && !/:\s*$/.test(text.text ?? ''))
+      if (own && !taken.has(own.name)) { suffixOf.set(field.name, own); taken.add(own.name) }
+    }
     // Globally cheapest pairs first (vertical alignment dominates), so a near label is never taken by a farther field.
     // A caption stacked directly above its field (left edges aligned, a short gap) is paired too, at a small penalty so a caption on the
     // field's own row still wins when both exist; without it a stacked caption is taken by a farther field on its row.
-    const bottom = (object: DwObject) => num(object, 'y') + num(object, 'height')
-    const stackedAbove = (text: DwObject, field: DwObject) => hidden(text) === hidden(field) && bottom(text) <= num(field, 'y') + 8 &&
-      num(field, 'y') - bottom(text) <= Math.max(num(field, 'height') * 2, 120) &&
-      Math.abs(num(text, 'x') - num(field, 'x')) <= Math.max(num(text, 'width') * 0.5, 100)
-    // A caption cannot be paired with a field when another field sits between them on that row: that field owns the caption.
-    const between = (text: DwObject, field: DwObject) => visibleFields.some((other) => other !== field && hidden(other) === hidden(field) &&
-      num(other, 'x') >= right(text) - 8 && right(other) <= num(field, 'x') + 8 &&
-      Math.min(bottom(other), bottom(field)) - Math.max(num(other, 'y'), num(field, 'y')) >= 0.5 * Math.min(num(other, 'height'), num(field, 'height')) &&
-      Math.min(bottom(other), bottom(text)) - Math.max(num(other, 'y'), num(text, 'y')) > 0)
     const candidates = visibleFields.flatMap((field) => [
-      ...texts.filter((text) => sameRow(text, field) && right(text) <= num(field, 'x') + 8 && !between(text, field))
+      ...texts.filter((text) => !taken.has(text.name) && sameRow(text, field) && !between(text, field))
         .map((text) => ({ field, text, cost: Math.abs(centreY(text) - centreY(field)) * 10 + (num(field, 'x') - right(text)) })),
-      ...texts.filter((text) => stackedAbove(text, field))
+      ...texts.filter((text) => !taken.has(text.name) && stackedAbove(text, field))
         .map((text) => ({ field, text, cost: (num(field, 'y') - bottom(text)) * 10 + Math.abs(num(text, 'x') - num(field, 'x')) + 200 })),
     ]).sort((a, b) => a.cost - b.cost)
     const paired = new Set<string>()
@@ -124,33 +138,35 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
       labelOf.set(field.name, text)
       taken.add(text.name)
     }
+    // Fields painted over each other (alternatives a script or expression switches between) share the one caption the source paints.
     for (const field of visibleFields) {
+      if (labelOf.has(field.name) || hidden(field)) continue
+      const twin = visibleFields.find((other) => other !== field && labelOf.has(other.name) && hidden(other) === hidden(field) && sameBox(other, field))
+      if (twin) labelOf.set(field.name, labelOf.get(twin.name)!)
+    }
+    for (const field of visibleFields) {
+      if (suffixOf.has(field.name)) continue
       // A suffix is trailing text directly beside its field ("%", "Customer(s)"); a farther text or a label-like one (ends with a colon) is not.
-      const candidates = texts.filter((text) => !taken.has(text.name) && sameRow(text, field) && num(text, 'x') >= right(field) - 8 &&
-        num(text, 'x') - right(field) <= 120 && !/:\s*$/.test(text.text ?? ''))
-        .sort((a, b) => num(a, 'x') - num(b, 'x'))
+      const candidates = texts.filter((text) => !taken.has(text.name) && hidden(text) === hidden(field) && suffixBeside(text, field) &&
+        !/:\s*$/.test(text.text ?? '')).sort((a, b) => num(a, 'x') - num(b, 'x'))
       if (candidates.length) { suffixOf.set(field.name, candidates[0]); taken.add(candidates[0].name) }
     }
   }
   const loose = texts.filter((text) => !taken.has(text.name))
-  let order = [...fields].sort(kind === 'grid' ?
-    (a, b) => num(a, 'x') - num(b, 'x') || num(a, 'y') - num(b, 'y') :
-    (a, b) => num(a, 'y') - num(b, 'y') || num(a, 'x') - num(b, 'x'))
+  let order = kind === 'grid' ? [...fields].sort((a, b) => num(a, 'x') - num(b, 'x') || num(a, 'y') - num(b, 'y')) : readingOrder(fields)
   let groups: { object: string; fields: string[] }[] | undefined
   if (groupboxes.length) {
     if (lines.length) return { reason: 'groups combined with separators' }
     const sorted = [...groupboxes].sort((a, b) => num(a, 'y') - num(b, 'y') || num(a, 'x') - num(b, 'x'))
-    const area = (box: DwObject) => num(box, 'width') * num(box, 'height')
     const owner = new Map<string, DwObject>()
     for (const field of fields) {
-      const cx = num(field, 'x') + num(field, 'width') / 2, cy = centreY(field)
-      const holders = sorted.filter((box) => cx >= num(box, 'x') && cx <= right(box) && cy >= num(box, 'y') && cy <= num(box, 'y') + num(box, 'height'))
-        .sort((a, b) => area(a) - area(b))
-      if (holders.length) owner.set(field.name, holders[0])
+      const holder = holderBox(sorted, field)
+      if (holder) owner.set(field.name, holder)
     }
-    groups = sorted.map((box) => ({ object: box.name.toLowerCase(), fields: order.filter((field) => owner.get(field.name) === box).map((field) => field.name.toLowerCase()) }))
+    // Each section reads in its own order: fields of another box never decide which row a field shares.
+    groups = sorted.map((box) => ({ object: box.name.toLowerCase(), fields: readingOrder(order.filter((field) => owner.get(field.name) === box)).map((field) => field.name.toLowerCase()) }))
     if (groups.some((group) => !group.fields.length)) return { reason: 'empty group box' }
-    const outside = order.filter((field) => !owner.has(field.name))
+    const outside = readingOrder(order.filter((field) => !owner.has(field.name)))
     if (outside.length) {
       // Fields outside every box form one plain section, placed where its first field sits among the boxes.
       const top = Math.min(...outside.map((field) => num(field, 'y')))
@@ -168,7 +184,12 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
     const style = choiceStyle(object)
     if (style.kind === 'unsupported') return { reason: `choice: ${style.reason}` }
     if (label) { field.labelObject = label.name.toLowerCase(); if (tabular) field.labelBand = 'header' }
-    else if (hidden(object)) field.label = object.name
+    else if (hidden(object)) {
+      // A hidden field without a source caption: should a script show it, it is named for assistive technology only, as Classic paints
+      // no caption for it.
+      field.label = object.name.charAt(0).toUpperCase() + object.name.slice(1).replace(/_/g, ' ')
+      field.labelHidden = true
+    }
     else if (style.kind === 'checkbox' && object['checkbox.text']?.trim()) field.label = object['checkbox.text'].trim()
     else {
       // The source paints no caption: keep it that way and give the field an accessible name from its column.
@@ -205,24 +226,41 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
     if (lines < 2 || lines > 12) return { reason: 'multiline grid row height' }
     surface.rowLines = lines
   }
+  // A heading or button of a form is placed before the next field below it; in a grouped form only a field of the same groupbox (or of
+  // the plain section, for one outside every box) may follow it, so it never moves into another box.  A heading after the last field of
+  // its box has no place in the mapping, and the form keeps its Classic layout.
+  const boxOf = (object: DwObject) => groups ? holderBox(groupboxes, object)?.name.toLowerCase() ?? '' : ''
+  const placed = (object: DwObject): { before?: string } | null => {
+    const box = boxOf(object)
+    const before = order.filter((field) => centreY(field) > centreY(object) && boxOf(field) === box)
+      .sort((a, b) => centreY(a) - centreY(b) || num(a, 'x') - num(b, 'x'))[0]
+    if (!before && box) return null
+    return before ? { before: before.name.toLowerCase() } : {}
+  }
   if (loose.length && kind === 'grid') {
     surface.captions = [...loose].sort((x, y) => num(x, 'x') - num(y, 'x')).map((text) => ({ object: text.name.toLowerCase() }))
   } else if (loose.length) {
     // Source text that names no field (headings, notes, script-set values) is kept in place as a caption.
-    surface.captions = [...loose].sort((x, y) => num(x, 'y') - num(y, 'y') || num(x, 'x') - num(y, 'x')).map((text) => {
-      const before = [...order].filter((field) => centreY(field) > centreY(text)).sort((a, b) => centreY(a) - centreY(b) || num(a, 'x') - num(b, 'x'))[0]
-      return { object: text.name.toLowerCase(), ...(before ? { before: before.name.toLowerCase() } : {}) }
-    })
+    const captions: { object: string; before?: string }[] = []
+    for (const text of [...loose].sort((x, y) => num(x, 'y') - num(y, 'y') || num(x, 'x') - num(y, 'x'))) {
+      const position = placed(text)
+      if (!position) return { reason: 'heading after the last field of its groupbox' }
+      captions.push({ object: text.name.toLowerCase(), ...position })
+    }
+    surface.captions = captions
   }
   if (groups) surface.groups = groups
   const buttons = kind === 'grid' ? [] : live.filter((object) => object.type === 'button')
   if (buttons.length) {
-    surface.buttons = [...buttons].sort((x, y) => num(x, 'y') - num(y, 'y') || num(x, 'x') - num(y, 'x')).map((button) => {
-      const before = [...order].filter((field) => centreY(field) > centreY(button)).sort((a, b) => centreY(a) - centreY(b) || num(a, 'x') - num(b, 'x'))[0]
-      return { object: button.name.toLowerCase(), ...(before ? { before: before.name.toLowerCase() } : {}) }
-    })
+    const entries: { object: string; before?: string }[] = []
+    for (const button of [...buttons].sort((x, y) => num(x, 'y') - num(y, 'y') || num(x, 'x') - num(y, 'x'))) {
+      const position = placed(button)
+      if (!position) return { reason: 'button after the last field of its groupbox' }
+      entries.push({ object: button.name.toLowerCase(), ...position })
+    }
+    surface.buttons = entries
   }
-  const art = [...live.filter((object) => (ART.has(object.type) || object.band === 'background') && !(object.type === 'line' && separatorLines.has(object.name))), ...clipped]
+  const art = [...live.filter((object) => ART.has(object.type) && !(object.type === 'line' && separatorLines.has(object.name))), ...clipped]
   if (art.length) surface.decorations = art.map((object) => object.name.toLowerCase())
   if (lines.length) {
     const separators: { object: string; before?: string }[] = []
@@ -338,7 +376,10 @@ export function deriveValidated(name: string, def: DwDef): Derivation {
     try { result = derive(name, def, options) } catch (error) { result = { reason: `derivation error: ${(error as Error).message}` } }
     if (result.surface) {
       const issues = dataSurfaceIssues(def, result.surface)
+      const positions = issues.length ? [] : dataSurfacePositionIssues(def, result.surface)
       if (issues.length) result = { reason: `validation: ${issues[0].replace(/:.*$/, '')}` }
+      // A mapping whose captions, suffixes or order disagree with the source geometry is refused: the DataWindow keeps its Classic layout.
+      else if (positions.length) result = { reason: `position: ${positions[0].replace(/:.*$/, '')}` }
     }
     return result
   }

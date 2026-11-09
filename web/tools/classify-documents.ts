@@ -72,13 +72,15 @@ export function classify() {
 
   const registered = new Set(PRINT_TEMPLATES.flatMap((template) => template.definitions))
   const classes: Record<string, string[]> = {}
-  const flags = { captionless: 0, multiUp: 0, headerData: 0, letterhead: 0, pageNumbers: 0, grouped: 0, crosstab: 0, label: 0, graph: 0, composite: 0 }
+  const flags = { captionless: 0, multiUp: 0, headerData: 0, letterhead: 0, pageNumbers: 0, grouped: 0, crosstab: 0, label: 0, graph: 0, composite: 0, entryScreens: 0 }
   for (const [name, def] of definitions) {
     const used = uses.get(name) ?? {}
     const processing = Number(def.datawindow.processing ?? 0)
     const pageNumbers = def.objects.some((object) => /\bpage(count)?\s*\(/i.test(object.expression ?? ''))
-    // A company letterhead (f_ReportHeaderInfo*, owner preferences) or a reprint counter is printed-document evidence.
-    const letterhead = def.objects.some((object) => /f_reportheaderinfo|f_stringpreferences\s*\(\s*['"]owner|reprintcounter/i.test(object.expression ?? ''))
+    // A company letterhead (f_ReportHeaderInfo(), owner preferences) or a reprint counter outside the detail band is printed-document
+    // evidence.  A per-row lookup in the detail band (f_ReportHeaderInfosale('Remarks', headerno) in a selection grid) is not.
+    const letterhead = def.objects.some((object) => object.band !== 'detail' &&
+      /\bf_reportheaderinfo\s*\(|\bf_stringpreferences\s*\(\s*['"]owner|\breprintcounter\b/i.test(object.expression ?? ''))
     if (letterhead) flags.letterhead++
     // Record data (columns or computed values) printed in the header band is a document layout: on-screen grids keep only captions there.
     const headerData = def.objects.some((object) => object.band === 'header' && (object.type === 'column' || object.type === 'compute'))
@@ -97,8 +99,13 @@ export function classify() {
     if (processing === 2) flags.label++
     if (processing === 3) flags.graph++
     if (processing === 5) flags.composite++
+    // A DataWindow placed visibly on a window with columns the user can enter (a tab sequence) is an on-screen data-entry screen even when a
+    // script also prints it or its layout carries report features: it is never exempted from structural parity.
+    const entry = onScreen.has(name) && def.objects.some((object) => object.type === 'column' && object.band === 'detail' && Number(object.tabsequence ?? 0) > 0)
+    if (entry) flags.entryScreens++
     // Highest-evidence class first; a DataWindow lands in exactly one class.
     const cls = registered.has(name) ? 'registered-template' :
+      entry ? 'screen-control' :
       used.print ? 'print-target' :
       used.report || pageNumbers || letterhead || headerData || multiUp || captionless || [2, 3, 4, 5].includes(processing) ? 'report-or-document' :
       onScreen.has(name) ? 'screen-control' :

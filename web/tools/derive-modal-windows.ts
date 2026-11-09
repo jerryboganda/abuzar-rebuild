@@ -1,18 +1,23 @@
 // Derives Modern layouts for modal (response) windows - criteria and argument dialogs, selection popups and simple dialogs - by instantiating each
 // recovered window through the real runtime and pairing its controls by their stored geometry.  A layout is emitted only when the
-// existing `windowSurfaceIssues` check passes and every visible DataWindow has a validated surface; everything else stays on the
-// labelled Classic layout and is recorded with its reason in docs/ui-derived-modal-windows-backlog.json.
+// existing `windowSurfaceIssues` check and the source-position check `windowSurfacePositionIssues` pass and every visible DataWindow has
+// a validated surface; everything else stays on the labelled Classic layout and is recorded with its reason in
+// docs/ui-derived-modal-windows-backlog.json.  Run tools/classify-documents.ts and tools/derive-data-surfaces.ts first.
 //
 // usage: node tools/derive-modal-windows.ts [--check]     (run from web/)
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { Runtime } from '../src/runtime/interp.ts'
 import type { PBObject } from '../src/runtime/object.ts'
-import { EMBEDDED_NATIVES, WINDOW_SURFACES, CRITERIA_WINDOW_SURFACES, CALCULATOR_WINDOW_SURFACES, CALENDAR_WINDOW_SURFACES, windowSurfaceIssues } from '../src/ui/window-surfaces.ts'
-import type { WindowSurface } from '../src/ui/window-surfaces.ts'
+import {
+  EMBEDDED_NATIVES, ARTWORK_NATIVES, WINDOW_SURFACES, CRITERIA_WINDOW_SURFACES, CALCULATOR_WINDOW_SURFACES, CALENDAR_WINDOW_SURFACES,
+  windowSurfaceIssues, windowSurfacePositionIssues, windowCaptionBeside, windowCaptionAbove, windowDataCaption, closedHeight,
+  amongContent, frameMembers, windowContentItems,
+} from '../src/ui/window-surfaces.ts'
+import type { WindowSurface, ControlBox } from '../src/ui/window-surfaces.ts'
 import { DATA_SURFACES, CRITERIA_DATA_SURFACES, TRANSACTION_DATA_SURFACES, dataSurfaceIssues } from '../src/ui/data-surfaces.ts'
 import type { DataSurface } from '../src/ui/data-surfaces.ts'
-import { derive, deriveValidated, loadDefinitions } from './derive-data-surfaces.ts'
+import { deriveValidated, loadDefinitions } from './derive-data-surfaces.ts'
 import { dataSurfaceByName } from '../src/ui/surface-registry.ts'
 import type { DwDef } from '../src/dw/def.ts'
 
@@ -49,19 +54,37 @@ const toBox = (control: PBObject): Box => {
     right: n('x') + n('width'), text: String(control.pbGet('text') ?? ''), hidden: control.props.get('visible') === false,
   }
 }
-const centreY = (box: Box) => box.y + box.height / 2
+const centreY = (box: Box) => box.y + closedHeight(box) / 2
 const labelText = (text: string) => text.replace(/&(?=\S)/g, '').replace(/\s+/g, ' ').replace(/\s*:\s*$/, '').trim()
 
 export interface ModalDerivation { surface?: WindowSurface; reason?: string }
-/** Windows whose bare DataWindow field was named after its column because the source has no caption. */
 export const REVIEWED_MODAL_WINDOWS = [...WINDOW_SURFACES, ...CALCULATOR_WINDOW_SURFACES, ...CALENDAR_WINDOW_SURFACES, ...CRITERIA_WINDOW_SURFACES]
-export const synthetic: string[] = []
 export const NOT_MODAL = 'not a dialog or sheet window'
 type Resolve = (dataobject: string) => DataSurface | undefined
 
 const SUPPORTED = new Set(['commandbutton', 'editmask', 'singlelineedit', 'statictext', 'groupbox', 'listbox', 'datawindow', 'checkbox', 'radiobutton', 'monthcalendar', 'hprogressbar', 'dropdownlistbox', 'multilineedit', 'picture', 'rectangle', ...EMBEDDED_NATIVES])
 
-export async function deriveModal(name: string, library: string, rt: Runtime, resolveSurface: Resolve, definitions: Map<string, DwDef>): Promise<ModalDerivation> {
+/**
+ * `ancestors` holds the control geometry of each ancestor window class, nearest first: a hidden inherited control keeps the caption
+ * pairing of the class that places it, as a descendant may park its unused inherited controls anywhere.
+ */
+/** The caption the nearest ancestor that places a hidden inherited input gives it, among the window's unused hidden captions. */
+function inheritedCaption(input: Box, statics: readonly Box[], ancestors: readonly (readonly ControlBox[])[]): string | undefined {
+  for (const geometry of ancestors) {
+    const target = geometry.find((box) => box.name === input.name)
+    if (!target) continue
+    const choices = geometry.filter((box) => box.native === 'statictext' && statics.some((text) => text.name === box.name)).flatMap((text) =>
+      windowCaptionBeside(text, target, geometry) ? [{ text, cost: Math.abs(text.y + text.height / 2 - (target.y + closedHeight(target) / 2)) * 10 + Math.max(0, target.x - (text.x + text.width)) }] :
+        windowCaptionAbove(text, target) ? [{ text, cost: (target.y - (text.y + closedHeight(text))) * 10 + Math.abs(text.x - target.x) + 200 }] : [])
+      .sort((a, b) => a.cost - b.cost)
+    // The nearest ancestor that places the input decides; when it gives it no caption, none is inherited.
+    return choices[0]?.text.name
+  }
+  return undefined
+}
+
+export async function deriveModal(name: string, library: string, rt: Runtime, resolveSurface: Resolve, definitions: Map<string, DwDef>,
+  ancestors: readonly (readonly ControlBox[])[] = []): Promise<ModalDerivation> {
   let window: PBObject
   try { window = await rt.instantiate(name) } catch (error) { return { reason: `instantiate: ${(error as Error).message.slice(0, 80)}` } }
   try {
@@ -75,34 +98,21 @@ export async function deriveModal(name: string, library: string, rt: Runtime, re
     const by = (native: string) => boxes.filter((box) => box.native === native)
     const taken = new Set<string>()
     const statics = by('statictext')
-    const pairLabel = (target: Box): Box | undefined => {
-      const row = statics.filter((text) => !taken.has(text.name) && text.hidden === target.hidden &&
-        Math.abs(centreY(text) - centreY(target)) <= Math.max(target.height, 60) && text.x < target.x - 4)
-        .sort((a, b) => Math.round(Math.abs(centreY(a) - centreY(target)) / 20) - Math.round(Math.abs(centreY(b) - centreY(target)) / 20) ||
-          b.x - a.x)
-      if (row.length) return row[0]
-      const above = statics.filter((text) => !taken.has(text.name) && text.hidden === target.hidden &&
-        Math.min(text.right, target.right) - Math.max(text.x, target.x) > 0 && text.y + text.height <= target.y + 16 && target.y - (text.y + text.height) <= 200)
-        .sort((a, b) => (target.y - a.y) - (target.y - b.y))[0]
-      if (above || !target.hidden) return above
-      // Hidden inherited controls keep unreliable design positions: fall back to the nearest unused hidden caption.
-      const distance = (text: Box) => Math.hypot(text.x - target.x, centreY(text) - centreY(target))
-      return statics.filter((text) => !taken.has(text.name) && text.hidden).sort((a, b) => distance(a) - distance(b))[0]
-    }
     const fields: { control: string; label?: string; name?: string }[] = []
     const inputs = [...by('editmask'), ...by('singlelineedit'), ...by('dropdownlistbox'), ...by('multilineedit')].sort((a, b) => a.y - b.y || a.x - b.x)
     const labelOfField = new Map<string, string>()
-    for (const box of inputs.filter((item) => !item.hidden)) {
-      const label = pairLabel(box)
-      if (!label) continue
-      taken.add(label.name)
-      labelOfField.set(box.name, label.name)
+    // Globally cheapest caption-field pairs first (vertical alignment dominates), so a near caption is never taken by a farther field.  A
+    // caption on the field's row must start left of it with no other control between them (that nearer control owns it); a caption stacked
+    // above pays a small penalty, so a caption on the field's own row still wins.  A drop-down is one line high when closed.  Hidden
+    // inherited controls pair by the same rule with hidden captions only; a hidden field without one keeps an accessible-only name.
+    for (const input of inputs.filter((item) => item.hidden)) {
+      const caption = inheritedCaption(input, statics.filter((text) => text.hidden && !taken.has(text.name)), ancestors)
+      if (caption) { labelOfField.set(input.name, caption); taken.add(caption) }
     }
-    // Hidden inherited controls keep unreliable design positions: assign the globally nearest hidden caption pairs first.
-    const hiddenInputs = inputs.filter((item) => item.hidden)
-    const hiddenStatics = statics.filter((text) => text.hidden && !taken.has(text.name))
-    const pairs = hiddenInputs.flatMap((input) => hiddenStatics.map((text) => ({ input, text, distance: Math.hypot(text.x - input.x, centreY(text) - centreY(input)) })))
-      .sort((a, b) => a.distance - b.distance)
+    const pairs = inputs.filter((input) => !labelOfField.has(input.name)).flatMap((input) => statics.filter((text) => text.hidden === input.hidden && !taken.has(text.name)).flatMap((text) =>
+      windowCaptionBeside(text, input, boxes) ? [{ input, text, cost: Math.abs(centreY(text) - centreY(input)) * 10 + Math.max(0, input.x - text.right) }] :
+        windowCaptionAbove(text, input) ? [{ input, text, cost: (input.y - (text.y + closedHeight(text))) * 10 + Math.abs(text.x - input.x) + 200 }] : []))
+      .sort((a, b) => a.cost - b.cost)
     for (const pair of pairs) {
       if (labelOfField.has(pair.input.name) || taken.has(pair.text.name)) continue
       labelOfField.set(pair.input.name, pair.text.name)
@@ -148,52 +158,28 @@ export async function deriveModal(name: string, library: string, rt: Runtime, re
     const frames = free.slice(1).sort((a, b) => a.y - b.y || a.x - b.x)
     const data: NonNullable<WindowSurface['data']>[number][] = []
     const dynamic: Box[] = []
-    const auxiliary: string[] = [...by('hprogressbar'), ...by('picture'), ...by('rectangle')].map((box) => box.name)
+    // A visible picture, drawn rectangle or progress bar is painted content (a photo, a colour key): it keeps its source position.
+    // A hidden one is a passive companion a script may show.
+    const auxiliary: string[] = boxes.filter((box) => ARTWORK_NATIVES.includes(box.native) && box.hidden).map((box) => box.name)
+    const artwork = boxes.filter((box) => ARTWORK_NATIVES.includes(box.native) && !box.hidden).sort((a, b) => a.y - b.y || a.x - b.x).map((box) => box.name)
     // The shared price selector is bound last so a primary criteria DataWindow claims its caption first.
     for (const box of by('datawindow').sort((a, b) => Number(a.name === 'dw_price') - Number(b.name === 'dw_price') || a.y - b.y || a.x - b.x)) {
       const dataobject = String(box.control.pbGet('dataobject') ?? '').toLowerCase()
-      let surface = dataobject ? resolveSurface(dataobject) : undefined
+      const surface = dataobject ? resolveSurface(dataobject) : undefined
       let labels: { field: string; control: string }[] | undefined
-      if (!surface && dataobject) {
-        const definition = definitions.get(dataobject)
-        const attempt = definition ? derive(dataobject, definition) : undefined
-        if (definition && attempt?.reason === 'field without a label' && Number(definition.datawindow.processing ?? 0) === 0) {
-          const columns = definition.objects.filter((object) => object.type === 'column' && object.band === 'detail')
-          const bare = definition.objects.every((object) => object.type === 'column' && object.band === 'detail')
-          if (bare && columns.length >= 1 && columns.length <= 3 && !box.hidden) {
-            const ordered = [...columns].sort((x, y) => Number(x.y) - Number(y.y) || Number(x.x) - Number(y.x))
-            // Window captions beside the DataWindow name its fields in reading order; otherwise a field is named after its column,
-            // as the reviewed Price selector is.
-            const beside = statics.filter((text) => !taken.has(text.name) && !text.hidden && text.right <= box.x + 16 &&
-              centreY(text) >= box.y - 60 && centreY(text) <= box.y + box.height + 60).sort((x, y) => x.y - y.y || x.x - y.x)
-            const captions = beside.length === ordered.length ? beside : []
-            const named = ordered.map((column, index) => {
-              const object = column.name.toLowerCase()
-              const caption = captions[index]
-              return { object, caption, text: caption ? labelText(caption.text) : object.charAt(0).toUpperCase() + object.slice(1).replace(/_/g, ' ') }
-            })
-            const candidate: DataSurface = { name: dataobject, title: named[0].text || dataobject, kind: 'form', fields: named.map(({ object, text }) => ({ object, label: text })) }
-            const styles = derive(dataobject, { ...definition, objects: definition.objects.map((o) => ({ ...o, visible: '0' })) }).surface?.fields
-            for (const field of candidate.fields) {
-              const style = styles?.find((item) => item.object === field.object)?.choice
-              if (style) field.choice = style
-            }
-            if (named.every((item) => item.text) && !dataSurfaceIssues(definition, candidate).length) {
-              surface = candidate
-              const used = named.filter((item) => item.caption)
-              for (const item of used) taken.add(item.caption!.name)
-              if (used.length) labels = used.map((item) => ({ field: item.object, control: item.caption!.name }))
-              if (used.length !== named.length) synthetic.push(`${name}: ${dataobject}`)
-            }
-          }
-        }
-      }
-      if (surface && !labels && surface.kind === 'form') {
-        // A field named only by the surface (no label object in the DataWindow) takes the window caption beside the DataWindow.
+      if (surface && surface.kind === 'form') {
+        // A field named only by the surface (no label object in the DataWindow) takes the window caption beside the DataWindow, when the
+        // source puts exactly one such caption per field there, with no other control between.
         const external = (field: DataSurface['fields'][number]) => (!field.labelObject || field.labelBand === 'header') && !field.suffixObject
         const labelOnly = surface.fields.filter(external)
-        const beside = statics.filter((text) => !taken.has(text.name) && text.hidden === box.hidden && text.right <= box.x + 16 &&
-          centreY(text) >= box.y - 60 && centreY(text) <= box.y + box.height + 60).sort((x, y) => x.y - y.y || x.x - y.x)
+        // A hidden inherited DataWindow takes its captions from the nearest ancestor that places it, like a hidden inherited field.
+        const placing = box.hidden ? ancestors.find((geometry) => geometry.some((item) => item.name === box.name)) : undefined
+        const target = placing?.find((item) => item.name === box.name)
+        const beside = (placing && target ?
+          placing.filter((text) => text.native === 'statictext' && statics.some((own) => own.name === text.name && own.hidden && !taken.has(own.name)) &&
+            windowDataCaption(text, target, placing)).map((text) => statics.find((own) => own.name === text.name)!) :
+          statics.filter((text) => !taken.has(text.name) && text.hidden === box.hidden && windowDataCaption(text, box, boxes)))
+          .sort((x, y) => x.y - y.y || x.x - y.x)
         if (labelOnly.length && beside.length === labelOnly.length && labelOnly.length === surface.fields.length) {
           labels = labelOnly.map((field, index) => ({ field: field.object, control: beside[index].name }))
           for (const item of beside) taken.add(item.name)
@@ -207,35 +193,81 @@ export async function deriveModal(name: string, library: string, rt: Runtime, re
       // still gets its Modern layout, and the document keeps its original element inside that frame.
       else if (documents.has(dataobject)) dynamic.push(box)
       // A DataWindow that holds only artwork (a picture holder the window script fills) or nothing at all has no field to map.
-      else if (definitions.has(dataobject) && definitions.get(dataobject)!.objects.every((object) => ART.has(object.type) || object.band === 'background')) dynamic.push(box)
+      else if (definitions.has(dataobject) && definitions.get(dataobject)!.objects.every((object) => ART.has(object.type))) dynamic.push(box)
       else return { reason: `unmapped DataWindow: ${dataobject}` }
     }
     const options = [...by('checkbox').map((box) => ({ box, native: 'checkbox' as const })), ...by('radiobutton').map((box) => ({ box, native: 'radiobutton' as const }))]
       .sort((a, b) => a.box.y - b.box.y || a.box.x - b.box.x).map(({ box, native }) => ({ control: box.name, native }))
     const calendars = by('monthcalendar').map((box) => box.name)
     const embedded = [...boxes.filter((box) => EMBEDDED_NATIVES.includes(box.native)), ...dynamic].sort((a, b) => a.y - b.y || a.x - b.x).map((box) => box.name)
-    const actions = by('commandbutton').sort((a, b) => a.y - b.y || a.x - b.x).map((box) => box.name)
+    // Only the buttons of the window's own button row or column are actions; a button the source places among the content (a "...."
+    // picker beside its option) keeps its position there.
+    const commands = by('commandbutton').sort((a, b) => a.y - b.y || a.x - b.x)
+    const actions = commands.filter((box) => box.hidden || !amongContent(box, boxes)).map((box) => box.name)
+    const buttons = commands.filter((box) => !box.hidden && amongContent(box, boxes)).map((box) => box.name)
     const captions = statics.filter((text) => !fields.some((field) => field.label === text.name) && !lists.some((list) => list.label === text.name)).sort((a, b) => a.y - b.y || a.x - b.x).map((text) => text.name)
     const position = new Map(boxes.map((box) => [box.name, box]))
-    const content = [...fields.map((f) => f.control), ...captions, ...(frames.map((f) => f.name)), ...lists.map((l) => l.control),
-      ...calendars, ...embedded, ...data.map((d) => d.control), ...options.map((o) => o.control)]
-    const contentOrder = content.sort((a, b) => position.get(a)!.y - position.get(b)!.y || position.get(a)!.x - position.get(b)!.x)
     const surface: WindowSurface = {
       name, library, fields, actions,
       ...(frame ? { frame: frame.name } : {}), ...(frames.length ? { frames: frames.map((f) => f.name) } : {}),
       ...(lists.length ? { lists } : {}), ...(captions.length ? { captions } : {}), ...(options.length ? { options } : {}),
       ...(calendars.length ? { calendars } : {}), ...(embedded.length ? { embedded } : {}), ...(data.length ? { data } : {}), ...(auxiliary.length ? { auxiliary } : {}),
-      contentOrder,
-      ...(sheet ? { sheet: true as const } : {}),
+      ...(buttons.length ? { buttons } : {}), ...(artwork.length ? { artwork } : {}),
     }
+    const contentOrder = windowContentItems(surface).sort((a, b) => position.get(a)!.y - position.get(b)!.y || position.get(a)!.x - position.get(b)!.x)
+    // Each groupbox keeps its caption with exactly the content it encloses in the source.
+    const members = frameMembers(free.map((box) => box.name), [...contentOrder, ...(frame ? [frame.name] : [])], boxes)
+    Object.assign(surface, Object.keys(members).length ? { members } : {}, { contentOrder }, sheet ? { sheet: true as const } : {})
     const issues = windowSurfaceIssues(boxes.map((box) => ({ name: box.name, native: box.native, children: 0 })), surface)
     if (issues.length) return { reason: `validation: ${issues[0].replace(/:.*$/, '')}` }
+    const positions = windowSurfacePositionIssues(boxes, surface, ancestors)
+    if (positions.length) return { reason: `position: ${positions[0].replace(/:.*$/, '')}` }
     for (const binding of surface.data ?? []) {
       const definition = definitions.get(binding.surface.name)
       if (!definition || dataSurfaceIssues(definition, binding.surface).length) return { reason: `invalid DataWindow surface: ${binding.surface.name}` }
     }
     return { surface }
   } finally { window.destroy() }
+}
+
+/** A runtime that instantiates recovered classes without their scripts (design-time geometry and properties only). */
+export function sourceRuntime(classes: Map<string, ClassSource>): Runtime {
+  return new Runtime({ load: async (className: string) => {
+    const found = classes.get(className)
+    if (!found) return undefined
+    const definition = JSON.parse(readFileSync(found.path, 'utf8'))
+    definition.routines = new Map()
+    return definition
+  } })
+}
+
+/** The source geometry of a window's own controls. */
+export function windowGeometry(window: PBObject): ControlBox[] {
+  return [...window.children.values()].map(toBox).map(({ name, native, x, y, width, height, hidden }) => ({ name, native, x, y, width, height, hidden }))
+}
+
+/** The control geometry of each ancestor window class of a class (nearest first), each instantiated once, for hidden inherited captions. */
+export function ancestryOf(classes: Map<string, ClassSource>, rt: Runtime): (className: string) => Promise<ControlBox[][]> {
+  const ancestorOf = (className: string): string | undefined => {
+    const found = classes.get(className)
+    return found ? JSON.parse(readFileSync(found.path, 'utf8')).ancestor : undefined
+  }
+  const geometry = new Map<string, ControlBox[] | null>()
+  return async (className) => {
+    const chain: ControlBox[][] = []
+    for (let current = ancestorOf(className); current && classes.get(current)?.kind === 'window'; current = ancestorOf(current)) {
+      if (!geometry.has(current)) {
+        try {
+          const instance = await rt.instantiate(current)
+          geometry.set(current, windowGeometry(instance))
+          instance.destroy()
+        } catch { geometry.set(current, null) }
+      }
+      const boxes = geometry.get(current)
+      if (boxes) chain.push(boxes)
+    }
+    return chain
+  }
 }
 
 export async function deriveModalWindows() {
@@ -250,14 +282,8 @@ export async function deriveModalWindows() {
     const surface = reviewed.get(dataobject) ?? deriveValidated(dataobject, definition).surface
     return surface && !dataSurfaceIssues(definition, surface).length ? surface : undefined
   }
-  const rt = new Runtime({ load: async (className: string) => {
-    const found = classes.get(className)
-    if (!found) return undefined
-    const definition = JSON.parse(readFileSync(found.path, 'utf8'))
-    definition.routines = new Map()
-    return definition
-  } })
-  synthetic.length = 0
+  const rt = sourceRuntime(classes)
+  const ancestry = ancestryOf(classes, rt)
   const handNames = new Set(REVIEWED_MODAL_WINDOWS.map((surface) => surface.name))
   const surfaces: WindowSurface[] = []
   const backlog: Record<string, string[]> = {}
@@ -266,7 +292,7 @@ export async function deriveModalWindows() {
   for (const [name, source] of [...classes].sort(([a], [b]) => a.localeCompare(b))) {
     if (source.kind !== 'window') continue
     if (ENTRY_ANCESTORS.has(JSON.parse(readFileSync(source.path, 'utf8')).ancestor)) continue
-    const outcome = await deriveModal(name, source.library, rt, resolveSurface, definitions)
+    const outcome = await deriveModal(name, source.library, rt, resolveSurface, definitions, await ancestry(name))
     if (outcome.reason === NOT_MODAL) continue
     total++
     results.set(name, outcome)
@@ -318,7 +344,6 @@ export function renderBacklog(total: number, derived: number, backlog: Record<st
   return JSON.stringify({
     note: 'Generated by web/tools/derive-modal-windows.ts. Listed windows keep the labelled Classic layout until a reviewed mapping exists.',
     modalWindows: total, reviewed: REVIEWED_MODAL_WINDOWS.length, derived, pending,
-    columnNamedFields: { note: 'Bare DataWindow fields without a source caption are named after their column (the reviewed Price selector does the same).', windows: [...synthetic] },
     reasons: Object.fromEntries(Object.entries(backlog).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))
       .map(([reason, names]) => [reason, { count: names.length, names }])),
   }, null, 1) + '\n'

@@ -62,8 +62,10 @@ test('the derivation reproduces every reviewed mapping it can derive (independen
     if (!definition) continue
     const derived = dataTool.derive(name, definition).surface
     // A grid DataWindow deliberately presented as a one-row form is a reviewed exception, not a derivable layout.
-    // A one-row criteria form built on a header-captioned DataWindow is a reviewed presentation choice, not derivable from the source.
-    if (!derived || surface.sourceProcessing !== undefined || derived.sourceProcessing !== undefined) continue
+    // A one-row criteria form built on a header-captioned DataWindow is a reviewed presentation choice, not derivable from the source
+    // (its header caption may sit in a band without height, which the source never paints).
+    if (!derived || surface.sourceProcessing !== undefined || derived.sourceProcessing !== undefined ||
+      surface.fields.some((field) => field.labelBand === 'header')) continue
     compared++
     if (sequence(derived) !== sequence(surface)) differing.push(name)
   }
@@ -121,8 +123,9 @@ test('derived modal windows never shadow reviewed layouts and keep unique, valid
   assert.equal(modalWindowSurfaceByName('w_arg_sdate_ldate'), CRITERIA_WINDOW_SURFACES.find((surface) => surface.name === 'w_arg_sdate_ldate'))
 })
 
-test('the modal derivation reproduces the reviewed layouts it can derive, apart from named hidden-control cases', () => {
-  const known = new Set(['w_arg_letter_sdate_ldate', 'w_arg_percentage_reduce_raise'])
+test('the modal derivation reproduces every reviewed layout it can derive, hidden inherited captions included', () => {
+  // Hidden inherited controls take the caption pairing of the ancestor that places them, so no reviewed layout is an exception any more.
+  const known = new Set<string>()
   const keys = ['fields', 'actions', 'frame', 'frames', 'lists', 'captions', 'options', 'calendars', 'auxiliary'] as const
   const normal = (value: unknown) => JSON.stringify(Array.isArray(value) ? value.map((item) => JSON.stringify(item)).sort() : value ?? null)
   let compared = 0

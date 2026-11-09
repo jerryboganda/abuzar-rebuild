@@ -149,6 +149,8 @@ export function representativeModalWindows() {
     (window.data ?? []).map((binding) => binding.surface.kind + binding.surface.fields.length +
       (binding.surface.fields.some((field) => field.choice) ? 'c' : '') + (binding.labels ? 'L' : '')).join(','),
     (window.calendars ?? []).length, (window.auxiliary ?? []).length > 0,
+    // Positioned content buttons, artwork and groupboxes that hold their members are layout shapes of their own.
+    (window.buttons ?? []).length > 0, (window.artwork ?? []).length > 0, Object.keys(window.members ?? {}).length > 0,
   ])
   const seen = new Map()
   // Dialog captures only; sheets are covered by the functional check.
