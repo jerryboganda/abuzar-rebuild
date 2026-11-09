@@ -294,8 +294,10 @@ export async function checkContactSurfaces(fixture, check, settle) {
           check(!b.dialog.isConnected && !fixture.ui.dialogs.size && owner.model.getItem(1, 'contactcardcode') === 1,
             `${change}: an owned lookup closes without applying a value from obsolete context`)
           if (change === 'parent-record' || change === 'readonly') {
+            // A retained entry keeps the keyboard.  An unchanged choice whose record went away is closed without a recovery panel, as
+            // Classic closes an untouched text field (parent-record); a protected field retains it (readonly).
             const retained = owner.element('dw_itemsdetail').querySelector('.surface-stale input')
-            check(retained?.value === '1' && document.activeElement === retained,
+            check(retained ? retained.value === '1' && document.activeElement === retained : change === 'parent-record',
               `${change}: picker teardown cannot steal focus from the retained unapplied entry`)
           }
         } finally { if (!closed) await owner.close() }

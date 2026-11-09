@@ -194,6 +194,13 @@ export const PRESENTATION_CSS = `
 .modern-entry-window .pb-dropdown :disabled {color:var(--p-muted);background:var(--p-canvas);}
 .modern-entry-window[data-density=comfortable] .pb-dropdown>.dropdown-input,.modern-entry-window[data-density=comfortable] .pb-dropdown>.dropdown-select,.modern-entry-window[data-density=comfortable] .pb-dropdown>.dropdown-toggle {min-height:42px;}
 @media(forced-colors:active) {.modern-entry-window .pb-dropdown .dropdown-list [aria-selected=true] {background:Highlight;color:HighlightText;outline-color:HighlightText;}}
+/* The same Modern drop-down colours in dialogs (the reflow colours its text; its Classic white field would make it unreadable in the
+   dark theme).  A container kept as its original element keeps its Classic colours. */
+.modern-window .pb-dropdown:not(.window-embedded *)>:is(.dropdown-input,.dropdown-select,.dropdown-toggle) {background:var(--p-surface);color:var(--p-text);border-color:var(--p-line);}
+.modern-window .pb-dropdown:not(.window-embedded *)>.dropdown-toggle:hover:not(:disabled) {background:var(--p-selected);}
+.modern-window .pb-dropdown:not(.window-embedded *) .dropdown-list {background:var(--p-surface);color:var(--p-text);border-color:var(--p-line);}
+.modern-window .pb-dropdown:not(.window-embedded *) .dropdown-list [aria-selected=true] {background:var(--p-selected);color:var(--p-text);outline:2px solid var(--p-accent);outline-offset:-2px;}
+.modern-window .pb-dropdown:not(.window-embedded *) :disabled {color:var(--p-muted);background:var(--p-canvas);}
 .modern-entry-window .entry-control:disabled {background:var(--p-canvas)!important;color:var(--p-muted)!important;}
 .modern-entry-window .entry-search {display:grid;gap:6px;max-width:52em;min-width:0;}
 .modern-entry-window .entry-search .st {white-space:normal;line-height:1.5!important;overflow-wrap:anywhere;}

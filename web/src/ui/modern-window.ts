@@ -244,8 +244,9 @@ export function frameDescribed(item: HTMLElement): HTMLElement[] {
   if (item.matches('.window-data,.window-embedded')) return [item]
   // the item's tab stops (a drop-down's choice list and its pointer-only toggle are not)
   const focusable = 'input,select,textarea,button,[tabindex]'
-  return [item, ...item.querySelectorAll<HTMLElement>(focusable)].filter((target) => target.matches(focusable) && target.tabIndex >= 0 &&
-    !target.closest('.window-data,.window-embedded,[role=listbox]'))
+  // A drop-down copies its own ARIA names onto its inner fields: it is described on the drop-down itself.
+  return [...new Set([item, ...item.querySelectorAll<HTMLElement>(focusable)].filter((target) => target.matches(focusable) && target.tabIndex >= 0 &&
+    !target.closest('.window-data,.window-embedded,[role=listbox]')).map((target) => target.closest<HTMLElement>('.pb-dropdown') ?? target))]
 }
 
 /**
