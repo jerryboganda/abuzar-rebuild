@@ -86,7 +86,7 @@ export const PRESENTATION_CSS = `
 .modern-window .window-field:has(>input.hidden):has(>label>.hidden),.modern-window .window-field>label:has(>.hidden) {display:none;}
 .modern-window .window-frame {min-width:0;border:0;margin:0;padding:0;background:transparent!important;color:var(--p-text)!important;}
 /* A groupbox drawn over the area its members occupy on the grid: behind them, its caption on its top band, never taking a click. */
-.modern-window .window-fields.has-grid > .window-frame-area {z-index:0;pointer-events:none;align-self:stretch;border:1px solid var(--p-line)!important;border-radius:6px;margin:0 2px;padding:0 8px;}
+.modern-window .window-fields.has-grid > .window-frame-area {z-index:0;pointer-events:none;align-self:stretch;height:100%!important;box-sizing:border-box;border:1px solid var(--p-line)!important;border-radius:6px;margin:0 2px;padding:0 8px;}
 .modern-window .window-fields.has-grid > .window-frame-area > legend {padding:0 4px;}
 .modern-window .window-fields.has-grid > .grid-cell:not(.window-frame-area) {z-index:1;}
 @media (max-width:520px) {.modern-window .window-fields.has-grid > .window-frame-area {border-width:0 0 1px!important;border-radius:0;margin:0;padding:0;}}

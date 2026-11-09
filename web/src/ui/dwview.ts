@@ -1982,15 +1982,19 @@ export class DwView {
       }
     }))
     const values = records.map((record) => columns.map((column) => record.v[column.index]))
-    // The detail columns are checked only for rows picked from the detail browser; the drop-down keeps its own rules.
+    // Every pick, from the drop-down or the detail browser, is checked against the lookup it was chosen from: a selection whose
+    // child list changed meanwhile (its definition, details, header or visibility, also while an asynchronous validation runs) is
+    // never written into the parent; the user reopens the field and chooses again.
+    const original = choices.validate
     const detailed = (choice: DwChoice) => {
-      choices.validate(choice)
+      original(choice)
       const index = choices.items.indexOf(choice), record = records[index]
       if (data.def !== definition || configuration() !== signature || !record ||
         columns.some((column, at) => !sameChoiceValue(record.v[column.index], values[index][at]))) {
         throw new Error('The lookup details changed. Press Escape and reopen the field before choosing a value.')
       }
     }
+    choices.validate = detailed
     this.detailedChoices.set(choices, detailed)
     choices.grid = {
       title: surface.title,

@@ -1278,17 +1278,22 @@ export class ModernDwView extends DwView {
 
   protected override retainStaleDraft(value: string): void {
     if (this.changes.signal.aborted) return
+    // The keyboard belongs to this DataWindow while it is in its editor, its drop-down list or its lookup browser (both outside
+    // the root): the notice takes it then, before the picker is torn down and could hand it elsewhere.
+    const focus = document.activeElement
+    const owned = this.ownsKeyboard() || !!focus && (!!this.choiceEdit?.element.contains(focus) ||
+      !!this.choiceEdit?.popup?.list.contains(focus) || !!this.lookup?.element.contains(focus))
     this.cancelChoice()
     this.detachTextEditor()
     this.stale = true
     this.staleValue = value
     this.editor = null
     this.acceptEdit = null
-    this.showStaleDraft()
+    this.showStaleDraft(owned)
   }
 
-  private showStaleDraft(): void {
-    const focused = this.ownsKeyboard()
+  private showStaleDraft(owned?: boolean): void {
+    const focused = owned ?? this.ownsKeyboard()
     this.editor = null
     this.acceptEdit = null
     this.root.classList.add('modern-surface')

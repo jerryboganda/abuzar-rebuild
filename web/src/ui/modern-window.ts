@@ -185,22 +185,25 @@ export function applyModernWindow(view: WinView): boolean {
   for (const name of surface.contentOrder ?? []) if (contentItems.has(name)) content.append(contentItems.get(name)!)
   // Every item is placed on the one grid by its source position, groupbox members included, so a field beside a groupbox keeps its
   // row (`em_dscode` beside the date box).  A groupbox with recorded members is drawn behind them over the area it encloses, with its
-  // caption on its top band; it names its members as one group (aria-owns), and in the reading order it stands before its first member.
+  // caption on its top band.  Its caption describes each member it encloses (aria-describedby): the members keep their place in the
+  // accessibility tree even when a script hides the groupbox, as Classic paints them without it.
   const areas = new Map<string, HTMLElement>()
   for (const frame of containers) {
     const element = elements.get(frame)!
     element.classList.add('window-frame-area')
     element.dataset.windowFrame = frame
-    element.setAttribute('role', 'group')
-    element.setAttribute('aria-labelledby', element.querySelector('legend')!.id)
+    element.setAttribute('aria-hidden', 'true')
+    const legend = element.querySelector('legend')!
     const held = holds(frame)
-    const owned = [...held].flatMap((name) => {
+    for (const name of held) {
       const item = contentItems.get(name)
-      if (!item) return []
-      item.id ||= `${identity}-item-${name}`
-      return [item.id]
-    })
-    if (owned.length) element.setAttribute('aria-owns', owned.join(' '))
+      if (!item) continue
+      item.dataset.windowFrameMember = [...(item.dataset.windowFrameMember ?? '').split(' ').filter(Boolean), frame].join(' ')
+      for (const target of frameDescribed(item)) {
+        const described = (target.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean)
+        if (!described.includes(legend.id)) target.setAttribute('aria-describedby', [...described, legend.id].join(' '))
+      }
+    }
     const first = ([...content.children] as HTMLElement[]).find((child) => [...held].some((name) => contentItems.get(name) === child))
     content.insertBefore(element, first ?? null)
     areas.set(frame, element)
@@ -231,6 +234,16 @@ export function applyModernWindow(view: WinView): boolean {
   }
   useSourceTabOrder(view.el, view.client, [...view.ctlViews].map(([control, binding]) => ({ element: binding.el, taborder: control.props?.get('taborder') })))
   return true
+}
+
+/**
+ * The elements a groupbox caption describes: a DataWindow host or embedded container itself (its content is repainted), otherwise the
+ * item's controls.
+ */
+export function frameDescribed(item: HTMLElement): HTMLElement[] {
+  if (item.matches('.window-data,.window-embedded')) return [item]
+  const focusable = 'input,select,textarea,button,[tabindex]'
+  return [item, ...item.querySelectorAll<HTMLElement>(focusable)].filter((target) => target.matches(focusable) && !target.closest('.window-data,.window-embedded'))
 }
 
 /**

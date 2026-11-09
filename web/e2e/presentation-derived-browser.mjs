@@ -139,22 +139,30 @@ async function checkDerivedModalWindowsImpl(fixture, check, settle, filter) {
           const area = view.el.querySelector(`.window-frame-area[data-window-frame="${frame}"]`)
           // A main frame that encloses all content keeps labelling the whole content instead of forming a group.
           if (!area) return frame === surface.frame && content?.getAttribute('aria-labelledby') !== null ? [] : [`${frame}: no area`]
-          const owned = (area.getAttribute('aria-owns') ?? '').split(/\s+/).filter(Boolean).map((id) => document.getElementById(id))
+          const legend = area.querySelector('legend')
           const box = area.getBoundingClientRect()
           const rect = (r) => `${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.right)},${Math.round(r.bottom)}`
+          // A groupbox a script hides is not painted, as in Classic; its members still carry its caption.
+          const painted = area.getClientRects().length > 0
           return members.flatMap((member) => {
             const control = window.children.get(member)
             const element = control ? view.ctlViews.get(control)?.el : null
             if (!element) return [`${frame}.${member}: no element`]
             const nested = element.classList.contains('window-frame-area')
-            if (!nested && !owned.some((item) => item?.contains(element))) return [`${frame}.${member}: not owned`]
-            if (element.getClientRects().length === 0) return []
-            const r = element.getBoundingClientRect()
-            return r.left >= box.left - 2 && r.right <= box.right + 2 && r.top >= box.top - 2 && r.bottom <= box.bottom + 2 ? []
-              : [`${frame}.${member}: ${rect(r)} outside ${rect(box)}`]
+            const item = element.closest(`[data-window-frame-member~="${frame}"]`)
+            if (!nested && !item) return [`${frame}.${member}: not a member`]
+            // the caption describes a DataWindow host itself (its cells are repainted), otherwise the item's controls
+            const focusable = 'input,select,textarea,button,[tabindex]'
+            const targets = nested ? [] : item.matches('.window-data,.window-embedded') ? [item]
+              : [item, ...item.querySelectorAll(focusable)].filter((target) => target.matches(focusable) && !target.closest('.window-data,.window-embedded'))
+            if (targets.some((target) => !(target.getAttribute('aria-describedby') ?? '').split(/\s+/).includes(legend?.id))) return [`${frame}.${member}: not described by its caption`]
+            if (!painted || element.getClientRects().length === 0) return []
+            // Enclosed: the member's centre lies inside the groupbox (a source control may overhang its box border slightly).
+            const r = element.getBoundingClientRect(), x = (r.left + r.right) / 2, y = (r.top + r.bottom) / 2
+            return x >= box.left && x <= box.right && y >= box.top && y <= box.bottom ? [] : [`${frame}.${member}: ${rect(r)} outside ${rect(box)}`]
           })
         })
-        check(!frameProblems.length, `${label}: each groupbox encloses and names exactly the controls it encloses in the source (${frameProblems.slice(0, 3).join('; ')})`)
+        check(!frameProblems.length, `${label}: each groupbox encloses and describes exactly the controls it encloses in the source (${frameProblems.slice(0, 3).join('; ')})`)
         if (!sheet) check(overlap(view, window), `${label}: the dialog fits the viewport without horizontal scrolling`)
         else check(view.client.scrollWidth <= view.client.clientWidth + 1, `${label}: the sheet has no horizontal scrolling`)
       }
