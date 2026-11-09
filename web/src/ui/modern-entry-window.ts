@@ -133,7 +133,9 @@ export function applyModernEntryWindow(view: WinView): boolean {
     const own = extras.filter(([path]) => path.startsWith(`${page}.`))
     if (!group || !own.length) continue
     const box = (path: string, control: PBObject) => {
-      const x = Number(control.props.get('x')), y = Number(control.props.get('y'))
+      // PowerBuilder stores no x or y of 0
+      const at = (key: string) => { const value = control.props.get(key); return value === undefined || value === null || value === '' ? 0 : Number(value) }
+      const x = at('x'), y = at('y')
       const width = Number(control.props.get('width')), height = Number(control.props.get('height'))
       return [x, y, width, height].every(Number.isFinite) ? { key: path, left: x, top: y, right: x + width, bottom: y + Math.max(1, height) } : null
     }

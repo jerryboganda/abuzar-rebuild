@@ -242,8 +242,10 @@ export function applyModernWindow(view: WinView): boolean {
  */
 export function frameDescribed(item: HTMLElement): HTMLElement[] {
   if (item.matches('.window-data,.window-embedded')) return [item]
+  // the item's tab stops (a drop-down's choice list and its pointer-only toggle are not)
   const focusable = 'input,select,textarea,button,[tabindex]'
-  return [item, ...item.querySelectorAll<HTMLElement>(focusable)].filter((target) => target.matches(focusable) && !target.closest('.window-data,.window-embedded'))
+  return [item, ...item.querySelectorAll<HTMLElement>(focusable)].filter((target) => target.matches(focusable) && target.tabIndex >= 0 &&
+    !target.closest('.window-data,.window-embedded,[role=listbox]'))
 }
 
 /**
@@ -257,7 +259,9 @@ function arrangeGrid(view: WinView, content: HTMLElement, items: ReadonlyMap<str
     const control = view.w.children?.get(name)
     // A groupbox that holds positioned members keeps its source area even while its own caption is hidden: its members may be visible.
     if (!control?.props || control.props.get('visible') === false && !frames.has(name)) return null
-    const box = { x: Number(control.props.get('x')), y: Number(control.props.get('y')), width: Number(control.props.get('width')), height: Number(control.props.get('height')) }
+    // PowerBuilder stores no x or y of 0 (the default), so a control at the window's left or top edge has none.
+    const at = (key: string) => { const value = control.props.get(key); return value === undefined || value === null || value === '' ? 0 : Number(value) }
+    const box = { x: at('x'), y: at('y'), width: Number(control.props.get('width')), height: Number(control.props.get('height')) }
     // A drop-down's stored height includes its open list; it occupies one line when closed, as Classic paints it.
     if (/dropdown|combobox/.test(String(control.native ?? ''))) box.height = Math.min(box.height, 80)
     return Object.values(box).every(Number.isFinite) ? box : null
@@ -276,7 +280,6 @@ function arrangeGrid(view: WinView, content: HTMLElement, items: ReadonlyMap<str
     anchors.push({ editor: { ...editor, key, ...flex }, anchored: { ...anchoredBox(key, editor, names.slice(1).flatMap((name) => { const box = asBox(name); return box ? [box] : [] })), ...flex } })
   }
   const boxes = resolveAnchors(anchors)
-  if (boxes.length < 2) return
   // A groupbox area is planned with its members (its edges become grid lines, its top band a row for the caption) but is not an
   // editor: it never takes a caption's place, and it overlaps the members it encloses.
   const areas = new Map<string, HTMLElement>()
@@ -286,6 +289,8 @@ function arrangeGrid(view: WinView, content: HTMLElement, items: ReadonlyMap<str
     boxes.push({ key: name, left: part.x, top: part.y, right: part.x + part.width, bottom: part.y + Math.max(1, part.height), flex: true })
     areas.set(name, element)
   }
+  // One placed item has nothing to be arranged against; a groupbox around it does (a selection list inside its box).
+  if (boxes.length < 2) return
   // Anything the plan does not place (the window frame and its legend, groupbox captions) stays full width above the plan.
   const placed = new Set([...boxes.map((box) => items.get(box.key)), ...areas.values()])
   const unplaced = ([...content.children] as HTMLElement[]).filter((child) => !placed.has(child))

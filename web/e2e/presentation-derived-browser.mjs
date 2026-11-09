@@ -154,7 +154,8 @@ async function checkDerivedModalWindowsImpl(fixture, check, settle, filter) {
             // the caption describes a DataWindow host itself (its cells are repainted), otherwise the item's controls
             const focusable = 'input,select,textarea,button,[tabindex]'
             const targets = nested ? [] : item.matches('.window-data,.window-embedded') ? [item]
-              : [item, ...item.querySelectorAll(focusable)].filter((target) => target.matches(focusable) && !target.closest('.window-data,.window-embedded'))
+              : [item, ...item.querySelectorAll(focusable)].filter((target) => target.matches(focusable) && target.tabIndex >= 0 &&
+                !target.closest('.window-data,.window-embedded,[role=listbox]'))
             if (targets.some((target) => !(target.getAttribute('aria-describedby') ?? '').split(/\s+/).includes(legend?.id))) return [`${frame}.${member}: not described by its caption`]
             if (!painted || element.getClientRects().length === 0) return []
             // Enclosed: the member's centre lies inside the groupbox (a source control may overhang its box border slightly).

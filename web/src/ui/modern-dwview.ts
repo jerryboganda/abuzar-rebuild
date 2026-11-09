@@ -185,7 +185,13 @@ export class ModernDwView extends DwView {
     const surface = this.contextSurface?.name === model.name ? this.contextSurface : dataSurfaceByName(model.name)
     const issues = surface ? dataSurfaceIssues(model.def, surface, model.overrides) : []
     const preview = /^(yes|true|1)$/i.test(model.describe('datawindow.print.preview'))
-    // An open draft survives a change of layout or protection exactly as in the Classic view: it is restored, not blocked.
+    // An open text draft survives a change of layout or protection exactly as in the Classic view: it is restored, not blocked.  A
+    // pending choice (drop-down or lookup) whose field can no longer be edited is retained in the recovery panel, as Classic's choice
+    // check retains it, never reopened on a protected field.
+    if (draft?.choice && surface && !issues.length && !preview) {
+      const object = model.def.objects.find((item) => item.name.toLowerCase() === draft.obj.toLowerCase())
+      if (!object || !(await this.canEdit(model, object, draft.row))) { this.retainStaleDraft(draft.value); return }
+    }
     if (!surface || issues.length || preview) {
       this.revealEditor = null
       this.surface = null
@@ -1159,6 +1165,10 @@ export class ModernDwView extends DwView {
       if (this.lookup === dialog) this.lookup = null
       if (!editor.signal.aborted && editor.element.isConnected && document.activeElement === document.body) {
         editor.element.focus({ preventScroll: true })
+      }
+      // The lookup was torn down because its entry could not be applied: the keyboard goes to the retained entry, never the page.
+      else if (this.stale && (document.activeElement === document.body || !document.activeElement)) {
+        this.root.querySelector<HTMLElement>('.surface-stale input,.surface-stale textarea')?.focus({ preventScroll: true })
       }
       if (this.lookupNotice) this.status.textContent = this.lookupNotice
     }
