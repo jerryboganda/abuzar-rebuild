@@ -2586,8 +2586,9 @@ try {
     'Correcting the entry validates once on the next explicit navigation')
   assert.equal(await page.evaluate(() => window.presentationTabsPreview.model.getItem(1, 'limit')), 32,
     'The corrected value reaches the shared model before changing pages')
-  assert.ok(await page.evaluate(() => document.activeElement === window.presentationTabsPreview.panels[1].querySelector('input')),
-    'Pointer navigation preserves focus explicitly requested by SelectionChanged')
+  // SelectionChanged's SetFocus applies when the page takes input again, after the transition's scripts have run.
+  await page.waitForFunction(() => document.activeElement === window.presentationTabsPreview.panels[1].querySelector('input'), null, { timeout: 5000 })
+    .catch((error) => { throw new Error('Pointer navigation preserves focus explicitly requested by SelectionChanged', { cause: error }) })
   await formTabs.locator('[data-obj=find]').click()
   const findInput = formTabs.locator('input.dw-edit')
   await findInput.fill('BR')
@@ -3128,7 +3129,20 @@ try {
           await find.click()
           const input = form.locator('.entry-find input')
           await input.fill('BR')
-          await page.waitForFunction(() => window.presentationEntryPreview.window.props.get('il_selectedrow') === 2)
+          await page.waitForFunction(() => window.presentationEntryPreview.window.props.get('il_selectedrow') === 2, null, { timeout: 10000 })
+            .catch(async (error) => {
+              const state = await page.evaluate(() => {
+                const f = window.presentationEntryPreview, props = f.window.props, list = f.control('dw_list').model
+                const findView = f.view.ctlViews.get(f.control('dw_find')).dw
+                return { selected: props.get('il_selectedrow'), sort: props.get('is_sortsequence'), type: props.get('ii_type'),
+                  column: props.get('ii_colindex'), editor: findView.editor?.value ?? null, draft: f.control('dw_find').model.getItem(1, 'find'),
+                  pending: findView.pendingEdits?.size, list: [...Array(list.rowCount())].map((_, i) => list.getItem(i + 1, 'name')),
+                  events: f.events.slice(-14).map((event) => `${event.target?.name}.${event.event}(${(event.args ?? []).map((arg) =>
+                    typeof arg === 'object' ? arg?.name ?? '' : String(arg)).join(',')})`),
+                  errors: window.presentationRuntimeErrors ?? null }
+              })
+              throw new Error(`The real Find did not select the matching row: ${JSON.stringify(state)}`, { cause: error })
+            })
           assert.equal(await form.getByRole('tab', { name: 'Detail', exact: true }).getAttribute('aria-disabled'), 'false')
           await page.keyboard.press('Escape')
           const select = form.getByRole('combobox', { name: 'Sort column', exact: true })

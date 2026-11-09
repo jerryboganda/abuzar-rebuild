@@ -16,6 +16,12 @@ export function tabAvailable(control: PBObject): boolean {
 /** User transitions must wait for the original unsaved-change guard before hiding a page. */
 export class TabSelection {
   busy = false
+  /**
+   * The page being switched to while its SelectionChanged scripts (and what they post) run. PowerBuilder processes the next
+   * input only after those scripts return, so the shown page takes no input until then (a fast click and typed text would
+   * otherwise run their scripts interleaved with, and be undone by, the page's own initialisation).
+   */
+  switching: PBObject | null = null
   private control: PBObject
   private refresh: () => void
   private beforeChange: (page: PBObject | undefined) => Promise<boolean>
@@ -46,6 +52,7 @@ export class TabSelection {
       const result = await control.rt.fire(control, 'selectionchanging', [old, next])
       if (toNum(result) === 1 || !current()) return false
       // Do not call pbSet: it dispatches a second, non-awaited pair of tab events.
+      this.switching = page
       control.props.set('selectedtab', next)
       if (control instanceof NControl) control.changed()
       this.refresh()
@@ -54,6 +61,7 @@ export class TabSelection {
       return true
     } finally {
       this.busy = false
+      this.switching = null
       this.refresh()
     }
   }

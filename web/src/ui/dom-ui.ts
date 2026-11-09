@@ -188,14 +188,40 @@ export class DomUi implements UiHost {
     this.views.get(w)?.activate()
   }
   focus(o: PBObject): void {
+    if (this.holdFocus(o)) return
     const v = this.findView(o)
     v?.focus()
   }
   /** SetFocus / SelectText on a DataWindow: the current cell and its in-place editor */
   async focusDw(o: PBObject, fallback = false): Promise<boolean> {
+    if (this.holdFocus(o)) return true
     const v = this.findView(o)
     if (!v?.dw) return false
     return v.dw.focusCurrent(fallback)
+  }
+  /** The SetFocus a script aimed into a tab page that is held while its SelectionChanged scripts run. */
+  private heldFocus: PBObject | null = null
+  private elementOf(o: PBObject): HTMLElement | undefined {
+    for (const view of this.views.values()) {
+      const element = view.ctlViews.get(o)?.el
+      if (element) return element
+    }
+    return undefined
+  }
+  private holdFocus(o: PBObject): boolean {
+    if (!this.elementOf(o)?.closest('[data-tab-hold]')) return false
+    this.heldFocus = o
+    return true
+  }
+  /** A held tab page takes input again: the SetFocus its scripts asked for is applied now. */
+  releaseHeldFocus(page: HTMLElement): void {
+    const held = this.heldFocus
+    const element = held ? this.elementOf(held) : undefined
+    if (!held || !element || !page.contains(element) || element.closest('[data-tab-hold]')) return
+    this.heldFocus = null
+    void (held instanceof NDwBase ? this.focusDw(held, true) : Promise.resolve(false))
+      .then((done) => { if (!done) this.focus(held) })
+      .catch((error) => this.rt.onError(error))
   }
   findView(o: PBObject): { focus(): void; dw?: DwView } | undefined {
     for (const wv of this.views.values()) {
@@ -1262,6 +1288,17 @@ export class WinView {
           const focus = document.activeElement
           const ownedFocus = focus instanceof HTMLElement && t.contains(focus)
           show(cur)
+          // The page being switched to takes no input until its SelectionChanged scripts have run (see TabSelection.switching).
+          for (const item of items) {
+            const hold = selection.switching === item.po
+            if (hold === item.page.hasAttribute('data-tab-hold')) continue
+            item.page.inert = hold
+            if (hold) item.page.dataset.tabHold = ''
+            else {
+              delete item.page.dataset.tabHold
+              this.ui.releaseHeldFocus(item.page)
+            }
+          }
           if (accessible) {
             strip.setAttribute('aria-busy', String(selection.busy))
             if (ownedFocus && focus instanceof HTMLElement &&
