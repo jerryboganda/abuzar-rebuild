@@ -434,7 +434,7 @@ async function captureCriteriaWindows(page, output, surfaces = CRITERIA_WINDOW_S
         const dateChoice = DATE_CHOICE_CRITERIA_WINDOWS.find((owner) => owner.name === surface.name)
         if (!reveal && (lookupOwner || referenceOwner || numericOwner || dateOptions || dateChoice || ['w_arg_zone_sdate_ldate_top_n_customer', 'w_sale_replace_custref',
           'w_arg_sdate', 'w_arg_sdate_notime', 'w_arg_sdate_ldate'].includes(surface.name))) {
-          const order = dateChoice ? [...dateChoice.order.filter((name) =>
+          const stops = dateChoice ? [...dateChoice.order.filter((name) =>
             !['st_4', 'gb_2', 'rb_bank', 'rb_both', 'rb_purprice'].includes(name)), 'cb_ok', 'cb_cancel'] :
             dateOptions ? ['em_startdate', 'em_enddate', ...dateOptions.checkboxes,
             ...(dateOptions.radios ? [dateOptions.radios[0]] : []), 'cb_ok', 'cb_cancel'] : lookupOwner ? [
@@ -449,7 +449,19 @@ async function captureCriteriaWindows(page, output, surfaces = CRITERIA_WINDOW_S
             surface.name === 'w_arg_zone_sdate_ldate_top_n_customer' ?
               ['dw_control', 'em_startdate', 'em_enddate', 'dw_custcount', 'cb_ok', 'cb_cancel'] :
               ['em_startdate', ...(surface.name === 'w_arg_sdate_ldate' ? ['em_enddate'] : []), 'cb_ok', 'cb_cancel']
-          await form.locator('.tbar .cls').focus()
+          // The lists name each window's tab stops; Tab visits them in the source TabOrder (none = last, as 9999), e.g.
+          // w_arg_subacc_sdate_ldate: dw_control 10, em_startdate 20, em_enddate 30, cb_ok 40, cb_cancel 50.
+          const tabOrders = await page.evaluate((names) => {
+            const f = window.criteriaWindowPreview
+            return Object.fromEntries(names.map((name) => [name, Number(f.window.children.get(name)?.props.get('taborder') ?? 0) || 9999]))
+          }, [...new Set(stops)])
+          const order = stops.map((name, index) => ({ name, index })).sort((a, b) => tabOrders[a.name] - tabOrders[b.name] || a.index - b.index)
+            .map((entry) => entry.name)
+          // start on the last stop: the first Tab wraps to the first, wherever the layout draws it
+          await page.evaluate((name) => {
+            const f = window.criteriaWindowPreview, element = f.view.ctlViews.get(f.window.children.get(name)).el
+            ;(element.matches('input,select,textarea,button') ? element : element.querySelector('input,select,textarea,button,[tabindex]:not([tabindex="-1"])'))?.focus()
+          }, order.at(-1))
           let numericColumn = 0
           for (const name of order) {
             await page.keyboard.press('Tab')
