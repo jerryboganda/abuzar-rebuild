@@ -164,7 +164,7 @@ export async function checkChoiceEditors(check, settle) {
     for (const lines of [3, 7, 15, 32767, undefined]) for (const wrapped of lines === 3 ? [false, true] : [false]) {
       const host = document.createElement('div')
       host.className = modern ? 'modern-surface' : ''
-      host.style.cssText = `position:fixed;left:16px;width:260px;${above ? 'bottom' : 'top'}:16px;font:${16 * scale}px/1.4 sans-serif;z-index:900`
+      host.style.cssText = `position:fixed;left:16px;width:260px;${above ? 'bottom' : 'top'}:16px;font:${16 * scale}px/1.4 sans-serif;z-index:2147483000`
       document.body.append(host)
       const f = mount({ host, popupWidthPercent: 100, popupLines: lines, value: 1,
         items: Array.from({ length: wrapped ? LARGE_LOOKUP : 40 }, (_, index) => ({

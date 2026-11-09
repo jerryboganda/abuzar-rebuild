@@ -19,7 +19,7 @@ export async function checkAutomaticChoices(fixture, check, settle) {
     rt.dwCatalog = catalog
     const host = document.createElement('div')
     host.className = 'automatic-choice-preview'
-    host.style.cssText = 'position:fixed;inset:72px 16px auto;max-width:560px;height:300px;z-index:500'
+    host.style.cssText = 'position:fixed;inset:72px 16px auto;max-width:560px;height:300px;z-index:2147483000'
     document.body.append(host)
     const control = new NDwBase(rt, 'dw_automatic_choices')
     control.parent = fixture.sale

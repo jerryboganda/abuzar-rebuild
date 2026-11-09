@@ -2352,11 +2352,14 @@ try {
     automaticChoiceCases.push({ kind, theme, scale, width, ...appearance })
     if (kind !== 'editable') {
       await input.press('Tab')
+      // A list moves to its next tab column; the single-field lookup has no next field, so (as in PowerBuilder)
+      // Tab after the last field of the last row keeps the accepted value and the keyboard on that field.
       await page.waitForFunction((kind) => {
         const f = window.automaticChoicePreview
-        return !f.view.choiceEdit?.popup?.open && (kind === 'list' ?
-          f.model.col === f.model.colIndex('startingmarginperc') + 1 && document.activeElement === f.view.editor :
-          !f.host.contains(document.activeElement))
+        return kind === 'list' ?
+          !f.view.choiceEdit?.popup?.open && f.model.col === f.model.colIndex('startingmarginperc') + 1 && document.activeElement === f.view.editor :
+          f.model.getItem(1, f.column) === 904 && f.model.col === f.model.colIndex(f.column) + 1 &&
+            !!f.view.editor && document.activeElement === f.view.editor && f.host.contains(document.activeElement)
       }, kind)
     }
     await page.evaluate(() => window.automaticChoicePreview.close())
@@ -2418,8 +2421,17 @@ try {
       await input.fill('Half')
       await input.press('Tab')
       await page.waitForFunction(() => window.selectorVariantPreview.model.getItem(1, 'purinvpagesize') === 'H')
-      assert.ok(await page.evaluate(() => !window.selectorVariantPreview.host.contains(document.activeElement)),
-        'Real Tab accepts the editable code-table label and exits its last field')
+      // purinvpagesize is the last tab field (80) of the only row: as in PowerBuilder, Tab keeps the keyboard on it.
+      await page.waitForFunction(() => {
+        const f = window.selectorVariantPreview
+        return f.model.col === f.model.colIndex('purinvpagesize') + 1 && !!f.view.editor &&
+          document.activeElement === f.view.editor && f.host.contains(document.activeElement)
+      })
+      if (await page.evaluate(() => !!window.selectorVariantPreview.view.choiceEdit?.popup?.open)) await input.press('Escape')
+      await input.press('Escape')
+      await page.waitForFunction(() => !window.selectorVariantPreview.view.editor)
+      assert.equal(await page.evaluate(() => window.selectorVariantPreview.model.getItem(1, 'purinvpagesize')), 'H',
+        'Real Tab accepts the editable code-table label and keeps the keyboard on its last field')
       await cell.focus()
       await cell.press('F2')
       await input.fill('Unapplied')

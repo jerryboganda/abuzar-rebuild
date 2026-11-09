@@ -25,7 +25,7 @@ export async function checkSelectorVariants(fixture, check, settle) {
     host.className = 'selector-variant-preview'
     const tabs = document.querySelector('.presentation-ui .presentation-tabs')?.getBoundingClientRect()
     const top = Math.max(72, Math.ceil(tabs?.bottom ?? 72) + 8)
-    host.style.cssText = `position:fixed;left:16px;right:16px;top:${top}px;max-width:900px;height:min(450px,calc(100vh - ${top + 16}px));z-index:500`
+    host.style.cssText = `position:fixed;left:16px;right:16px;top:${top}px;max-width:900px;height:min(450px,calc(100vh - ${top + 16}px));z-index:2147483000`
     document.body.append(host)
     const control = new NDwBase(rt, 'dw_selector_variant')
     control.parent = fixture.sale
