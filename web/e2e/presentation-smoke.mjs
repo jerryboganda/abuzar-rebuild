@@ -461,9 +461,12 @@ async function captureCriteriaWindows(page, output, surfaces = CRITERIA_WINDOW_S
             }, { name, field: numericOwner && name === 'dw_control' ?
               surface.data[0].surface.fields[numericColumn++].object : null }, { timeout: 5000 })
           }
+          // the title-bar Close button is a mouse control outside the cycle: Tab wraps to the first control in source order
           await page.keyboard.press('Tab')
-          assert.ok(await form.locator('.tbar .cls').evaluate((element) => element === document.activeElement),
-            `${surface.name}/${width}: keyboard traversal wraps within the modal in source order`)
+          assert.ok(await page.evaluate((name) => {
+            const f = window.criteriaWindowPreview
+            return f.view.ctlViews.get(f.window.children.get(name)).el.contains(document.activeElement)
+          }, order[0]), `${surface.name}/${width}: keyboard traversal wraps within the modal in source order`)
         }
         for (const control of await form.locator('input:visible:not(:disabled),select:visible:not(:disabled),button:visible:not(:disabled),.surface-value:visible').all()) {
           await control.focus()
@@ -2611,11 +2614,24 @@ try {
     assert.ok(await input.evaluate((element) => document.activeElement === element), `${name}: header focus enters the field`)
     await page.keyboard.press('Tab')
     assert.ok(await form.locator('.window-actions button').first().evaluate((element) => document.activeElement === element), `${name}: field focus enters the first action`)
+    // Tab follows the source tab order inside the window and wraps to its first field (useSourceTabOrder); the title-bar
+    // Close button is a mouse control outside that cycle. OK and Cancel share TabOrder 20 in w_arg_amount, so the button last
+    // on screen need not be the last stop: walk the cycle.
     await form.locator('.window-actions button').last().focus()
-    await page.keyboard.press('Tab')
-    assert.ok(await close.evaluate((element) => document.activeElement === element), `${name}: forward focus stays in the modal`)
+    let wrapped = false
+    for (let step = 0; step < 10 && !wrapped; step++) {
+      await page.keyboard.press('Tab')
+      const focus = await form.evaluate((root, [field, closer]) => ({ inside: root.contains(document.activeElement),
+        field: document.activeElement === field, close: document.activeElement === closer }),
+      [await input.elementHandle(), await close.elementHandle()])
+      assert.ok(focus.inside && !focus.close, `${name}: forward focus stays in the modal's controls`)
+      wrapped = focus.field
+    }
+    assert.ok(wrapped, `${name}: forward focus wraps to the first field`)
     await page.keyboard.press('Shift+Tab')
-    assert.ok(await form.locator('.window-actions button').last().evaluate((element) => document.activeElement === element), `${name}: reverse focus stays in the modal`)
+    assert.ok(await form.locator('.window-actions').evaluate((root) => root.contains(document.activeElement)), `${name}: reverse focus wraps to the last action`)
+    await page.keyboard.press('Tab')
+    assert.ok(await input.evaluate((element) => document.activeElement === element), `${name}: the last action is followed by the first field`)
     await input.fill('12')
     await page.keyboard.press('Escape')
     assert.equal(await form.count(), 1, `${name}: Escape cannot bypass a dialog without a Cancel binding`)
