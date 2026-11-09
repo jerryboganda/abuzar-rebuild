@@ -35,7 +35,7 @@ export async function checkCriteriaWindows(fixture, check, settle, onlyNames) {
     { code: 903, aliasname: 'SYN-C', name: 'Charlie synthetic item', manfname: 'Synthetic maker C' },
   ]
   const state = { rejectChanged: false, failRetrieve: null, emptySelection: false, defaultStart: null }
-  let current, old
+  let current, old, responseModalityChecked = false
   const reject = (message) => { violations.push(message); throw new Error(message) }
   const rows = (name) => {
     if (name === 'd_popup_itemselection') return state.emptySelection ? [] : items
@@ -171,6 +171,22 @@ export async function checkCriteriaWindows(fixture, check, settle, onlyNames) {
     await wait(() => failure || window?.isOpen && rt.modalWaiting > 0, 'Open')
     if (failure) { restore(); throw failure }
     const view = fixture.ui.views.get(window)
+    if (!modern && !responseModalityChecked && fixture.ui.mdi) {
+      // A response window disables the frame, its menu and the sheets opened before it, as in PowerBuilder.
+      responseModalityChecked = true
+      const frame = fixture.ui.mdi.el, depth = frame.style.zIndex
+      const presses = [frame.querySelector('.menubar .mi'), frame.querySelector('.client') ?? frame].filter(Boolean)
+        .map((target) => {
+          const press = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+          target.dispatchEvent(press)
+          return press.defaultPrevented
+        })
+      const inside = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+      view.el.dispatchEvent(inside)
+      check(presses.length > 0 && presses.every(Boolean) && frame.style.zIndex === depth &&
+        !frame.classList.contains('active') && !frame.querySelector('.menubar .mi.open') && !inside.defaultPrevented,
+      `${name}: an open Classic response window ignores presses on the frame and its menu but not on itself`)
+    }
     const data = new Map()
     for (const binding of surface.data) {
       const control = window.children.get(binding.control)

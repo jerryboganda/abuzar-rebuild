@@ -268,8 +268,13 @@ Decisions recorded for future sessions:
      title stays empty. A dialog can no longer close while its script waits.
    - Focus after a message box or response window returns to the control that had it and its
      GetFocus runs (PowerBuilder behaviour; Classic leaves the focus on the page). Classic menu
-     accelerators now wait while a response window or message box is open; the Classic frame
-     menu still takes mouse clicks then (recorded, not changed: it would change Classic's look).
+     accelerators now wait while a response window or message box is open, and presses on the
+     frame, its menu and the windows opened before a response window are ignored (no overlay, so
+     Classic looks the same). The window z-order is renumbered before it reaches the menus (1000)
+     and message boxes (2000); it grew by one per window press and, in a long session, sheets
+     could be drawn over an open menu or message box.
+   - Tab after the last field of the last row accepts the entry and keeps the keyboard on that
+     field (PowerBuilder); the synthetic pass now expects that for single-field lookups.
    - Printing with "Print layout: Modern" never fails the print call: a document without a usable
      Modern template prints with the Classic layout and says so; preview templates are used only
      in the Modern workspace.

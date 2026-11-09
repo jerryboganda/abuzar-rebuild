@@ -88,8 +88,33 @@ export class DomUi implements UiHost {
       if (k) this.down.delete(k)
     }, { signal: this.lifetime.signal })
     window.addEventListener('blur', () => this.down.clear(), { signal: this.lifetime.signal })
+    // A PowerBuilder response window disables every window opened before it (the frame, its menu and the sheets):
+    // presses there are ignored and the keyboard stays in the response window. Releases still pass, so a drag of
+    // the response window itself that ends outside it completes normally.
+    for (const type of ['pointerdown', 'mousedown', 'click', 'auxclick', 'dblclick', 'contextmenu']) {
+      document.addEventListener(type, (event) => {
+        if (!this.blockedByResponseWindow(event.target)) return
+        event.preventDefault()
+        event.stopImmediatePropagation()
+      }, { capture: true, signal: this.lifetime.signal })
+    }
   }
 
+  /** The open response window that disables the window under `target`, if any (only in the native presentation). */
+  protected blockedByResponseWindow(target: EventTarget | null): boolean {
+    if (!(target instanceof Node) || !this.responseWindowsBlockPointer()) return false
+    const views = [...this.views.values()]
+    let top = -1
+    views.forEach((view, index) => {
+      if (view.modal && !view.sheet && view.w.isOpen && view.el.isConnected && !view.el.classList.contains('hidden')) top = index
+    })
+    if (top < 0 || views[top].el.contains(target)) return false
+    // Windows opened after the response window (its own popups and later response windows) remain usable.
+    return views.slice(0, top).some((view) => view.el.contains(target)) &&
+      !views.slice(top + 1).some((view) => view.el.contains(target))
+  }
+
+  protected responseWindowsBlockPointer(): boolean { return true }
   protected shortcutsEnabled(): boolean { return true }
   /** PowerBuilder response windows and message boxes are application-modal: the frame's accelerators wait until they close. */
   protected menuShortcutsEnabled(): boolean {
@@ -234,14 +259,34 @@ export class DomUi implements UiHost {
     }
   }
 
+  /**
+   * The z-order for the window being activated. The order is renumbered (keeping it) before it reaches the frame's
+   * drop-down menus (1000) and message boxes (2000), so a long session never draws windows over them.
+   */
+  raise(): number {
+    if (this.zTop >= 800) {
+      const order = [...this.views.values()].filter((view) => view.el.style.zIndex)
+        .sort((a, b) => Number(a.el.style.zIndex) - Number(b.el.style.zIndex))
+      this.zTop = 10
+      for (const view of order) view.el.style.zIndex = String(++this.zTop)
+    }
+    return ++this.zTop
+  }
+
+  /** A message box and its blocker go above every window. */
+  private stackAboveWindows(blocker: HTMLElement, box: HTMLElement): void {
+    blocker.style.zIndex = String(Math.max(1999, this.zTop + 1))
+    box.style.zIndex = String(Math.max(2000, this.zTop + 2))
+  }
+
   /** text prompt standing in for the file dialogs of the original */
   prompt(title: string, text: string, def: string): Promise<string | null> {
     return new Promise((resolve) => {
       const bg = document.createElement('div')
       bg.className = 'modal-bg'
-      bg.style.zIndex = '1999'
       const box = document.createElement('div')
       box.className = 'msgbox'
+      this.stackAboveWindows(bg, box)
       box.innerHTML = '<div class="tbar" style="background:#fff"><div class="ttl"></div></div><div class="body" style="flex-direction:column"><div class="txt"></div><input style="width:100%;height:24px;border:1px solid #7a7a7a"></div><div class="btns"><button class="ok">OK</button><button class="cancel">Cancel</button></div>'
       ;(box.querySelector('.ttl') as HTMLElement).textContent = title
       ;(box.querySelector('.txt') as HTMLElement).textContent = text
@@ -274,9 +319,9 @@ export class DomUi implements UiHost {
     return new Promise((resolve) => {
       const bg = document.createElement('div')
       bg.className = 'modal-bg'
-      bg.style.zIndex = '1999'
       const box = document.createElement('div')
       box.className = 'msgbox'
+      this.stackAboveWindows(bg, box)
       // the Windows 11 pictures of a message box: blue circle with ? or i, red circle with a cross, yellow triangle
       const circle = (fill: string, glyph: string) => `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="${fill}"/>${glyph}</svg>`
       const ic: Record<string, string> = {
@@ -569,7 +614,7 @@ export class WinView {
   activate(): void {
     for (const v of this.ui.views.values()) v.el.classList.remove('active')
     this.el.classList.add('active')
-    this.el.style.zIndex = String(++this.ui.zTop)
+    if (Number(this.el.style.zIndex) !== this.ui.zTop) this.el.style.zIndex = String(this.ui.raise())
     if (this.sheet) {
       this.ui.mdi?.showMenuFor(this.w)
       this.ui.mdi?.refreshTitle()

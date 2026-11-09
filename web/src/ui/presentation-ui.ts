@@ -85,6 +85,8 @@ export class PresentationUi extends DomUi {
   }
 
   protected override menuShortcutsEnabled(): boolean { return this.session.activeMode === 'classic' ? super.menuShortcutsEnabled() : !this.hasModal() }
+  /** Modern response windows are modal dialogs, which already make the rest of the workspace inert. */
+  protected override responseWindowsBlockPointer(): boolean { return this.session.activeMode === 'classic' }
   override accessibleTabs(): boolean { return this.session.activeMode === 'modern' }
 
   override createDwView(control: NDwBase, host: HTMLElement): DwView {
