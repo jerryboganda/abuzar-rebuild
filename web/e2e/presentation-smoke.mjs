@@ -573,7 +573,22 @@ async function checkLookupCriteriaInput(page) {
         assert.equal(await editor.getAttribute('aria-expanded'), 'true',
           `${name}: source ShowList intentionally remains open after selection`)
         await editor.press('Tab')
-        await page.waitForFunction(() => window.criteriaWindowPreview.el('cb_ok') === document.activeElement)
+        await page.waitForFunction(() => window.criteriaWindowPreview.el('cb_ok') === document.activeElement, null, { timeout: 10000 })
+          .catch(async (error) => {
+            const state = await page.evaluate(() => {
+              const f = window.criteriaWindowPreview, active = document.activeElement
+              const describe = (element) => element ? `${element.tagName.toLowerCase()}${element.dataset?.obj ? '[' + element.dataset.obj + ']' : ''}` +
+                `${element.className ? '.' + String(element.className).split(' ').slice(0, 2).join('.') : ''}` +
+                ` tab=${[...(function* () { for (let at = element; at && at !== f.view.client; at = at.parentElement) if (at.dataset?.tab) yield at.dataset.tab })()].reverse().join('/')}` +
+                ` index=${element.tabIndex}` : 'none'
+              const stops = [...f.view.client.querySelectorAll('input,textarea,select,button,a[href],[tabindex]')]
+                .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled') && element.getClientRects().length > 0)
+              return { active: describe(active), insideDialog: f.view.el.contains(active), editor: describe(f.dw?.editor),
+                popup: !!f.dw?.choiceEdit?.popup?.open, row: f.model.row, column: f.model.col,
+                cbOk: describe(f.el('cb_ok')), stops: stops.slice(0, 16).map(describe) }
+            })
+            throw new Error(`Tab from the lookup did not reach OK: ${JSON.stringify(state)}`, { cause: error })
+          })
         assert.equal(await data.locator('.dw-choice-popup:visible').count(), 0,
           `${name}: real Tab accepts and dismisses the automatic list before the next action`)
       }
