@@ -3126,20 +3126,41 @@ try {
           `Aging/${panel}/${theme}/${scale}/${width}: only two-dimensional grids may scroll horizontally`)
         if (panel === 'List') {
           const find = form.locator('.entry-find [data-obj=find]')
-          await find.click()
           const input = form.locator('.entry-find input')
-          await input.fill('BR')
-          await page.waitForFunction(() => window.presentationEntryPreview.window.props.get('il_selectedrow') === 2, null, { timeout: 10000 })
-            .catch(async (error) => {
-              const state = await page.evaluate(() => {
+          await (async () => {
+            await find.click({ timeout: 10000 })
+            await input.fill('BR', { timeout: 10000 })
+            await page.waitForFunction(() => window.presentationEntryPreview.window.props.get('il_selectedrow') === 2, null, { timeout: 10000 })
+          })().catch(async (error) => {
+              const state = await page.evaluate(async () => {
                 const f = window.presentationEntryPreview, props = f.window.props, list = f.control('dw_list').model
+                const rt = f.control('dw_find').rt
                 const findView = f.view.ctlViews.get(f.control('dw_find')).dw
-                return { selected: props.get('il_selectedrow'), sort: props.get('is_sortsequence'), type: props.get('ii_type'),
+                const describe = (value) => value === undefined ? 'undefined' : value === null ? 'null' : String(value)
+                const strip = f.element('tab_retrieve').querySelector('[role=tablist],.strip')
+                const before = { selected: describe(props.get('il_selectedrow')), detailEnabled: describe(f.control('tabpage_detail').props.get('enabled')),
+                  selectedTab: describe(f.control('tab_retrieve').props.get('selectedtab')), tabBusy: strip?.getAttribute('aria-busy') ?? null,
+                  held: [...document.querySelectorAll('[data-tab-hold]')].map((element) => element.dataset.obj ?? element.className).slice(0, 8),
+                  findInert: !!f.element('dw_find').closest('[inert]'),
+                  listRow: list.row, listSelected: list.buf.primary.map((row, index) => row.sel ? index + 1 : 0).filter(Boolean) }
+                // how far does the script get when it runs again (a hang shows as a timeout)
+                const timeout = (ms) => new Promise((resolve) => setTimeout(() => resolve('timeout'), ms))
+                let search = null
+                try {
+                  const holder = rt.getClass ? await rt.instantiate('f_binarysearch', null) : null
+                  search = holder ? describe(await Promise.race([rt.callMethod(holder, 'f_binarysearch', ['BR', f.control('dw_list'), 'name']), timeout(3000)])) : 'no class'
+                } catch (error) { search = 'error: ' + String(error?.message ?? error) }
+                let refire = null
+                try {
+                  refire = describe(await Promise.race([rt.fire(f.control('dw_find'), 'editchanged', [1, { name: 'find' }, 'BR']), timeout(3000)]))
+                } catch (error) { refire = 'error: ' + String(error?.message ?? error) }
+                return { ...before, after: describe(props.get('il_selectedrow')), search, refire,
+                  sort: props.get('is_sortsequence'), type: props.get('ii_type'),
                   column: props.get('ii_colindex'), editor: findView.editor?.value ?? null, draft: f.control('dw_find').model.getItem(1, 'find'),
                   pending: findView.pendingEdits?.size, list: [...Array(list.rowCount())].map((_, i) => list.getItem(i + 1, 'name')),
                   events: f.events.slice(-14).map((event) => `${event.target?.name}.${event.event}(${(event.args ?? []).map((arg) =>
                     typeof arg === 'object' ? arg?.name ?? '' : String(arg)).join(',')})`),
-                  errors: window.presentationRuntimeErrors ?? null }
+                  missing: [...(rt.missing?.keys() ?? [])].slice(-15), errors: window.presentationRuntimeErrors ?? null }
               })
               throw new Error(`The real Find did not select the matching row: ${JSON.stringify(state)}`, { cause: error })
             })

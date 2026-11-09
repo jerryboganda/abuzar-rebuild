@@ -1288,16 +1288,23 @@ export class WinView {
           const focus = document.activeElement
           const ownedFocus = focus instanceof HTMLElement && t.contains(focus)
           show(cur)
-          // The page being switched to takes no input until its SelectionChanged scripts have run (see TabSelection.switching).
+          // The page being switched to takes no input until its SelectionChanged scripts have run (see TabSelection.switching):
+          // the page and its controls, wherever a Modern layout has placed them.
           for (const item of items) {
             const hold = selection.switching === item.po
             if (hold === item.page.hasAttribute('data-tab-hold')) continue
-            item.page.inert = hold
-            if (hold) item.page.dataset.tabHold = ''
-            else {
-              delete item.page.dataset.tabHold
-              this.ui.releaseHeldFocus(item.page)
+            const within = (control: PBObject) => {
+              for (let owner = control.parent; owner; owner = owner.parent) if (owner === item.po) return true
+              return false
             }
+            const held = [item.page, ...[...this.ctlViews].filter(([control]) => within(control)).map(([, binding]) => binding.el)
+              .filter((element) => !item.page.contains(element))]
+            for (const element of held) {
+              element.inert = hold
+              if (hold) element.dataset.tabHold = ''
+              else delete element.dataset.tabHold
+            }
+            if (!hold) for (const element of held) this.ui.releaseHeldFocus(element)
           }
           if (accessible) {
             strip.setAttribute('aria-busy', String(selection.busy))
