@@ -1223,7 +1223,11 @@ export class ModernDwView extends DwView {
     if (!this.surface) return super.commitValue(model, row, column, object, value, guard)
     this.committing = true
     const record = this.boundRow
+    const editText = this.captureEditText(value)
     let result: DwEditResult = 'rejected'
+    // The record, the layout or the field's configuration changed while the entry was validated (the shared guard, or this view's
+    // own check): the typed text is kept in the recovery panel, as the Classic view keeps it, never reopened into a changed field.
+    let configurationChanged = false
     try {
       if (this.ctl.model !== model || model.rowAt(row) !== record) {
         this.retainStaleDraft(toStr(value))
@@ -1232,8 +1236,9 @@ export class ModernDwView extends DwView {
       // The same acceptance as the Classic view: ItemChanged decides; a script that protects the field (or disables the
       // control) while accepting it does not undo an accepted entry.
       result = await commitDwValue(this.ctl, model, row, column, object, value, async () => {
-        await guard?.()
+        try { await guard?.() } catch (error) { configurationChanged = true; throw error }
         if (this.changes.signal.aborted || this.ctl.model !== model || model.rowAt(row) !== record || model.colIndex(object.name) !== column) {
+          configurationChanged = true
           throw new Error('The record or layout changed during validation. The entry was not written to the data model.')
         }
       })
@@ -1243,8 +1248,10 @@ export class ModernDwView extends DwView {
       if (result === 'rejected') this.status.textContent = 'The entry was not accepted. Correct it or press Escape to cancel the edit.'
       return result
     } catch (error) {
-      // A script error during validation rejects the entry, as in the Classic view; the editor reopens with the text.
+      // A script error during validation rejects the entry, as in the Classic view; the editor reopens with the text.  A changed
+      // configuration keeps the text in the recovery panel instead (see above).
       result = 'rejected'
+      if (configurationChanged && !this.changes.signal.aborted && !this.stale) this.retainStaleDraft(editText())
       this.ctl.rt.onError(error)
       if (!this.stale) this.status.textContent = 'The entry was not accepted. Correct it or press Escape to cancel the edit.'
       return 'rejected'

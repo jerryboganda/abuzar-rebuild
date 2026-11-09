@@ -135,23 +135,26 @@ async function checkDerivedModalWindowsImpl(fixture, check, settle, filter) {
           !view.el.querySelector('.window-actions')?.contains(view.ctlViews.get(window.children.get(name)).el)),
           `${label}: buttons and artwork the source places among the content stay in the content`)
         // A groupbox is drawn over the area of the controls it encloses in the source and names them as its group (aria-owns).
-        check(Object.entries(surface.members ?? {}).every(([frame, members]) => {
+        const frameProblems = Object.entries(surface.members ?? {}).flatMap(([frame, members]) => {
           const area = view.el.querySelector(`.window-frame-area[data-window-frame="${frame}"]`)
           // A main frame that encloses all content keeps labelling the whole content instead of forming a group.
-          if (!area) return frame === surface.frame && content?.getAttribute('aria-labelledby') !== null
+          if (!area) return frame === surface.frame && content?.getAttribute('aria-labelledby') !== null ? [] : [`${frame}: no area`]
           const owned = (area.getAttribute('aria-owns') ?? '').split(/\s+/).filter(Boolean).map((id) => document.getElementById(id))
           const box = area.getBoundingClientRect()
-          return members.every((member) => {
+          const rect = (r) => `${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.right)},${Math.round(r.bottom)}`
+          return members.flatMap((member) => {
             const control = window.children.get(member)
             const element = control ? view.ctlViews.get(control)?.el : null
-            if (!element) return false
+            if (!element) return [`${frame}.${member}: no element`]
             const nested = element.classList.contains('window-frame-area')
-            if (!nested && !owned.some((item) => item?.contains(element))) return false
-            if (element.getClientRects().length === 0) return true
+            if (!nested && !owned.some((item) => item?.contains(element))) return [`${frame}.${member}: not owned`]
+            if (element.getClientRects().length === 0) return []
             const r = element.getBoundingClientRect()
-            return r.left >= box.left - 2 && r.right <= box.right + 2 && r.top >= box.top - 2 && r.bottom <= box.bottom + 2
+            return r.left >= box.left - 2 && r.right <= box.right + 2 && r.top >= box.top - 2 && r.bottom <= box.bottom + 2 ? []
+              : [`${frame}.${member}: ${rect(r)} outside ${rect(box)}`]
           })
-        }), `${label}: each groupbox encloses and names exactly the controls it encloses in the source`)
+        })
+        check(!frameProblems.length, `${label}: each groupbox encloses and names exactly the controls it encloses in the source (${frameProblems.slice(0, 3).join('; ')})`)
         if (!sheet) check(overlap(view, window), `${label}: the dialog fits the viewport without horizontal scrolling`)
         else check(view.client.scrollWidth <= view.client.clientWidth + 1, `${label}: the sheet has no horizontal scrolling`)
       }

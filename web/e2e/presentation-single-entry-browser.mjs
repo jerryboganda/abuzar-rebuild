@@ -637,10 +637,11 @@ async function checkCheckboxGuards(open, fixture, route, check, settle) {
         }
         releaseCommit()
         await settle()
+        const outcome = `row1=${f.detail.getItem(1, 'autocheck')} row2=${f.detail.getItem(2, 'autocheck')} changes=${changes} rows=${f.detail.rowCount()}`
         check(f.detail.getItem(1, 'autocheck') === 'Y' && f.detail.getItem(2, 'autocheck') === (replaceDestination ? 'N' : 'Y') &&
           changes === (replaceDestination ? 2 : 3),
-          replaceDestination ? 'replacing the destination invalidates its queued checkbox activation' :
-            'the original destination toggles once when its awaited pointer transition completes')
+          (replaceDestination ? 'replacing the destination invalidates its queued checkbox activation' :
+            'the original destination toggles once when its awaited pointer transition completes') + ` (${outcome})`)
       } finally {
         releaseCommit()
         releaseFocus()

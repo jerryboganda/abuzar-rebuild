@@ -361,7 +361,9 @@ export async function checkContactCardSurfaces(fixture, check, settle) {
             check(f.element('dw_detail').querySelector('.surface-stale textarea,.surface-stale input,.dw-recovery textarea')?.value.replace(/\r\n/g, '\n') === value.replace(/\r\n/g, '\n'),
               `${change}: the rejected Contact Card draft remains available to copy`)
             check(await f.master.n_accepttext() === -1, `${change}: recovery does not silently accept a detached draft`)
-            f.element('dw_detail').querySelector('.surface-stale button,.dw-recovery button').click()
+            const discard = f.element('dw_detail').querySelector('.surface-stale button,.dw-recovery button')
+            check(!!discard, `${change}: the recovery panel offers an explicit discard`)
+            discard?.click()
             await settle()
             check(await f.master.n_gettext() !== value && f.model.getItem(1, field) === card[field],
               `${change}: explicit discard releases the stale text binding without changing the buffer`)
