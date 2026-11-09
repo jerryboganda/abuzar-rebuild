@@ -62,7 +62,7 @@ export function applyModernEntryWindow(view: WinView): boolean {
   // The rearranged pages keep the source tab order (dw_find before the criteria on the List page, as in Classic).
   useSourceTabOrder(view.el, view.client, [...controls].flatMap(([, control]) => {
     const binding = view.ctlViews.get(control)
-    return binding ? [{ element: binding.el, taborder: control.props.get('taborder') }] : []
+    return binding ? [{ element: binding.el, taborder: control.props?.get('taborder') }] : []
   }))
   const group = (className: string, children: HTMLElement[]) => {
     const section = document.createElement('div')

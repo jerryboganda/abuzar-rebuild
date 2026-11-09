@@ -66,6 +66,8 @@ export function applyModernWindow(view: WinView): boolean {
   }
   for (const name of surface.frames ?? []) {
     const { frame } = sourceFrame(name)
+    // A groupbox with recorded members is drawn over the area it encloses (see below); one without stays a caption above the plan.
+    if (containers.has(name)) continue
     content.append(frame)
     contentItems.set(name, frame)
     // A groupbox frame encloses its fields: it is a container, not a peer on their rows, so it takes no part in the line plan.
@@ -169,48 +171,41 @@ export function applyModernWindow(view: WinView): boolean {
     for (const name of names) {
       const element = elements.get(name)!
       element.classList.add(className)
+      // artwork keeps its source size (the reflow rules size other controls to their cell)
+      if (className === 'window-artwork') {
+        if (element.style.width) element.style.setProperty('--artwork-width', element.style.width)
+        if (element.style.height) element.style.setProperty('--artwork-height', element.style.height)
+      }
       content.append(element)
       contentItems.set(name, element)
       itemControls.set(name, [name])
     }
   }
   const flexible = new Set([...(surface.embedded ?? []), ...data.map((binding) => binding.control)])
-  const order = [...(surface.contentOrder ?? [])]
-  // The main frame is not in the content order: as a positioned group it stands where its first member stands.
-  if (surface.frame && containers.has(surface.frame)) {
-    const held = holds(surface.frame)
-    const first = order.findIndex((name) => held.has(name))
-    order.splice(first < 0 ? order.length : first, 0, surface.frame)
-  }
-  const heldBy = new Map<string, string>()
-  for (const frame of containers) for (const member of members[frame]) heldBy.set(member, frame)
-  const built = new Set<string>()
-  const build = (frame: string) => {
-    if (built.has(frame)) return
-    built.add(frame)
-    for (const member of members[frame]) if (containers.has(member)) build(member)
+  for (const name of surface.contentOrder ?? []) if (contentItems.has(name)) content.append(contentItems.get(name)!)
+  // Every item is placed on the one grid by its source position, groupbox members included, so a field beside a groupbox keeps its
+  // row (`em_dscode` beside the date box).  A groupbox with recorded members is drawn behind them over the area it encloses, with its
+  // caption on its top band; it names its members as one group (aria-owns), and in the reading order it stands before its first member.
+  const areas = new Map<string, HTMLElement>()
+  for (const frame of containers) {
     const element = elements.get(frame)!
-    const group = document.createElement('div')
-    group.className = 'window-fields window-frame-group'
-    group.dataset.windowFrame = frame
-    group.setAttribute('role', 'group')
-    group.setAttribute('aria-labelledby', element.querySelector('legend')!.id)
-    group.append(element)
-    const inner = new Map<string, HTMLElement>()
-    for (const name of order) {
-      if (heldBy.get(name) !== frame || !contentItems.has(name)) continue
-      group.append(contentItems.get(name)!)
-      inner.set(name, contentItems.get(name)!)
-    }
-    // The members are arranged inside the box by their source positions; the caption stays on the box's first row.
-    arrangeGrid(view, group, inner, itemControls, flexible, containers)
-    contentItems.set(frame, group)
-    itemControls.set(frame, [frame])
-    flexible.add(frame)
+    element.classList.add('window-frame-area')
+    element.dataset.windowFrame = frame
+    element.setAttribute('role', 'group')
+    element.setAttribute('aria-labelledby', element.querySelector('legend')!.id)
+    const held = holds(frame)
+    const owned = [...held].flatMap((name) => {
+      const item = contentItems.get(name)
+      if (!item) return []
+      item.id ||= `${identity}-item-${name}`
+      return [item.id]
+    })
+    if (owned.length) element.setAttribute('aria-owns', owned.join(' '))
+    const first = ([...content.children] as HTMLElement[]).find((child) => [...held].some((name) => contentItems.get(name) === child))
+    content.insertBefore(element, first ?? null)
+    areas.set(frame, element)
   }
-  for (const frame of containers) build(frame)
-  for (const name of order) if (!heldBy.has(name)) content.append(contentItems.get(name)!)
-  arrangeGrid(view, content, new Map([...contentItems].filter(([name]) => !heldBy.has(name))), itemControls, flexible, containers)
+  arrangeGrid(view, content, contentItems, itemControls, flexible, areas)
   const actions = document.createElement('footer')
   actions.className = 'window-actions'
   for (const name of surface.actions) actions.append(elements.get(name)!)
@@ -234,7 +229,7 @@ export function applyModernWindow(view: WinView): boolean {
     button.onclick = () => { void view.ui.rt.closeWindow(view.w).catch((error) => view.ui.rt.onError(error)) }
     close.replaceWith(button)
   }
-  useSourceTabOrder(view.el, view.client, [...view.ctlViews].map(([control, binding]) => ({ element: binding.el, taborder: control.props.get('taborder') })))
+  useSourceTabOrder(view.el, view.client, [...view.ctlViews].map(([control, binding]) => ({ element: binding.el, taborder: control.props?.get('taborder') })))
   return true
 }
 
@@ -244,7 +239,7 @@ export function applyModernWindow(view: WinView): boolean {
  * order, and so the tab order, is untouched.  A window whose controls carry no usable geometry keeps the single-column flow.
  */
 function arrangeGrid(view: WinView, content: HTMLElement, items: ReadonlyMap<string, HTMLElement>, controls: ReadonlyMap<string, readonly string[]>,
-  flexible: ReadonlySet<string>, frames: ReadonlySet<string> = new Set()): void {
+  flexible: ReadonlySet<string>, frames: ReadonlyMap<string, HTMLElement> = new Map()): void {
   const read = (name: string) => {
     const control = view.w.children?.get(name)
     // A groupbox that holds positioned members keeps its source area even while its own caption is hidden: its members may be visible.
@@ -269,9 +264,18 @@ function arrangeGrid(view: WinView, content: HTMLElement, items: ReadonlyMap<str
   }
   const boxes = resolveAnchors(anchors)
   if (boxes.length < 2) return
+  // A groupbox area is planned with its members (its edges become grid lines, its top band a row for the caption) but is not an
+  // editor: it never takes a caption's place, and it overlaps the members it encloses.
+  const areas = new Map<string, HTMLElement>()
+  for (const [name, element] of frames) {
+    const part = read(name)
+    if (!part) continue
+    boxes.push({ key: name, left: part.x, top: part.y, right: part.x + part.width, bottom: part.y + Math.max(1, part.height), flex: true })
+    areas.set(name, element)
+  }
   // Anything the plan does not place (the window frame and its legend, groupbox captions) stays full width above the plan.
-  const placed = new Set(boxes.map((box) => items.get(box.key)))
+  const placed = new Set([...boxes.map((box) => items.get(box.key)), ...areas.values()])
   const unplaced = ([...content.children] as HTMLElement[]).filter((child) => !placed.has(child))
   unplaced.forEach((child, index) => { child.style.gridColumn = '1 / -1'; child.style.gridRow = String(index + 1) })
-  applyGrid(content, planGrid(boxes), items, unplaced.length)
+  applyGrid(content, planGrid(boxes), new Map([...items, ...areas]), unplaced.length)
 }

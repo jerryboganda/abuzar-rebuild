@@ -85,11 +85,18 @@ export const PRESENTATION_CSS = `
 }
 .modern-window .window-field:has(>input.hidden):has(>label>.hidden),.modern-window .window-field>label:has(>.hidden) {display:none;}
 .modern-window .window-frame {min-width:0;border:0;margin:0;padding:0;background:transparent!important;color:var(--p-text)!important;}
+/* A groupbox drawn over the area its members occupy on the grid: behind them, its caption on its top band, never taking a click. */
+.modern-window .window-fields.has-grid > .window-frame-area {z-index:0;pointer-events:none;align-self:stretch;border:1px solid var(--p-line)!important;border-radius:6px;margin:0 2px;padding:0 8px;}
+.modern-window .window-fields.has-grid > .window-frame-area > legend {padding:0 4px;}
+.modern-window .window-fields.has-grid > .grid-cell:not(.window-frame-area) {z-index:1;}
+@media (max-width:520px) {.modern-window .window-fields.has-grid > .window-frame-area {border-width:0 0 1px!important;border-radius:0;margin:0;padding:0;}}
 .modern-window .window-frame legend {padding:0;white-space:normal;overflow-wrap:anywhere;font-weight:600;color:var(--p-text)!important;background:transparent!important;}
 .modern-window .window-list {display:grid;gap:6px;min-width:0;align-content:start;}
 .modern-window .window-list select.ctl {min-width:0;min-height:10em;padding:6px;background:var(--p-surface)!important;border:1px solid var(--p-line)!important;border-radius:4px;}
 /* A container or rich control kept as its original element (a tab control with its pages) scrolls inside the dialog instead of widening it. */
-.modern-window .window-embedded {position:relative!important;left:auto!important;top:auto!important;max-width:100%;}
+/* The container takes its cell's width (its source width would widen the dialog past a narrow screen) and keeps its own height; its
+   children keep their Classic positions inside it and scroll there. */
+.modern-window .window-embedded {position:relative!important;left:auto!important;top:auto!important;width:100%!important;max-width:100%;min-width:0;}
 /* Only a container (tab control, user object) scrolls; a link or text control never becomes a scroll region a keyboard cannot reach. */
 .modern-window .window-embedded[data-embedded-scroll] {max-height:calc(100vh - 14em);overflow:auto;}
 .modern-window .window-caption {white-space:normal;overflow-wrap:anywhere;background:transparent!important;color:var(--p-text)!important;}
@@ -104,6 +111,11 @@ export const PRESENTATION_CSS = `
 /* A DataWindow host stays the containing block of its view: a view that falls back to Classic rendering (no surface for a dataobject a
    script assigns, print preview) is positioned inside its box, never over the dialog. */
 .modern-window .ctl.window-data:not(.window-embedded):not(.window-embedded *) {position:relative!important;}
+/* Artwork (a picture, a colour key, a progress bar) keeps its source size, never wider than its cell. */
+.modern-window .ctl.window-artwork:not(.window-embedded):not(.window-embedded *) {width:min(var(--artwork-width,100%),100%)!important;height:var(--artwork-height,auto)!important;overflow:hidden;}
+/* A command button placed among the content (a "...." picker beside its option) is a Modern button at its natural width. */
+.modern-window button.ctl.window-button:not(.window-embedded *) {width:auto!important;max-width:100%;justify-self:start;min-height:36px;padding:6px 14px;border:1px solid var(--p-line)!important;border-radius:4px;background:var(--p-surface)!important;color:var(--p-text)!important;cursor:pointer;}
+.modern-window button.ctl.window-button:hover:not(:disabled):not(.window-embedded *) {background:var(--p-selected)!important;}
 /* disabled and default states win over the reflow colours above */
 .modern-window :is(input,textarea,select,button).ctl:disabled:not(.window-embedded *) {background:var(--p-canvas)!important;color:var(--p-muted)!important;cursor:default;}
 .modern-window .window-actions button.ctl.default:not(:disabled):not(.window-embedded *) {color:var(--p-on-accent)!important;}

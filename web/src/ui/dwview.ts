@@ -300,6 +300,7 @@ export class DwView {
 
   dispose(): void {
     this.disposed = true
+    this.renderSettled()
     this.cancelChoice()
     this.discardInputEvents()
     this.detachTextEditor()
@@ -425,11 +426,22 @@ export class DwView {
     })
   }
 
+  /** callers of render() that arrived while a render was running: they wait for the render that includes their change */
+  private renderWaiters: (() => void)[] = []
+  private renderSettled(): void {
+    for (const resolve of this.renderWaiters.splice(0)) resolve()
+  }
+
   async render(): Promise<void> {
-    if (this.disposed || this.recoveredDraft || this.choiceEdit?.isComposing || this.composingText && this.editor === this.composingText) return
-    if (this.rendering) {
-      this.again = true
+    if (this.disposed || this.recoveredDraft || this.choiceEdit?.isComposing || this.composingText && this.editor === this.composingText) {
+      if (!this.rendering) this.renderSettled()
       return
+    }
+    if (this.rendering) {
+      // A render is running: this caller's change is painted by the next one, so it waits for that (SetFocus after InsertRow looks
+      // for the new row's cells as soon as this returns).
+      this.again = true
+      return new Promise((resolve) => this.renderWaiters.push(resolve))
     }
     this.rendering = true
     try {
@@ -453,8 +465,10 @@ export class DwView {
       this.rendering = false
       if (this.again) {
         this.again = false
-        this.schedule()
-      }
+        // the waiters are released by the end of the render this schedules (or by dispose, which cancels it)
+        if (this.disposed) this.renderSettled()
+        else this.schedule()
+      } else this.renderSettled()
     }
   }
 
@@ -1020,7 +1034,10 @@ export class DwView {
       // (RowFocusChanging / RowFocusChanged) and the clicked field opened.
       if (!this.focused) {
         this.focused = true
-        await this.ctl.rt.fire(this.ctl, 'getfocus')
+        // A press inside a DataWindow that already holds the keyboard (its editor, after SetFocus) is no focus change: no GetFocus.
+        if (!(document.activeElement && document.activeElement !== document.body && this.root.contains(document.activeElement))) {
+          await this.ctl.rt.fire(this.ctl, 'getfocus')
+        }
       }
       if (this.disposed || this.ctl.destroyed || this.ctl.model !== m) return
       const clicked = await this.ctl.rt.fire(this.ctl, 'clicked', [ev.offsetX, ev.offsetY, row, { name: obj ?? '' }])
@@ -1546,15 +1563,17 @@ export class DwView {
       await this.render()
       cell = this.cellOf(m.row, o.name)
     }
-    if (!cell) return false
-    if ((this.editor instanceof HTMLInputElement || this.editor instanceof HTMLTextAreaElement) &&
+    // A current column that is not painted (hidden, or not part of the Modern form) is not a place for the keyboard either: when the
+    // window comes up the keyboard goes to the first editable column of the tab order, as for a protected current cell.
+    if (!cell && !fallback) return false
+    if (cell && (this.editor instanceof HTMLInputElement || this.editor instanceof HTMLTextAreaElement) &&
       this.editRow === m.row && this.editObj.toLowerCase() === name) {
       this.syncFocusedText?.()
       this.editor.focus()
       if (!this.choiceEdit && dwEditAutoSelect(m, o)) this.editor.select()
       return true
     }
-    if (!cell.classList.contains('editable')) {
+    if (!cell || !cell.classList.contains('editable')) {
       if (!fallback) return false
       // a protected current cell (when the window comes up): the keyboard goes to the first column of the tab order that can be edited (the Purchase Order's header starts in AliasName, `Code` is read-only)
       const order = m.def.objects.filter((x) => x.type === 'column' && num(x, 'tabsequence', 0) > 0).sort((a, b) => num(a, 'tabsequence') - num(b, 'tabsequence'))

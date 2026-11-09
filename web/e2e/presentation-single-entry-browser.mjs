@@ -624,20 +624,21 @@ async function checkCheckboxGuards(open, fixture, route, check, settle) {
         check(f.detail.row === 1 && f.detail.getItem(1, 'autocheck') === 'N' &&
           f.detail.getItem(2, 'autocheck') === 'N' && view.editor?.checked && changes === 1,
         'rejected pointer navigation neither abandons a checkbox draft nor toggles its destination')
+        // PowerBuilder order: the DataWindow already holds the keyboard (its editor), so the press raises no GetFocus; Clicked, then the
+        // previous record's ItemChanged, then the destination.  The activation waits for that acceptance.
         reject = false
         await clickDestination()
-        releaseCommit()
-        await settle()
-        check(f.detail.getItem(1, 'autocheck') === 'Y' && f.detail.getItem(2, 'autocheck') === 'N',
-          'a queued checkbox activation waits for source GetFocus after accepting the previous record')
+        check(f.detail.getItem(1, 'autocheck') === 'N' && f.detail.getItem(2, 'autocheck') === 'N',
+          'a queued checkbox activation waits while the previous record is accepted')
         if (replaceDestination) {
           f.detail.deleteRow(2)
           f.detail.setItem(f.detail.insertRow(0), 'autocheck', 'N')
           control.changed()
         }
-        releaseFocus()
+        releaseCommit()
         await settle()
-        check(f.detail.getItem(2, 'autocheck') === (replaceDestination ? 'N' : 'Y') && changes === (replaceDestination ? 2 : 3),
+        check(f.detail.getItem(1, 'autocheck') === 'Y' && f.detail.getItem(2, 'autocheck') === (replaceDestination ? 'N' : 'Y') &&
+          changes === (replaceDestination ? 2 : 3),
           replaceDestination ? 'replacing the destination invalidates its queued checkbox activation' :
             'the original destination toggles once when its awaited pointer transition completes')
       } finally {
@@ -679,10 +680,12 @@ async function checkCheckboxGuards(open, fixture, route, check, settle) {
         check(await pending === -1 && f.detail.getItem(1, 'autocheck') === 'N',
           `${change}/${fixture.session.activeMode}: a stale checkbox draft cannot write through asynchronous validation`)
         await settle()
-        if (fixture.session.activeMode === 'modern') {
-          check(f.element('dw_detail').querySelector('.surface-stale input')?.value === 'Y',
-            'stale checkbox recovery exposes its original data key, not a native input index')
-        } else check(view.editor?.type === 'checkbox' && view.editor.checked, 'rejected checkbox drafts remain visible')
+        // The rejected draft stays visible: in its editor, as in Classic, or (Modern, when the field can no longer take it) in the
+        // recovery panel with its original data key.
+        const recovery = f.element('dw_detail').querySelector('.surface-stale input')
+        if (fixture.session.activeMode === 'modern' && recovery) {
+          check(recovery.value === 'Y', 'stale checkbox recovery exposes its original data key, not a native input index')
+        } else check(view.editor?.type === 'checkbox' && view.editor.checked, `${change}/${fixture.session.activeMode}: rejected checkbox drafts remain visible`)
       } finally {
         finish()
         fixture.rt.fire = route
