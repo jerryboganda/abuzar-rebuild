@@ -31,6 +31,7 @@ async function scanAccessibility(page, label, selector) {
 }
 
 const visibleContrast = (form) => form.evaluate((root) => {
+  window.__lowestContrast = null
   const rgba = (color) => (color.match(/[\d.]+/g) || []).map(Number)
   const luminance = (color) => rgba(color).slice(0, 3).map((value) => {
     const v = value / 255
@@ -45,9 +46,16 @@ const visibleContrast = (form) => form.evaluate((root) => {
         background = getComputedStyle(ancestor).backgroundColor
       }
       const foreground = luminance(getComputedStyle(element).color), back = luminance(background)
-      return (Math.max(foreground, back) + .05) / (Math.min(foreground, back) + .05)
+      const ratio = (Math.max(foreground, back) + .05) / (Math.min(foreground, back) + .05)
+      // the weakest element, so a failure names what to fix
+      if (!window.__lowestContrast || ratio < window.__lowestContrast.ratio) {
+        window.__lowestContrast = { ratio, element: `${element.tagName.toLowerCase()}.${[...element.classList].join('.')}`,
+          text: (element.textContent || element.value || '').trim().slice(0, 40), color: getComputedStyle(element).color, background }
+      }
+      return ratio
     })
 })
+const lowestContrast = (page) => page.evaluate(() => { const lowest = window.__lowestContrast; window.__lowestContrast = null; return JSON.stringify(lowest) })
 
 async function capturePrintSettings(page, output) {
   const cases = []
@@ -367,7 +375,8 @@ async function captureDerivedModalWindows(page, output, names = representativeMo
       }
       const contrast = await visibleContrast(form)
       const minimumContrast = contrast.length ? Math.min(...contrast) : 21
-      assert.ok(minimumContrast >= 4.5, `${name}/${width}: generated dialog text contrast (${minimumContrast})`)
+      const weakest = await lowestContrast(page)
+      assert.ok(minimumContrast >= 4.5, `${name}/${width}: generated dialog text contrast (${minimumContrast}; ${weakest})`)
       cases.push({ name, theme, scale, width, height, minimumContrast })
       await scanAccessibility(page, `${name}/${theme}/${width}`, '.presentation-modern-dialog[open]>.modern-window')
     }
