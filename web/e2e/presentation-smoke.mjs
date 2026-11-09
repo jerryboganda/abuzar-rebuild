@@ -6,6 +6,14 @@ import { fileURLToPath } from 'node:url'
 import { once } from 'node:events'
 import assert from 'node:assert/strict'
 import { gunzipSync } from 'node:zlib'
+
+// The browser steps after the in-page pass assert here, in Node: their assertions count as progress for the stall watchdog,
+// as the in-page checks do (a healthy browser phase otherwise looked stalled after five minutes).
+let nodeAssertions = 0
+for (const name of ['ok', 'equal', 'deepEqual', 'match', 'notEqual', 'notDeepEqual', 'doesNotMatch']) {
+  const original = assert[name]
+  assert[name] = (...args) => { nodeAssertions++; return original(...args) }
+}
 import { DATA_SURFACES, CRITERIA_DATA_SURFACES, TRANSACTION_DATA_SURFACES, dataSurfaceIssues } from '../src/ui/data-surfaces.ts'
 import { ALL_ENTRY_WINDOW_SURFACES } from '../src/ui/surface-registry.ts'
 import { buildDerivedFixtures, standardSingle, representativeModalWindows } from './presentation-derived-fixture.mjs'
@@ -1660,7 +1668,8 @@ try {
         windows: document.querySelectorAll('.pbwin').length, active: document.activeElement?.outerHTML?.slice(0, 200) })).catch(() => null),
       new Promise((done) => setTimeout(() => done(null), 20000)),
     ])
-    if (snapshot && snapshot.passed !== lastPassed) { lastPassed = snapshot.passed; stalledSince = Date.now() }
+    const progress = snapshot ? snapshot.passed + nodeAssertions : null
+    if (progress !== null && progress !== lastPassed) { lastPassed = progress; stalledSince = Date.now() }
     console.log(`[progress] ${new Date().toISOString()} passed=${snapshot?.passed ?? 'page unresponsive'} failures=${snapshot?.failures ?? '?'} windows=${snapshot?.windows ?? '?'}`)
     if (snapshot?.failureNames?.length) console.log(`[failures so far] ${JSON.stringify(snapshot.failureNames)}`)
     if (Date.now() - stalledSince > 5 * 60 * 1000) {
