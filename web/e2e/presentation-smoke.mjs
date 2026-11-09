@@ -2751,9 +2751,10 @@ try {
     const left = bounds.left + root.clientLeft, top = bounds.top + root.clientTop
     return {
       focused: document.activeElement === element,
-      left: rect.left >= Math.max(0, left),
+      // the same 1 px allowance on every edge: scaled text places edges on sub-pixels (13.98 against 14 at 200%)
+      left: rect.left >= Math.max(0, left) - 1,
       right: rect.right <= Math.min(innerWidth, left + root.clientWidth) + 1,
-      top: rect.top >= Math.max(0, top, header.bottom),
+      top: rect.top >= Math.max(0, top, header.bottom) - 1,
       bottom: rect.bottom <= Math.min(innerHeight, top + root.clientHeight) + 1,
       outlined: parseFloat(style.outlineWidth) >= 2 && style.outlineStyle !== 'none',
       rect: rect.toJSON(), bounds: bounds.toJSON(), header: header.toJSON(),
