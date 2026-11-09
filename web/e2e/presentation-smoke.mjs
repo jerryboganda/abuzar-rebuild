@@ -2070,8 +2070,18 @@ try {
           total: total.textContent.trim(),
         }
       })
-      assert.ok(appearance.contained && appearance.viewport && appearance.focus && appearance.total === '75.50',
-        `Associated invoice modal/${theme}/${scale}/${width}: ${JSON.stringify(appearance)}`)
+      if (!(appearance.contained && appearance.viewport && appearance.focus && appearance.total === '75.50')) {
+        const state = await page.evaluate(async () => {
+          const f = window.associatedInvoicePreview, total = () => f.dw.root.querySelector('.surface-band [role=textbox]')?.textContent.trim()
+          const before = { dialog: Number(f.model.getItem(1, 'netamt')), caller: Number(f.caller.model.getItem(1, 'netamt')),
+            invoice: f.model.getItem(1, 'saleinvcode'), shared: f.model.buf === f.caller.model.buf, rows: f.model.rowCount(),
+            scheduled: !!f.dw.scheduled, rendering: !!f.dw.rendering, editor: !!f.dw.editor, painted: total(),
+            active: document.activeElement?.outerHTML.slice(0, 120) }
+          await f.dw.render()
+          return { ...before, afterRender: total() }
+        })
+        assert.fail(`Associated invoice modal/${theme}/${scale}/${width}: ${JSON.stringify(appearance)} ${JSON.stringify(state)}`)
+      }
       const contrast = await visibleContrast(modal.locator('.modern-window'))
       assert.ok(contrast.length && contrast.every((ratio) => ratio >= 4.5),
         `Associated invoice modal/${theme}/${scale}/${width}: text contrast`)

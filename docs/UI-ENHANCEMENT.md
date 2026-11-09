@@ -22,13 +22,13 @@ instructions below; acceptance requirements and historical evidence are unchange
 **Source-derived Modern layouts now cover most windows; nothing new is browser-verified, and the enhancement remains incomplete and unreleased.**
 Measured from the working tree by `tools/parity/ui_completion_audit.mjs` (see
 `ui-completion-audit.md`, re-measured 2026-11-09 after the parity review fixes
-below): 2,034 of 2,062 inventoried windows (98.6%) have a Modern layout. 170 are
-hand-reviewed (9 workspace/tool, 55 criteria, 4 calculator, 2 calendar and 100
-entry windows). 1,864 are generated from the recovered definitions by
-`web/tools/derive-*.ts`: 1,606 dialog and sheet windows and 258 entry masters (a
+below): 2,035 of 2,062 inventoried windows (98.7%) have a Modern layout. 182 are
+hand-reviewed (9 workspace/tool, 55 criteria, 4 calculator, 2 calendar and 112
+entry windows). 1,853 are generated from the recovered definitions by
+`web/tools/derive-*.ts`: 1,606 dialog and sheet windows and 247 entry masters (a
 print/report or artwork-only DataWindow inside a window keeps its original
 element in the Modern frame; a report's own design is redesigned separately).
-The other 28 windows keep the labelled Classic compatibility layout; the open
+The other 27 windows keep the labelled Classic compatibility layout; the open
 causes are listed per window in `ui-derived-modal-windows-backlog.json` and
 `ui-derived-windows-backlog.json` (DataWindow definitions missing from the
 recovered source: `w_dashboard`, `w_populate_*`, `w_delete_due`; history and
@@ -38,11 +38,11 @@ orphan heading or button after the last field of its groupbox,
 `w_childerserver_controlpanel`; editable lists with report features,
 `w_salereturn_activeitemlist`, `w_saletemplate_saleestimates`; unsupported
 controls `w_graphviewer`, `w_sms_center`; staggered rows the Modern grid does not
-reproduce, `w_arg_cust_sdate_ldate_v13`, `w_arg_customers_sdate_ldate_v7`; others). For DataWindows, 3,286 of
-8,740 (37.6%) have a Modern surface: 275 reviewed and 3,011 generated (grids may
+reproduce, `w_arg_cust_sdate_ldate_v13`, `w_arg_customers_sdate_ldate_v7`; others). For DataWindows, 3,289 of
+8,740 (37.6%) have a Modern surface: 300 reviewed and 2,989 generated (grids may
 carry per-row button columns and multiline fields). Print, PDF and report
 layouts are exempt from structural parity (decision 16): 5,546 DataWindows are
-evidence-classified that way, so on-screen coverage is 3,023 of 3,194 (94.7%).
+evidence-classified that way, so on-screen coverage is 3,026 of 3,194 (94.7%).
 Before the review fixes the same tool measured 2,047 windows, 3,324 DataWindows
 and 3,037 of 3,158 on-screen DataWindows; the drop is the refused mappings
 listed under "Parity review fixes". Generated mappings are
@@ -50,8 +50,8 @@ validated against the source and re-validated at runtime, but they are **not
 individually reviewed and have no browser evidence**. Verified complete Modern
 screens and accepted workflows remain zero.
 
-Non-browser checks on this tree: 827 frontend tests, strict presentation types,
-nine static-inventory tests and a 73-module static build all pass. No browser
+Non-browser checks on this tree: 896 frontend tests, strict presentation types,
+nine static-inventory tests and a 76-module static build all pass. No browser
 run exists for this tree. The 12,819-assertion regression listed below belongs
 to commit `0571876b` and says nothing about the generated families or the
 fixes made since. Mapping counts are not a completion percentage; no aggregate
@@ -290,8 +290,7 @@ Decisions recorded for future sessions:
    - Modern dialogs keep Tab in the window's source order and wrap to its first field; the
      title-bar Close button is a mouse control outside the cycle (as in Windows).
    - ShareData: a change made through one DataWindow repaints every DataWindow sharing the
-     buffer (until ShareDataOff). The associated-invoice dialog showed the previous total after
-     its ItemChanged wrote the new one through the caller DataWindow.
+     buffer (until ShareDataOff); before, only the control the change was made through repainted.
    - A Modern editor opened by Tab or Enter is scrolled into view when it takes the focus (it is
      focused without the browser's scroll); at 683x384 and 200% the next calculator field was
      half hidden below the dialog.
