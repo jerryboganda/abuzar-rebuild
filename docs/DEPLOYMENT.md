@@ -98,7 +98,7 @@ Each PC needs the browser only; nothing else to install. Add the token page to t
   (needs the owner's staff login), printers and the FBR component.
 * **Web update 2026-11-11 (commit `af244ca0`): Modern header and simplified Pack Purchase.** Static files built from a clean worktree of the commit
   with `build-static.ts` and copied over `C:\Waseela\web\src` and `index.html` (server not restarted; users reload the page). Previous files:
-  `C:\Waseela\web.before-header-2026-11-11` (`src` and `index.html`). CI at that point: database, server, web and desktop jobs; the presentation and
+  `C:\Waseela\web.before-header-2026-11-11` (`src` and `index.html`). CI at that point: database, server and web jobs passed (desktop still running); the presentation and
   e2e browser jobs now run only on manual dispatch (user decision, final browser pass). The change shows in the Modern interface only; not browser-checked.
   Rollback: copy the backup `src` and `index.html` back over `C:\Waseela\web`.
 * The old PowerBuilder application and its SQL Server instance keep running untouched; do not decommission
