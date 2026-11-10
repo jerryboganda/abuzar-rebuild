@@ -1085,13 +1085,17 @@ export class ModernDwView extends DwView {
     // repaint restores it, and its final size is known only after layout: for the next frames, a field Tab or Enter opened that
     // holds the focus but is not fully visible (683x384 at 200%: the GST field half below the dialog) is brought into view.
     // A repaint rebuilds a text editor (restoreEditor) and focuses it while restoring: shortly after a field was opened, the
-    // rebuilt editor is revealed the same way; later repaints never pull back a field the user scrolled away from.
+    // rebuilt editor is revealed the same way. Once the focused field has been fully visible it has been seen: later repaints
+    // never pull back a field the user scrolled away from.
     if (focus) this.revealOpenedUntil = performance.now() + 750
     if (focus || this.restoringEditor && performance.now() < this.revealOpenedUntil) {
       const reveal = (frames: number) => requestAnimationFrame(() => {
         if (this.editor !== editor || this.stale) return
         const active = document.activeElement
-        if (active instanceof HTMLElement && editor.contains(active) && !this.focusInView(active)) this.revealFocus(active)
+        if (active instanceof HTMLElement && editor.contains(active)) {
+          if (this.focusInView(active)) { this.revealOpenedUntil = 0; return }
+          this.revealFocus(active)
+        }
         if (frames > 1) reveal(frames - 1)
       })
       reveal(8)
