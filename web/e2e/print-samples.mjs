@@ -38,13 +38,31 @@ const browser = await chromium.launch({ headless: true })
 const failures = []
 try {
   const page = await browser.newPage({ viewport: { width: 1366, height: 768 }, locale: 'en-US', reducedMotion: 'reduce' })
-  page.on('pageerror', (error) => failures.push('page error: ' + error.message))
+  // same guards as the presentation pass: no desktop bridge, files a window reads are answered as missing, every other API is refused
+  await page.addInitScript(() => {
+    const forbiddenNative = () => { throw new Error('The browser fixture must not call its containing desktop bridge') }
+    window.__TAURI_INTERNALS__ = { invoke: forbiddenNative }
+    window.__TAURI__ = { window: { getCurrentWindow: forbiddenNative } }
+  })
+  const diagnostics = []
+  page.on('pageerror', (error) => { failures.push('page error: ' + error.message); diagnostics.push('pageerror: ' + error.message) })
+  page.on('console', (message) => { if (['error', 'warning'].includes(message.type())) diagnostics.push(`console.${message.type()}: ${message.text().slice(0, 300)}`) })
+  page.on('requestfailed', (request) => diagnostics.push(`request failed: ${request.url()}`))
   await page.route('**/*', (route) => {
     const url = new URL(route.request().url())
-    return url.origin === origin && !url.pathname.startsWith('/api/') ? route.continue() : route.abort()
+    if (url.origin === origin && url.pathname === '/api/fs/read') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: false }) })
+    }
+    if (url.origin !== origin || url.pathname.startsWith('/api/')) { diagnostics.push('refused: ' + url.pathname); return route.abort() }
+    return route.continue()
   })
   await page.goto(origin + '/presentation.html')
-  await page.waitForFunction(() => window.presentationFixtureReady)
+  try {
+    await page.waitForFunction(() => window.presentationFixtureReady, undefined, { timeout: 120000 })
+  } catch (error) {
+    console.log('The fixture page did not become ready. Diagnostics:' + String.fromCharCode(10) + diagnostics.slice(0, 40).join(String.fromCharCode(10)))
+    throw error
+  }
 
   for (const sample of samples) {
     const documents = await page.evaluate(async ({ definition, lines }) => {

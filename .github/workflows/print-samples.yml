@@ -32,7 +32,9 @@ jobs:
         working-directory: web
         run: npx playwright install --with-deps chromium
       - name: Print the sample documents to PDF
-        run: node web/e2e/print-samples.mjs web/dist shots/print-samples | tee -a "$GITHUB_STEP_SUMMARY"
+        run: |
+          set -o pipefail
+          node web/e2e/print-samples.mjs web/dist shots/print-samples | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Keep the PDFs
         if: always()
         uses: actions/upload-artifact@v4
