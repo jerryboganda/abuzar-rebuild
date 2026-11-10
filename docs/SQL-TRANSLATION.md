@@ -74,8 +74,15 @@ A stored procedure becomes `dbo.<name>(<params>, OUT return_value integer [, OUT
   decimals, which changed amounts in the FBR fiscal invoice JSON and in reports. `tools/tsql/functional_test.py` checks the measured cases.
 * `CONVERT(varchar, datetime, 0 | 100 | 9 | 109 | 126 | 127)` and `CAST(datetime AS varchar)` use `dbo.tsql_convert_dt`: SQL Server pads the day
   and the hour with a blank (`Jan  9 2024  3:05PM`), which `to_char` cannot, and style 126 drops `.000` (measured 2026-11-10). It changed the
-  supplier-ledger invoice dates and the A/P / A/R opening-balance captions. `data/sql/statements.json` was patched in place for these 12
-  expressions: regenerating it with `stmts.py` alone loses the host-variable typing of the committed catalog (do not regenerate it that way).
+  supplier-ledger invoice dates and the A/P / A/R opening-balance captions.
+* Trailing blanks: SQL Server compares strings with ANSI padding (`'A' = 'A '` is true); `citext` does not. On the reference database 1 of
+  the 9 user names, 1,332 item names and 31 account names end in a blank, so the login (typed name without the blank), the password change
+  and the duplicate-name checks of the entry windows found nothing. Every `<name | aliasname | username | login> = $n` predicate of the
+  statement catalog compares `rtrim(...)::citext` on both sides (373 predicates; master-data tables). Other string comparisons keep
+  PostgreSQL semantics (`GROUP BY`/`DISTINCT` still separate `'A'` and `'A '`).
+* `tools/tsql/catalog_patches.py` applies both catalog rewrites to `data/sql/statements.json` in place and is idempotent; the sql workflow
+  fails when the catalog lacks them. Regenerating the catalog with `stmts.py` alone loses the host-variable typing of the committed catalog
+  (measured 2026-11-10: 4,792 statements changed, e.g. unbound host variables), so do not regenerate it that way; patch it.
 
 ## Statement level rules
 
