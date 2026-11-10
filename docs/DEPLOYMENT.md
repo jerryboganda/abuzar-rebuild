@@ -101,6 +101,8 @@ Each PC needs the browser only; nothing else to install. Add the token page to t
   `C:\Waseela\web.before-header-2026-11-11` (`src` and `index.html`). CI at that point: database, server and web jobs passed (desktop still running); the presentation and
   e2e browser jobs now run only on manual dispatch (user decision, final browser pass). The change shows in the Modern interface only; not browser-checked.
   Rollback: copy the backup `src` and `index.html` back over `C:\Waseela\web`.
+  Same day, commit `79386ba8` (header matched to the approved mockup) copied the same way; the same backup is the rollback. The Modern interface
+  opens only with `&presentation=1` in the address.
 * The old PowerBuilder application and its SQL Server instance keep running untouched; do not decommission
   them until the snapshot decision is made and a period of parallel running is accepted.
 * The rebuilt application has no licence checks (owner decision 2026-11-02), server-side rights are not
