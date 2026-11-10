@@ -15,6 +15,10 @@ const mime = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/jav
 const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url, 'http://localhost')
+    if (url.pathname === '/__samples.html') {
+      response.writeHead(200, { 'content-type': 'text/html' }).end('<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Print samples</title></head><body><main id="desktop"></main></body></html>')
+      return
+    }
     const file = resolve(root, '.' + decodeURIComponent(url.pathname))
     if (!file.startsWith(root + sep)) { response.writeHead(403).end(); return }
     const bytes = await readFile(file)
@@ -57,13 +61,7 @@ try {
     if (url.origin !== origin || url.pathname.startsWith('/api/')) { diagnostics.push('refused: ' + url.pathname); return route.abort() }
     return route.continue()
   })
-  await page.goto(origin + '/presentation.html')
-  try {
-    await page.waitForFunction(() => window.presentationFixtureReady, undefined, { timeout: 120000 })
-  } catch (error) {
-    console.log('The fixture page did not become ready. Diagnostics:' + String.fromCharCode(10) + diagnostics.slice(0, 40).join(String.fromCharCode(10)))
-    throw error
-  }
+  await page.goto(origin + '/__samples.html')
 
   for (const sample of samples) {
     const documents = await page.evaluate(async ({ definition, lines }) => {
@@ -79,6 +77,8 @@ try {
       }
       const rt = new Runtime({ load: async () => undefined })
       registerSysFuncs(rt)
+      const { DomUi } = await import('/src/ui/dom-ui.js')
+      if (!document.querySelector('style')) new DomUi(rt, document.getElementById('desktop'))
       rt.dwCatalog = new DwCatalog(read)
       const def = await rt.dwCatalog.get(definition)
       if (!def) throw new Error('definition not found: ' + definition)
@@ -123,7 +123,7 @@ try {
         }
       }
       return out
-    }, sample).catch((error) => { failures.push(`${sample.template}: ${String(error.message).slice(0, 300)}`); return null })
+    }, sample).catch((error) => { failures.push(`${sample.template}: ${String(error.message).slice(0, 600)}`); console.log(diagnostics.slice(0, 30).join(String.fromCharCode(10))); return null })
     if (!documents) continue
     for (const presentation of ['classic', 'modern']) {
       const doc = documents[presentation]
