@@ -96,6 +96,11 @@ Each PC needs the browser only; nothing else to install. Add the token page to t
   the others: 9 requests, login 4.4 seconds. Swapped into `C:\Waseela\web` the same day (`src/main.js`, `src/runtime/loader.js`; the previous versions are
   kept as `*.before-login-fix`). The rest of the login is 25 queries, two of them the item list of 27,818 rows (about 1.2 seconds each). Not checked here: the screens beyond the login
   (needs the owner's staff login), printers and the FBR component.
+* **Web update 2026-11-11 (commit `af244ca0`): Modern header and simplified Pack Purchase.** Static files built from a clean worktree of the commit
+  with `build-static.ts` and copied over `C:\Waseela\web\src` and `index.html` (server not restarted; users reload the page). Previous files:
+  `C:\Waseela\web.before-header-2026-11-11` (`src` and `index.html`). CI at that point: database, server, web and desktop jobs; the presentation and
+  e2e browser jobs now run only on manual dispatch (user decision, final browser pass). The change shows in the Modern interface only; not browser-checked.
+  Rollback: copy the backup `src` and `index.html` back over `C:\Waseela\web`.
 * The old PowerBuilder application and its SQL Server instance keep running untouched; do not decommission
   them until the snapshot decision is made and a period of parallel running is accepted.
 * The rebuilt application has no licence checks (owner decision 2026-11-02), server-side rights are not
