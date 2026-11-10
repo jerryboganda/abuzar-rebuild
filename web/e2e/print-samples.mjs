@@ -48,6 +48,7 @@ try {
   page.on('pageerror', (error) => { failures.push('page error: ' + error.message); diagnostics.push('pageerror: ' + error.message) })
   page.on('console', (message) => { if (['error', 'warning'].includes(message.type())) diagnostics.push(`console.${message.type()}: ${message.text().slice(0, 300)}`) })
   page.on('requestfailed', (request) => diagnostics.push(`request failed: ${request.url()}`))
+  page.on('response', (response) => { if (response.status() >= 400) diagnostics.push(`HTTP ${response.status()}: ${response.url()}`) })
   await page.route('**/*', (route) => {
     const url = new URL(route.request().url())
     if (url.origin === origin && url.pathname === '/api/fs/read') {
