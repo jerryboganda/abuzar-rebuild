@@ -90,8 +90,11 @@ Each PC needs the browser only; nothing else to install. Add the token page to t
   `C:\Waseela\web.build11`. **The build-11 web folder is not a usable fallback**: it holds 42 of the 80 modules the app needs
   (`dom-ui.js` imports `message-buttons.js`, which it lacks), so its page stays blank; build 11 was only ever checked for HTTP 200. The real fallback
   while the rebuild is being accepted is the old PowerBuilder application on SQL Server, which was not touched.
-  Login on a scratch copy of the data takes about 9 seconds on this PC (about 66 sequential queries; the item list of 27,818 rows, 5-6 MB of JSON, is loaded
-  twice at start-up); the owner reported it much longer on the first real login. Not checked here: the screens beyond the login
+  The first real login was very slow. Measured on a scratch copy with a CPU profile (2026-11-11): the browser asked the server for 1,491 class files
+  during the login and 1,482 of them do not exist (menu items such as `m_file`, built-in classes such as `checkbox`): about 7 seconds on this PC, far more over
+  the network or with browser extensions. `JsonClassLoader` now reads `data/classes/_index.json` (the 2,830 class files that exist) and never asks for
+  the others: 9 requests, login 4.4 seconds. Swapped into `C:\Waseela\web` the same day (`src/main.js`, `src/runtime/loader.js`; the previous versions are
+  kept as `*.before-login-fix`). The rest of the login is 25 queries, two of them the item list of 27,818 rows (about 1.2 seconds each). Not checked here: the screens beyond the login
   (needs the owner's staff login), printers and the FBR component.
 * The old PowerBuilder application and its SQL Server instance keep running untouched; do not decommission
   them until the snapshot decision is made and a period of parallel running is accepted.

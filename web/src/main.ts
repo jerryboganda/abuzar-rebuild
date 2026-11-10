@@ -101,7 +101,15 @@ async function main(): Promise<void> {
   const found = await findServer(q)
   const server = found ? found.base : null
   const names = JSON.parse((await text('names.json')) || '{}')
-  const loader = new JsonClassLoader((n) => text(`classes/${n}.json`))
+  // the index of the class files that exist: names without a file are never requested (see JsonClassLoader.known)
+  let classNames: Set<string> | undefined
+  try {
+    const index = JSON.parse((await text('classes/_index.json')) || 'null') as Record<string, string> | null
+    if (index && typeof index === 'object') classNames = new Set(Object.keys(index).map((n) => n.toLowerCase()))
+  } catch {
+    // unreadable index: every class is looked up on the server, as before
+  }
+  const loader = new JsonClassLoader((n) => text(`classes/${n}.json`), classNames)
   const sqlTables = JSON.parse((await text('sql.json')) || '{}')
   fixSqlTables(sqlTables)
   const useMock = server === null

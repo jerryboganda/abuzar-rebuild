@@ -10,10 +10,19 @@ interface RawClass extends Omit<ClassDef, 'routines'> {
 
 export class JsonClassLoader implements ClassLoader {
   read: (name: string) => Promise<string | undefined>
-  constructor(read: (name: string) => Promise<string | undefined>) {
+  /**
+   * The names of the class files that exist (data/classes/_index.json).  A name that is not in it (a menu item, a built-in
+   * control class such as `checkbox`) has no file: asking the server for it only produces a 404.  The login of the main window
+   * asked for 1,482 such names one by one, which took seconds on the main PC and far longer over the network.
+   * Without the index (an older build, tests) every name is read.
+   */
+  known?: ReadonlySet<string>
+  constructor(read: (name: string) => Promise<string | undefined>, known?: ReadonlySet<string>) {
     this.read = read
+    this.known = known
   }
   async load(name: string): Promise<ClassDef | undefined> {
+    if (this.known && !this.known.has(name.toLowerCase())) return undefined
     const txt = await this.read(name)
     if (!txt) return undefined
     const raw = JSON.parse(txt) as RawClass
