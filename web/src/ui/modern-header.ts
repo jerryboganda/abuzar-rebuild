@@ -147,7 +147,7 @@ export class ModernHeader {
       <span class="mh-fill"></span>
       <button type="button" class="mh-search" aria-haspopup="dialog">${svg(GLYPH.search)}<span>Search screens and commands…</span><kbd>Ctrl</kbd><kbd>K</kbd></button>
       <button type="button" class="mh-chip mh-period" hidden>${svg(GLYPH.cal, 14)}<span>Period from <b></b></span></button>
-      <span class="mh-chip mh-clock"><span class="mh-dot" aria-hidden="true"></span><b></b></span>
+      <button type="button" class="mh-chip mh-clock" aria-label="Date and time"><span class="mh-dot" aria-hidden="true"></span><b></b></button>
       <div class="mh-theme" role="group" aria-label="Colour theme">
         <button type="button" data-theme-choice="light" aria-label="Light mode" title="Light mode">${svg(GLYPH.sun, 14)}</button>
         <button type="button" data-theme-choice="system" aria-label="Match Windows theme" title="Match Windows">${svg(GLYPH.auto, 14)}</button>
@@ -160,8 +160,10 @@ export class ModernHeader {
     const signal = this.abort.signal
     header.querySelector('.mh-search')!.addEventListener('click', () => this.openSearch())
     header.querySelector('.mh-appearance')!.addEventListener('click', () => host.openSettings())
-    header.querySelector('.mh-period')!.addEventListener('click', (event) => this.showPeriod(event.currentTarget as HTMLElement))
-    header.querySelector('.mh-user')!.addEventListener('click', (event) => this.showUser(event.currentTarget as HTMLElement))
+    // The opening click must not reach the document's click-outside handler, which would close the popover at once.
+    header.querySelector('.mh-period')!.addEventListener('click', (event) => { event.stopPropagation(); this.showPeriod(event.currentTarget as HTMLElement) })
+    header.querySelector('.mh-user')!.addEventListener('click', (event) => { event.stopPropagation(); this.showUser(event.currentTarget as HTMLElement) })
+    header.querySelector('.mh-clock')!.addEventListener('click', (event) => { event.stopPropagation(); this.showClock(event.currentTarget as HTMLElement) })
     for (const button of header.querySelectorAll<HTMLButtonElement>('[data-theme-choice]')) {
       button.addEventListener('click', () => { host.setTheme(button.dataset.themeChoice as ThemeChoice); this.refresh() })
     }
@@ -266,6 +268,28 @@ export class ModernHeader {
       }
       const exit = this.command(/^exit$/i)
       if (exit) this.item(box, 'Exit', () => void this.host.run(exit), !!exit.disabled)
+    })
+  }
+
+  private showClock(anchor: HTMLElement): void {
+    const now = new Date()
+    this.openPopover(anchor, (box) => {
+      const rows: [string, string][] = [
+        ['Today', now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })],
+        ['Time', now.toLocaleTimeString('en-GB')],
+      ]
+      for (const [key, value] of rows) {
+        const row = document.createElement('p')
+        row.className = 'mh-pop-row'
+        row.innerHTML = '<span></span><b></b>'
+        row.querySelector('span')!.textContent = key
+        row.querySelector('b')!.textContent = value
+        box.append(row)
+      }
+      const note = document.createElement('p')
+      note.className = 'mh-pop-note'
+      note.textContent = 'The clock of this computer. Invoices take the date the application sets.'
+      box.append(note)
     })
   }
 

@@ -540,5 +540,21 @@ export const PRESENTATION_CSS = `
 .presentation-ui .presentation-tab>[aria-selected=true] {font-weight:500;box-shadow:none;}
 /* context bar spans: the old header rule no longer applies, keep chips compact */
 .mh-context .mh-chip span,.mh-context .mh-search span {color:inherit;}
-.mh-context .mh-clock {cursor:default;}
+.mh-popover .mh-pop-note {margin:6px 10px 4px;font-size:.8em;color:var(--p-muted);max-width:26em;}
+/* Menu drop-downs as in the approved mockup: rows with a soft accent hover, muted shortcut, chevron for sub-menus, hairline separators. */
+.presentation-ui .menu-drop {top:calc(100% + 4px);min-width:240px;padding:6px;border:1px solid var(--p-hair);border-radius:10px;background:var(--p-surface);color:var(--p-text);box-shadow:0 12px 32px #0000002e;font:400 calc(14px * var(--p-scale))/1.45 "IBM Plex Sans","Segoe UI",Tahoma,Arial,sans-serif;}
+.presentation-ui .menubar .mi .menu-drop {color:var(--p-text);}
+.presentation-ui .menu-drop .it {height:auto;min-height:34px;line-height:1.45;margin:0;padding:7px 10px;gap:10px;border-radius:6px;color:var(--p-text);font-weight:400;cursor:pointer;}
+.presentation-ui .menu-drop .it:hover,.presentation-ui .menu-drop .it:focus-visible {background:var(--p-selected);color:var(--p-text);outline:none;}
+.presentation-ui .menu-drop .it .ck {flex:0 0 14px;font-size:.8em;color:var(--p-accent);}
+.presentation-ui .menu-drop .it .ck:empty {flex-basis:0;margin-right:-10px;}
+.presentation-ui .menu-drop .it .lb {flex:1;padding-right:12px;}
+.presentation-ui .menu-drop .it .hk {padding:0 5px;color:var(--p-muted);font:.75em ui-monospace,Consolas,monospace;border:1px solid var(--p-hair);border-bottom-width:2px;border-radius:4px;background:var(--p-surface);}
+.presentation-ui .menu-drop .it .hk:empty {display:none;}
+.presentation-ui .menu-drop .it .ar::after {border-color:var(--p-muted);}
+.presentation-ui .menu-drop .it.dis,.presentation-ui .menu-drop .it.dis .hk {color:var(--p-muted);opacity:.55;cursor:not-allowed;}
+.presentation-ui .menu-drop .it.dis:hover {background:none;}
+.presentation-ui .menu-drop .sep {height:1px;margin:4px 6px;background:var(--p-hair);}
+.presentation-ui .menu-drop .it .sub {top:-7px;left:100%;margin-left:0;}
+.presentation-ui .menu-drop .it u {text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px;}
 `
