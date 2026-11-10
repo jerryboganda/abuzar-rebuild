@@ -6,14 +6,15 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
-import { colKind } from '../src/dw/def.ts'
+import { colKind, recoverObjectNames } from '../src/dw/def.ts'
+import { COMPATIBILITY_REASONS } from './compatibility-data.ts'
 import type { DwDef, DwObject } from '../src/dw/def.ts'
 import { choiceStyle } from '../src/dw/choices.ts'
 import { dwMultiline } from '../src/dw/edit.ts'
 import { numericSpin } from '../src/ui/numeric-spin.ts'
 import {
-  DATA_SURFACES, dataSurfaceIssues, dataSurfacePositionIssues, alwaysHidden, clippedObject, captionBeside, captionAbove, fieldBetween,
-  suffixBeside, sameBox, readingOrder, exactHeader, holderBox,
+  DATA_SURFACES, dataSurfaceIssues, dataSurfacePositionIssues, alwaysHidden, clippedObject, coveredHeaderText, backgroundHeading,
+  captionBeside, captionAbove, fieldBetween, suffixBeside, sameBox, readingOrder, exactHeader, holderBox,
 } from '../src/ui/data-surfaces.ts'
 import { ENTRY_WINDOW_SURFACES, WINDOW_SURFACES, CALCULATOR_WINDOW_SURFACES, CRITERIA_WINDOW_SURFACES } from '../src/ui/window-surfaces.ts'
 import type { DataSurface, DataSurfaceField } from '../src/ui/data-surfaces.ts'
@@ -37,56 +38,103 @@ const ART = new Set(['bitmap', 'rectangle', 'roundrectangle', 'ellipse', 'line']
 export interface Derivation { surface?: DataSurface; reason?: string }
 
 /**
- * Forms whose rows are staggered by less than a Modern line (a field between two rows, short flags beside full-height fields): the
- * Modern grid does not reproduce which fields share a row in the original, as the structure gate of the browser pass measured
- * (CI runs up to 42540521435).  A wrong structure is a defect, so they keep the labelled Classic layout until the planner can.
+ * Forms whose rows are staggered by less than a Modern line (a field between two rows, short flags beside full-height fields).
+ * The consolidated browser structure gate (2026-11-10) measured the planner still merging or splitting their source rows, so
+ * they keep Classic until the planner reproduces the source row-sharing.
  */
-export const STAGGERED_ROWS: ReadonlySet<string> = new Set([
-  'd_alnaseeb_deliveryorder_saleinvprint', 'd_mr_pc', 'd_normalpurchasereturnfooter', 'd_old_general1', 'd_opensalereturnfooter',
-  'd_patientvisit_obs_us', 'd_salereturnfooter_view', 'd_servicefooter_view',
+export const STAGGERED_ROWS: ReadonlySet<string> = new Set([])
+
+/** Forms whose overlapping source rows use source-proportional absolute placement instead of a CSS grid. */
+export const SOURCE_LAYOUT_FORMS: ReadonlySet<string> = new Set([
+  'd_alnaseeb_deliveryorder_saleinvprint', 'd_normalpurchasereturnfooter', 'd_old_general1',
+  'd_opensalereturnfooter', 'd_salereturnfooter_view', 'd_servicefooter_view',
 ])
 
 /** Pairs every label with the column it describes using the geometry stored in the source definition. */
 export function derive(name: string, def: DwDef, options: { plainSeparators?: boolean } = {}): Derivation {
   if (STAGGERED_ROWS.has(name)) return { reason: 'staggered rows the Modern grid does not reproduce (structure gate)' }
   const processing = Number(def.datawindow.processing ?? 0)
-  if (processing !== 0 && processing !== 1) return { reason: `processing style ${processing}` }
+  // 6 is the Graph/OLE presentation (an embedded document), 7 the RichText presentation (one input field).
+  if (![0, 1, 6, 7].includes(processing)) return { reason: `processing style ${processing}` }
   // A freeform ("tabular") DataWindow whose captions sit in a header band reads as a grid, as the original paints it.
   // An object placed below its band's height, or in a header or detail band without height, is never painted by the original.
   const clippedOf = (object: DwObject) => clippedObject(def, object)
+  const coveredOf = (object: DwObject) => coveredHeaderText(def, object)
   const clipped = def.objects.filter(clippedOf)
-  const live = def.objects.filter((object) => !clippedOf(object))
-  const tabular = processing === 0 && live.some((object) => object.type === 'text' && object.band === 'header') &&
-    !live.some((object) => object.type === 'text' && object.band === 'detail')
-  const kind = processing === 1 || tabular ? 'grid' : 'form'
-  const labelBand = kind === 'grid' ? 'header' : 'detail'
+  const covered = def.objects.filter((object) => !clippedOf(object) && coveredOf(object))
+  const live = def.objects.filter((object) => !clippedOf(object) && !coveredOf(object))
+  const detailObjects = live.filter((object) => object.band === 'detail' && (object.type === 'column' || object.type === 'compute'))
+  const headerTexts = live.filter((object) => object.type === 'text' && object.band === 'header')
+  const detailTexts = live.filter((object) => object.type === 'text' && object.band === 'detail')
+  const headerLabeled = headerTexts.filter((text) => detailObjects.some((field) => exactHeader(text, field))).length
+  const columnOfObject = (object: DwObject) => def.table.columns.find((column) => column.name.toLowerCase() === object.name.toLowerCase())
+  const multilineDetail = detailObjects.some((field) => {
+    const column = columnOfObject(field)
+    return field.type === 'column' && !!column && dwMultiline(field, colKind(column.type))
+  })
+  // A freeform DataWindow whose fields sit in table columns under header captions is a grid.  A second, narrower case is a
+  // tabular DataWindow with a multiline column whose caption is painted in the detail band beside/above it (visit tables).
   const totalBands = ['summary', 'footer'] as const
   // Group levels (grids only) show their header and trailer bands at every break.
   const groupLevels = ((def.bands.group ?? []) as { level: string }[]).map((group) => Number(group.level))
-  if (groupLevels.length && kind !== 'grid') return { reason: 'grouped bands' }
   const groupBands = groupLevels.flatMap((level) => [`header.${level}`, `trailer.${level}`])
+  const bandValues = [...groupBands, ...totalBands].some((band) =>
+    live.some((object) => object.band === band && (object.type === 'compute' || object.type === 'column')))
+  const bandTexts = [...groupBands, ...totalBands].some((band) =>
+    live.some((object) => object.band === band && object.type === 'text'))
+  const pureTabular = processing === 0 && headerTexts.length > 0 && detailTexts.length === 0
+  const mixedTabular = processing === 0 && detailObjects.length >= 3 && headerLabeled >= 2 && multilineDetail &&
+    detailTexts.some((text) => detailObjects.some((field) => captionBeside(text, field) || captionAbove(text, field)))
+  // A grouped report is tabular even when its whole content is expression text and its bands carry only captions.
+  const groupedTabular = processing === 0 && groupLevels.length > 0
+  // A summary/footer report is tabular even without header captions when its bands carry values or captions.
+  const bandTabular = processing === 0 && (bandValues || bandTexts)
+  const tabular = pureTabular || mixedTabular || groupedTabular || bandTabular
+  const kind = processing === 1 || tabular ? 'grid' : 'form'
+  const labelBand = kind === 'grid' ? 'header' : 'detail'
   const strange = live.find((object) =>
-    !(object.type === 'column' && object.band === 'detail' || object.type === 'compute' && object.band === 'detail' ||
+    !(processing === 6 && object.type === 'ole' && (object.band === 'background' || object.band === 'detail') ||
+      processing === 7 && object.type === 'column' && !object.band ||
+      object.type === 'column' && object.band === 'detail' || object.type === 'compute' && object.band === 'detail' ||
       kind === 'grid' && object.type === 'button' && object.band === 'detail' ||
       object.type === 'text' && object.band === labelBand ||
+      kind === 'grid' && object.type === 'text' && object.band === 'detail' ||
       kind === 'form' && (object.type === 'groupbox' || object.type === 'line') && object.band === 'detail' ||
-      kind === 'form' && object.type === 'button' && object.band === 'detail' ||
+      kind === 'form' && object.type === 'button' && (object.band === 'detail' || object.band === 'header') ||
+      kind === 'form' && object.type === 'tableblob' && object.band === 'detail' ||
       // Text, columns and computed values in the background layer are painted content (a heading such as "Item Name: ..."), not artwork.
-      ART.has(object.type) && (object.band === 'detail' || object.band === 'header' || object.band === 'background') ||
+      ART.has(object.type) && (object.band === 'detail' || object.band === 'header' || object.band === 'background' ||
+        groupBands.includes(object.band) || (totalBands as readonly string[]).includes(object.band)) ||
       object.type === 'line' && (totalBands as readonly string[]).includes(object.band) ||
-      kind === 'grid' && (object.type === 'text' || object.type === 'compute') && (totalBands as readonly string[]).includes(object.band) ||
+      kind === 'grid' && (object.type === 'text' || object.type === 'compute' || object.type === 'column') && (totalBands as readonly string[]).includes(object.band) ||
+      kind === 'grid' && (object.type === 'compute' || object.type === 'column') && object.band === 'header' ||
+      kind === 'grid' && (object.type === 'text' || object.type === 'compute' || object.type === 'column') && backgroundHeading(def, object) ||
+      kind === 'grid' && object.type === 'line' && groupBands.includes(object.band) ||
       kind === 'grid' && (object.type === 'text' || object.type === 'compute' || object.type === 'column') && groupBands.includes(object.band)))
   if (strange) return { reason: `unsupported object: ${strange.type} in ${strange.band}` }
   const inBand = (band: string, type: string) => live.filter((object) => object.band === band && object.type === type)
   // A button in a grid's detail band is a per-row button column; in a form it is a separate `buttons` entry.
-  const fields = [...inBand('detail', 'column'), ...inBand('detail', 'compute'), ...(kind === 'grid' ? inBand('detail', 'button') : [])]
+  // A tableblob is a per-row picture, mapped as a read-only image field in a form.
+  // A RichText input field can lose its object name in recovery; its single table column names it.
+  const recovered = (object: DwObject): DwObject => processing === 7 && object.type === 'column' && !object.name &&
+    def.table.columns.length === 1 ? { ...object, name: def.table.columns[0].name } : object
+  const fields = [...inBand('detail', 'column'), ...inBand('detail', 'compute'),
+    ...(kind === 'grid' ? inBand('detail', 'button') : []), ...(kind === 'form' ? inBand('detail', 'tableblob') : []),
+    ...(processing === 7 ? live.filter((object) => object.type === 'column' && !object.band).map(recovered) : [])]
   const texts = inBand(labelBand, 'text')
   const groupboxes = inBand('detail', 'groupbox')
   const horizontal = (line: DwObject) => num(line, 'y1') === num(line, 'y2') && num(line, 'x2') > num(line, 'x1')
   // A rule line the surface cannot place (grouped forms, odd order) is accounted for as an unpainted decoration: it is design, not structure.
-  const lines = options.plainSeparators ? [] : inBand('detail', 'line').filter(horizontal)
+  // A grid has no separate row separators in its presentation model: its detail lines are design decorations.
+  const lines = options.plainSeparators || kind !== 'form' ? [] : inBand('detail', 'line').filter(horizontal)
   const separatorLines = new Set(lines.map((line) => line.name))
-  if (!fields.length && !(kind === 'form' && (inBand('detail', 'button').length || texts.length))) return { reason: 'no fields' }
+  const sourceEmpty = live.length === 0
+  const paintedArtwork = kind === 'form' ? live.filter((object) => object.type === 'bitmap' && !alwaysHidden(object.visible)) : []
+  const embeddedObjects = kind === 'form' ? live.filter((object) => object.type === 'ole' && !alwaysHidden(object.visible)) : []
+  if (!sourceEmpty && !fields.length && !(kind === 'form' && (inBand('detail', 'button').length || inBand('header', 'button').length || texts.length || paintedArtwork.length || embeddedObjects.length)) &&
+    !(kind === 'grid' && (bandValues || bandTexts || texts.length || detailTexts.length))) {
+    return { reason: 'no fields' }
+  }
   const columnOf = (object: DwObject) => def.table.columns.find((column) => column.name.toLowerCase() === object.name.toLowerCase())
   // A visibility that is the constant 0 (`1<TAB>0`) hides the object for good: it never owns a caption a visible field shows.
   const hidden = (object: DwObject) => alwaysHidden(object.visible)
@@ -95,6 +143,37 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
   const suffixOf = new Map<string, DwObject>()
   const visibleFields = fields
   const right = (object: DwObject) => num(object, 'x') + num(object, 'width')
+  // Report-header values in a grid keep their own source labels; pair them before column headers are paired with detail fields.
+  const backgroundFields = kind === 'grid' ? live.filter((object) => backgroundHeading(def, object) &&
+    (object.type === 'compute' || object.type === 'column')) : []
+  const backgroundTexts = kind === 'grid' ? live.filter((object) => backgroundHeading(def, object) && object.type === 'text') : []
+  const headerObjects = kind === 'grid' ? [...inBand('header', 'compute'), ...inBand('header', 'column'), ...backgroundFields]
+    .sort((a, b) => num(a, 'y') - num(b, 'y') || num(a, 'x') - num(b, 'x')) : []
+  let header: NonNullable<DataSurface['header']> | undefined
+  if (headerObjects.length) {
+    header = []
+    for (const object of headerObjects) {
+      // A header label is a narrow text immediately left of its value; a report title spanning the header is not its caption.
+      const label = [...texts, ...backgroundTexts].find((text) => !taken.has(text.name) && text.band === object.band &&
+        hidden(text) === hidden(object) && captionBeside(text, object) &&
+        right(text) >= num(object, 'x') - 120 && num(text, 'width') <= Math.max(600, num(object, 'width') * 2))
+      if (label) taken.add(label.name)
+      header.push({
+        object: object.name.toLowerCase(), ...(label ? { labelObject: label.name.toLowerCase() } : {}),
+        ...(object.band === 'background' ? { band: 'background' as const } : {}),
+        ...(object.alignment === '1' ? { numeric: true } : {}),
+      })
+    }
+  }
+  // A multiline grid field may carry its caption in the detail band (a label inside each row), alongside header-captioned columns.
+  // Pair those labels first, so a header caption is never borrowed by a field that has its own detail caption.
+  if (kind === 'grid') {
+    for (const field of visibleFields) {
+      const label = inBand('detail', 'text').find((text) => !taken.has(text.name) && hidden(text) === hidden(field) &&
+        (captionBeside(text, field) || captionAbove(text, field)))
+      if (label) { labelOf.set(field.name, label); taken.add(label.name) }
+    }
+  }
   if (kind === 'grid') {
     const overlapOf = (text: DwObject, field: DwObject) => Math.min(right(field), right(text)) - Math.max(num(field, 'x'), num(text, 'x'))
     // PowerBuilder's grid hides a column's header with the column, so a hidden column owns the visible header painted exactly over it.
@@ -108,6 +187,7 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
     ]
     const better = (a: number[], b: number[]) => { for (let index = 0; index < a.length; index++) if (a[index] !== b[index]) return a[index] > b[index]; return false }
     for (const field of visibleFields) {
+      if (labelOf.has(field.name)) continue
       let best: DwObject | undefined, bestRank: number[] = []
       for (const text of texts) {
         if (taken.has(text.name) || !ownsHeader(text, field) || overlapOf(text, field) <= 0) continue
@@ -193,14 +273,21 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
     const column = columnOf(object)
     const columnKind = column ? colKind(column.type) : ''
     const style = choiceStyle(object)
-    if (style.kind === 'unsupported') return { reason: `choice: ${style.reason}` }
-    if (label) { field.labelObject = label.name.toLowerCase(); if (tabular) field.labelBand = 'header' }
+    // A checkbox whose on/off values are identical cannot toggle; render its fixed state as a read-only indicator.
+    const fixedCheckbox = style.kind === 'unsupported' && object['checkbox.on'] !== undefined &&
+      object['checkbox.on'] === object['checkbox.off'] ? object['checkbox.on'] : undefined
+    if (style.kind === 'unsupported' && fixedCheckbox === undefined) return { reason: `choice: ${style.reason}` }
+    if (label) {
+      field.labelObject = label.name.toLowerCase()
+      if (kind === 'grid') field.labelBand = label.band === 'header' ? 'header' : 'detail'
+    }
     else if (hidden(object)) {
       // A hidden field without a source caption: should a script show it, it is named for assistive technology only, as Classic paints
       // no caption for it.
       field.label = object.name.charAt(0).toUpperCase() + object.name.slice(1).replace(/_/g, ' ')
       field.labelHidden = true
     }
+    else if (fixedCheckbox !== undefined && object['checkbox.text']?.trim()) field.label = object['checkbox.text'].trim()
     else if (style.kind === 'checkbox' && object['checkbox.text']?.trim()) field.label = object['checkbox.text'].trim()
     else {
       // The source paints no caption: keep it that way and give the field an accessible name from its column.
@@ -215,20 +302,27 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
     const suffix = suffixOf.get(object.name)
     if (suffix) field.suffixObject = suffix.name.toLowerCase()
     if (object.type === 'compute') field.kind = 'computed'
+    if (object.type === 'tableblob') field.kind = 'image'
     if (object.type === 'button') {
       field.kind = 'button'
       // The button's own text names it when no header caption does.
       if (!field.labelObject) { field.label = (object.text ?? '').replace(/&(?=\S)/g, '').replace(/[.\s]+$/g, '').trim() || object.name; field.labelHidden = true }
     }
-    if (style.kind !== 'none') field.choice = style
-    if (object.type === 'column' && dwMultiline(object, columnKind)) {
+    if (fixedCheckbox !== undefined) field.fixedCheckbox = fixedCheckbox
+    else if (style.kind !== 'none') field.choice = style
+    if (object.type === 'column' && (dwMultiline(object, columnKind) || processing === 7)) {
       field.multiline = true
     }
     if (numericSpin(object, columnKind).kind === 'unsupported') field.spinPlain = true
     if (object.type === 'compute' && object.alignment === '1') field.numeric = true
     surfaceFields.push(field)
   }
-  const surface: DataSurface = { name, title: titleOf(name), kind, ...(tabular ? { sourceProcessing: 0 as const } : {}), fields: surfaceFields }
+  const surface: DataSurface = { name, title: titleOf(name), kind,
+    ...(tabular ? { sourceProcessing: 0 as const } : processing === 6 || processing === 7 ? { sourceProcessing: processing } : {}),
+    ...(SOURCE_LAYOUT_FORMS.has(name) ? { sourceLayout: true as const } : {}),
+    fields: surfaceFields }
+  if (embeddedObjects.length) surface.embedded = embeddedObjects.map((object) => object.name.toLowerCase())
+  if (header?.length) surface.header = header
   if (kind === 'grid' && surfaceFields.some((field) => field.multiline)) {
     // Each row is as many single lines tall as the source's detail band is tall (a typical single-line field is 74-76 units).
     const detail = def.bands.detail
@@ -241,20 +335,29 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
   // the plain section, for one outside every box) may follow it, so it never moves into another box.  A heading after the last field of
   // its box has no place in the mapping, and the form keeps its Classic layout.
   const boxOf = (object: DwObject) => groups ? holderBox(groupboxes, object)?.name.toLowerCase() ?? '' : ''
-  const placed = (object: DwObject): { before?: string } | null => {
+  const placed = (object: DwObject, trailing = false): { before?: string; group?: string } | null => {
     const box = boxOf(object)
     const before = order.filter((field) => centreY(field) > centreY(object) && boxOf(field) === box)
       .sort((a, b) => centreY(a) - centreY(b) || num(a, 'x') - num(b, 'x'))[0]
-    if (!before && box) return null
+    if (!before && box) return trailing ? { group: box } : null
     return before ? { before: before.name.toLowerCase() } : {}
   }
-  if (loose.length && kind === 'grid') {
-    surface.captions = [...loose].sort((x, y) => num(x, 'x') - num(y, 'x')).map((text) => ({ object: text.name.toLowerCase() }))
+  const looseDetail = kind === 'grid' ? detailTexts.filter((text) => !taken.has(text.name)) : []
+  if (kind === 'grid' && (loose.length || looseDetail.length || backgroundTexts.some((text) => !taken.has(text.name)))) {
+    const backgroundCaptions = backgroundTexts.filter((text) => !taken.has(text.name))
+      .sort((x, y) => num(x, 'y') - num(y, 'y') || num(x, 'x') - num(y, 'x'))
+    surface.captions = [
+      ...[...loose].sort((x, y) => num(x, 'x') - num(y, 'x')).map((text) => ({ object: text.name.toLowerCase() })),
+      ...looseDetail.sort((x, y) => num(x, 'y') - num(y, 'y') || num(x, 'x') - num(y, 'x'))
+        .map((text) => ({ object: text.name.toLowerCase(), band: 'detail' as const })),
+      ...backgroundCaptions.map((text) => ({ object: text.name.toLowerCase(), band: 'background' as const })),
+    ]
   } else if (loose.length) {
     // Source text that names no field (headings, notes, script-set values) is kept in place as a caption.
     const captions: { object: string; before?: string }[] = []
     for (const text of [...loose].sort((x, y) => num(x, 'y') - num(y, 'y') || num(x, 'x') - num(y, 'x'))) {
-      const position = placed(text)
+      // A heading after the last field stays in the groupbox that holds it, at the group's trailing edge.
+      const position = placed(text, true)
       if (!position) return { reason: 'heading after the last field of its groupbox' }
       captions.push({ object: text.name.toLowerCase(), ...position })
     }
@@ -263,15 +366,18 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
   if (groups) surface.groups = groups
   const buttons = kind === 'grid' ? [] : live.filter((object) => object.type === 'button')
   if (buttons.length) {
-    const entries: { object: string; before?: string }[] = []
+    const entries: { object: string; before?: string; group?: string }[] = []
     for (const button of [...buttons].sort((x, y) => num(x, 'y') - num(y, 'y') || num(x, 'x') - num(y, 'x'))) {
-      const position = placed(button)
+      // A button below/right of the last field still belongs to its groupbox: place it at the group's trailing edge.
+      const position = placed(button, true)
       if (!position) return { reason: 'button after the last field of its groupbox' }
       entries.push({ object: button.name.toLowerCase(), ...position })
     }
     surface.buttons = entries
   }
-  const art = [...live.filter((object) => ART.has(object.type) && !(object.type === 'line' && separatorLines.has(object.name))), ...clipped]
+  const artworkNames = new Set(paintedArtwork.map((object) => object.name))
+  if (paintedArtwork.length) surface.artwork = paintedArtwork.sort((a, b) => num(a, 'y') - num(b, 'y') || num(a, 'x') - num(b, 'x')).map((object) => object.name.toLowerCase())
+  const art = [...new Set([...live.filter((object) => ART.has(object.type) && !artworkNames.has(object.name) && !(object.type === 'line' && separatorLines.has(object.name))), ...clipped, ...covered])]
   if (art.length) surface.decorations = art.map((object) => object.name.toLowerCase())
   if (lines.length) {
     const separators: { object: string; before?: string }[] = []
@@ -288,12 +394,15 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
       const computes = [...inBand(band, 'compute'), ...inBand(band, 'column')].sort((a, b) => num(a, 'x') - num(b, 'x'))
       const bandTexts = inBand(band, 'text')
       if (!computes.length && !bandTexts.length) continue
-      if (!computes.length && !band.includes('.')) return { reason: 'totals band without values' }
+      if (!computes.length && !bandTexts.length && !band.includes('.')) return { reason: 'totals band without values' }
       const used = new Set<string>()
       const entries: Total[] = []
       for (const compute of computes) {
-        const groupTitle = band.includes('.') && compute.type === 'column' && ['lookup', 'list'].includes(choiceStyle(compute).kind)
-        if (choiceStyle(compute).kind !== 'none' && !groupTitle) return { reason: 'choice in a totals band' }
+        const style = choiceStyle(compute)
+        const groupTitle = band.includes('.') && compute.type === 'column' && ['lookup', 'list'].includes(style.kind)
+        // A group header carries an editable checkbox column (the invoice selection at each group break).
+        const groupCheckbox = band.startsWith('header.') && compute.type === 'column' && style.kind === 'checkbox'
+        if (style.kind !== 'none' && !groupTitle && !groupCheckbox) return { reason: 'choice in a totals band' }
         const candidates = bandTexts.filter((text) => !used.has(text.name) && right(text) <= num(compute, 'x') + 8 &&
           Math.abs(centreY(text) - centreY(compute)) <= Math.max(num(compute, 'height'), 40))
           .sort((a, b) => right(b) - right(a))
@@ -318,6 +427,7 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
           }
         }
         if (compute.alignment === '1') entry.numeric = true
+        if (groupCheckbox && style.kind === 'checkbox') entry.choice = style
         entries.push(entry)
       }
       const unpaired = bandTexts.filter((text) => !used.has(text.name))
@@ -329,6 +439,19 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
   return { surface }
 }
 
+/**
+ * Recovered DataWindows whose exported object name differs from the dataobject reference in the window metadata.
+ * The window's reference stays the runtime key; the recovered definition supplies its layout and columns.
+ */
+export const DATAWINDOW_ALIASES: Readonly<Record<string, string>> = {
+  d_top10sellingitemsgraph: 'd_dashboard_top10sellingitems',
+}
+
+/** Missing recovered definitions whose window control keeps its original Classic element inside the Modern frame. */
+export const MISSING_CONTROL_DATAWINDOWS: ReadonlySet<string> = new Set(['d_deletedue_detail'])
+
+export const canonicalDataWindowName = (name: string): string => DATAWINDOW_ALIASES[name.toLowerCase()] ?? name.toLowerCase()
+
 export function loadDefinitions(): Map<string, DwDef> {
   const index: Record<string, string> = JSON.parse(readFileSync(resolve(dataRoot, '_index.json'), 'utf8'))
   const bundles = new Map<string, Record<string, DwDef>>()
@@ -337,7 +460,7 @@ export function loadDefinitions(): Map<string, DwDef> {
     const library = index[name]
     if (!bundles.has(library)) bundles.set(library, JSON.parse(gunzipSync(readFileSync(resolve(dataRoot, library + '.json.gz'))).toString('utf8')))
     const def = bundles.get(library)![name]
-    if (def) result.set(name, def)
+    if (def) result.set(name, recoverObjectNames(def))
   }
   return result
 }
@@ -402,7 +525,25 @@ export function deriveValidated(name: string, def: DwDef): Derivation {
 // their Classic layout must keep it, so no global Modern surface is generated for them.
 const CONTROL_DATAWINDOWS = ['d_find']
 
-export function deriveAll(definitions = loadDefinitions(), skip: ReadonlySet<string> = new Set([...reviewedDataWindows(), ...entryHostedDataWindows(), ...CONTROL_DATAWINDOWS])) {
+/**
+ * Grouped DataWindows classified as report/print documents are exempt from on-screen parity: their grouped print layout is
+ * redesigned in the print engine, so they are not generated as on-screen surfaces.
+ */
+export function groupedReportDocuments(definitions = loadDefinitions()): Set<string> {
+  const classificationPath = resolve(here, '..', '..', 'docs', 'ui-print-classification.json')
+  if (!existsSync(classificationPath)) return new Set()
+  const members = JSON.parse(readFileSync(classificationPath, 'utf8')).members as Record<string, string[]>
+  const exempt = new Set(['report-or-document', 'print-target', 'registered-template'].flatMap((key) => members[key] ?? []))
+  return new Set([...exempt].filter((name) => {
+    const groups = definitions.get(name)?.bands.group
+    return Array.isArray(groups) && groups.length > 0
+  }))
+}
+
+export function deriveAll(definitions = loadDefinitions(), skip: ReadonlySet<string> = new Set([
+  ...reviewedDataWindows(), ...entryHostedDataWindows(), ...CONTROL_DATAWINDOWS, ...groupedReportDocuments(definitions),
+  ...Object.keys(COMPATIBILITY_REASONS),
+])) {
   const surfaces: DataSurface[] = []
   const backlog: Record<string, string[]> = {}
   let skipped = 0
@@ -422,9 +563,8 @@ export function render(surfaces: readonly DataSurface[]): string {
     '// Every entry passes `dataSurfaceIssues` against the recovered definition; the runtime re-validates before use.',
     "import type { DataSurface } from './data-surfaces.ts'",
     '',
-    'export const DERIVED_DATA_SURFACES: readonly DataSurface[] = [',
-    ...surfaces.map((surface) => `  ${JSON.stringify(surface)},`),
-    ']',
+    // The catalogue is large; a JSON literal avoids an inferred union too complex for the TypeScript compiler.
+    `export const DERIVED_DATA_SURFACES: readonly DataSurface[] = JSON.parse(${JSON.stringify(JSON.stringify(surfaces))}) as DataSurface[]`,
     '',
   ].join('\n')
 }

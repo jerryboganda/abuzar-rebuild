@@ -9,9 +9,12 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   WINDOW_SURFACES, CALCULATOR_WINDOW_SURFACES, CALENDAR_WINDOW_SURFACES, CRITERIA_WINDOW_SURFACES, ENTRY_WINDOW_SURFACES,
+  SHELL_WINDOW_SURFACES,
 } from '../../web/src/ui/window-surfaces.ts'
 import { DATA_SURFACES } from '../../web/src/ui/data-surfaces.ts'
 import { DERIVED_DATA_SURFACES } from '../../web/src/ui/derived-data-surfaces.ts'
+import { DERIVED_SCREEN_DATA_SURFACES } from '../../web/src/ui/derived-screen-data-surfaces.ts'
+import { DERIVED_COMPATIBILITY_DATA_SURFACES } from '../../web/src/ui/derived-compatibility-data-surfaces.ts'
 import { DERIVED_ENTRY_WINDOW_SURFACES } from '../../web/src/ui/derived-entry-windows.ts'
 import { DERIVED_MODAL_WINDOW_SURFACES } from '../../web/src/ui/derived-modal-windows.ts'
 import { PRINT_TEMPLATES } from '../../web/src/ui/print-templates.ts'
@@ -37,6 +40,7 @@ const passFail = (name) => {
 const inventoryPath = resolve(option('--inventory', resolve(here, '..', '..', 'docs', 'ui-inventory.json')))
 const resultPath = option('--result')
 const printResultPath = option('--print-result')
+const browserEvidencePath = option('--browser-evidence')
 const outRoot = resolve(option('--out', resolve(here, '..', '..', 'docs')))
 const frontendTests = passFail('--frontend-tests')
 const inventoryTests = passFail('--inventory-tests')
@@ -54,6 +58,8 @@ const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'))
 const inventory = readJson(inventoryPath)
 const result = resultPath ? readJson(resultPath) : null
 const printResult = printResultPath ? readJson(printResultPath) : null
+// A completed run writes result.json. A run stopped by a structure-parity assertion may only leave a measured summary.
+const browserEvidence = browserEvidencePath ? readJson(browserEvidencePath) : null
 
 const unique = (items) => new Set(items.map((item) => String(item).toLowerCase()))
 const windowRegistries = {
@@ -71,11 +77,13 @@ const generatedWindowRegistries = {
 }
 const reviewedWindows = unique(Object.values(windowRegistries).flatMap((registry) => registry.map((item) => item.name)))
 const generatedWindows = unique(Object.values(generatedWindowRegistries).flatMap((registry) => registry.map((item) => item.name)))
-const mappedWindows = new Set([...reviewedWindows, ...generatedWindows])
+const shellWindows = unique(SHELL_WINDOW_SURFACES.map((item) => item.name))
+const mappedWindows = new Set([...reviewedWindows, ...generatedWindows, ...shellWindows])
 const inventoryWindows = unique((inventory.windows || []).map((item) => item.id || item.name))
 const mappedWindowsInInventory = new Set([...mappedWindows].filter((name) => inventoryWindows.has(name)))
 const reviewedWindowsInInventory = new Set([...reviewedWindows].filter((name) => inventoryWindows.has(name)))
 const generatedOnlyWindowsInInventory = new Set([...generatedWindows].filter((name) => inventoryWindows.has(name) && !reviewedWindows.has(name)))
+const shellWindowsInInventory = new Set([...shellWindows].filter((name) => inventoryWindows.has(name)))
 const mappedWindowsOutsideInventory = [...mappedWindows].filter((name) => !inventoryWindows.has(name)).sort()
 
 // A DataWindow counts as authored when it is a global surface or a contextual surface
@@ -103,7 +111,8 @@ const generatedRoots = [
 ]
 const globalDataWindows = surfaceNamesOf(DATA_SURFACES)
 const contextualDataWindows = surfaceNamesOf(contextualRoots)
-const generatedGlobalDataWindows = surfaceNamesOf(DERIVED_DATA_SURFACES)
+const compatibilityDataWindows = surfaceNamesOf(DERIVED_COMPATIBILITY_DATA_SURFACES)
+const generatedGlobalDataWindows = surfaceNamesOf([...DERIVED_DATA_SURFACES, ...DERIVED_SCREEN_DATA_SURFACES, ...DERIVED_COMPATIBILITY_DATA_SURFACES])
 const generatedContextualDataWindows = surfaceNamesOf(generatedRoots)
 const reviewedDataWindows = new Set([...globalDataWindows, ...contextualDataWindows])
 const generatedDataWindows = new Set([...generatedGlobalDataWindows, ...generatedContextualDataWindows])
@@ -275,8 +284,10 @@ const acceptance = [
       : 'The 30,000-choice lookup and 100,000-row grid fixtures are written but have not been executed for this source tree; no timing was supplied.'],
   ['Barcode sequence, rapid keyboard, active-cell preservation', 'partial',
     'Synthetic keyboard/barcode and active-cell checks pass; scanner hardware is not verified.'],
-  ['No new browser exceptions, unhandled rejections or silent failures', 'verified',
-    result ? `Current full browser run: ${result.failures?.length ?? 0} failures, ${result.errors?.length ?? 0} errors, ${result.pageErrors?.length ?? 0} page errors, ${result.forbidden?.length ?? 0} forbidden requests.` : 'See the current browser result artifact.'],
+  ['No new browser exceptions, unhandled rejections or silent failures', result ? 'verified' : 'partial',
+    result ? `Current full browser run: ${result.failures?.length ?? 0} failures, ${result.errors?.length ?? 0} errors, ${result.pageErrors?.length ?? 0} page errors, ${result.forbidden?.length ?? 0} forbidden requests.`
+      : browserEvidence ? `The browser pass stopped on ${Array.isArray(browserEvidence.failures) ? browserEvidence.failures.length : 0} documented finding(s) before writing result.json; page-error and forbidden-request counts were not written.`
+        : 'See the current browser result artifact.'],
   ['Packaged Windows/WebView2 native theme, scaling, focus, shortcuts, print dialog, printers', 'blocked',
     'Not performed on a packaged Windows/WebView2 build.'],
   ['Local Node tests, type validation, static build', localChecksClean ? 'verified' : 'partial',
@@ -354,6 +365,7 @@ const summary = {
       calculatorWindows: CALCULATOR_WINDOW_SURFACES.length,
       criteriaWindows: CRITERIA_WINDOW_SURFACES.length,
       entryWindows: ENTRY_WINDOW_SURFACES.length,
+      shellWindows: shellWindowsInInventory.size,
       generatedModalWindows: DERIVED_MODAL_WINDOW_SURFACES.length,
       generatedEntryWindows: DERIVED_ENTRY_WINDOW_SURFACES.length,
       reviewed: reviewedWindowsInInventory.size,
@@ -367,6 +379,7 @@ const summary = {
       contextualSurfaces: contextualDataWindows.size,
       reviewed: reviewedDataWindowsInInventory.size,
       generatedOnly: generatedOnlyDataWindowsInInventory.size,
+      compatibility: compatibilityDataWindows.size,
       unique: mappedDataWindowsInInventory.size,
       unmapped: unmappedDataWindows,
       outsideInventory: mappedDataWindowsOutsideInventory,
@@ -397,6 +410,20 @@ const summary = {
     caseKeys,
     forcedColors: result.forcedColors ?? null,
     minimumContrast,
+    partial: false,
+  } : browserEvidence ? {
+    passed: browserEvidence.passedBrowserAssertions ?? null,
+    failures: browserEvidence.failures ?? [],
+    errors: null,
+    pageErrors: null,
+    forbidden: null,
+    appearances: null,
+    caseKeys: [],
+    forcedColors: null,
+    minimumContrast: null,
+    partial: true,
+    evidence: browserEvidencePath,
+    note: 'The consolidated structure gate stopped before writing result.json; this is its measured failure summary, not a completed full-suite result.',
   } : null,
   focusedPrint: printResult ? {
     passed: printResult.passed,
@@ -434,7 +461,7 @@ only the authored surfaces.
 | Strict presentation types | ${typecheck ? typecheck.charAt(0).toUpperCase() + typecheck.slice(1) : 'not supplied'} |
 | Static inventory tests | ${inventoryTests ? `${inventoryTests.passed} passed, ${inventoryTests.failed} failed` : 'not supplied'} |
 | Static build | ${staticModules ? `${staticModules} modules` : 'not supplied'} |
-| Full browser suite | ${result ? `${result.passed} assertions, ${appearances} appearances; ${result.failures?.length ?? 0} failures, ${result.errors?.length ?? 0} errors, ${result.pageErrors?.length ?? 0} page errors, ${result.forbidden?.length ?? 0} forbidden requests` : 'not supplied'} |
+| Full browser suite | ${result ? `${result.passed} assertions, ${appearances} appearances; ${result.failures?.length ?? 0} failures, ${result.errors?.length ?? 0} errors, ${result.pageErrors?.length ?? 0} page errors, ${result.forbidden?.length ?? 0} forbidden requests` : browserEvidence ? `${browserEvidence.passedBrowserAssertions ?? 'unknown'} assertions before stop; ${browserEvidence.structureFailures ?? (Array.isArray(browserEvidence.failures) ? browserEvidence.failures.length : 0)} structure findings, ${Array.isArray(browserEvidence.failures) ? browserEvidence.failures.length : 0} recorded finding(s); stopped before result.json (see ${browserEvidencePath})` : 'not supplied'} |
 | Forced-color checks | ${result?.forcedColors ? `${result.forcedColors.passed} assertions, ${result.forcedColors.failures?.length ?? 0} failures, ${Array.isArray(result.forcedColors.cases) ? result.forcedColors.cases.length : result.forcedColors.cases ?? 0} cases` : 'not supplied'} |
 | Focused print checks | ${printResult ? `${printResult.passed} assertions, ${printResult.printSettingsCases?.length ?? 0} settings and ${printResult.printDocumentCases?.length ?? 0} document appearances; no printer access` : 'not supplied'} |
 | Additional calendar callers | \`web/tests/calendar-callers.test.ts\` covers f_getdatefromcalendar, aging/list F4 fields and inpatient/service DataWindow F4 fields inside the frontend suite above |
@@ -451,10 +478,11 @@ only the authored surfaces.
 | Windows with a Modern layout (reviewed + generated) | ${summary.authored.windowMappings.unique} (${pct(summary.authored.windowMappings.unique, summary.inventory.windows)}) |
 | - reviewed by hand | ${summary.authored.windowMappings.reviewed} (${pct(summary.authored.windowMappings.reviewed, summary.inventory.windows)}) |
 | - generated from the source definitions (validated, not individually reviewed or browser-verified) | ${summary.authored.windowMappings.generatedOnly}: ${summary.authored.windowMappings.generatedModalWindows} modal and ${summary.authored.windowMappings.generatedEntryWindows} entry layouts |
-| Authored layouts by registry | ${summary.authored.windowMappings.windowSurfaces} workspace/tool, ${summary.authored.windowMappings.criteriaWindows} criteria, ${summary.authored.windowMappings.entryWindows} entry, ${summary.authored.windowMappings.calculatorWindows} calculator, ${summary.authored.windowMappings.calendarWindows} calendar |
+| Authored layouts by registry | ${summary.authored.windowMappings.windowSurfaces} workspace/tool, ${summary.authored.windowMappings.criteriaWindows} criteria, ${summary.authored.windowMappings.entryWindows} entry, ${summary.authored.windowMappings.calculatorWindows} calculator, ${summary.authored.windowMappings.calendarWindows} calendar, ${summary.authored.windowMappings.shellWindows} shell |
 | Windows without a Modern layout | ${summary.authored.windowMappings.unmapped} |
 | DataWindows with a Modern surface (reviewed + generated) | ${summary.authored.dataWindowMappings.unique} (${pct(summary.authored.dataWindowMappings.unique, summary.inventory.datawindows)}); ${summary.authored.dataWindowMappings.reviewed} reviewed (${summary.authored.dataWindowMappings.globalSurfaces} global with nested lookups, ${summary.authored.dataWindowMappings.contextualSurfaces} contextual) and ${summary.authored.dataWindowMappings.generatedOnly} generated only, overlaps counted once |
 | DataWindows without a Modern surface | ${summary.authored.dataWindowMappings.unmapped} |
+| - compatibility fallbacks (Classic rendering retained, not Modern field layouts) | ${summary.authored.dataWindowMappings.compatibility} |
 | On-screen DataWindows (excluding print/report layouts, which are exempt from parity) with a Modern surface | ${summary.authored.dataWindowMappings.onScreen ? `${summary.authored.dataWindowMappings.onScreen.covered} of ${summary.authored.dataWindowMappings.onScreen.required} (${pct(summary.authored.dataWindowMappings.onScreen.covered, summary.authored.dataWindowMappings.onScreen.required)}); ${summary.authored.dataWindowMappings.onScreen.exempt} print/report candidates exempt` : 'classification missing'} |
 | Authored names absent from the static inventory | ${summary.authored.windowMappings.outsideInventory.length} windows, ${summary.authored.dataWindowMappings.outsideInventory.length} DataWindows${summary.authored.dataWindowMappings.outsideInventory.length ? ` (${summary.authored.dataWindowMappings.outsideInventory.join(', ')})` : ''} |
 | Modern print template families | ${summary.authored.printTemplates.families} |
@@ -510,7 +538,12 @@ console.log(JSON.stringify({
   printDefinitions: `${summary.authored.printTemplates.definitions}/${summary.inventory.datawindows}`,
   approvedPrintTemplates: summary.authored.printTemplates.approved,
   verifiedScreens: summary.inventory.modernVerified,
-  browser: summary.measured ? { passed: summary.measured.passed, appearances: summary.measured.appearances } : null,
+  browser: summary.measured ? {
+    passed: summary.measured.passed,
+    appearances: summary.measured.appearances,
+    partial: summary.measured.partial,
+    failures: summary.measured.failures?.length ?? 0,
+  } : null,
   blockers: summary.blockers.length,
   json: jsonPath,
   markdown: mdPath,

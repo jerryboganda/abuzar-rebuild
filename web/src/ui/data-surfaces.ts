@@ -15,36 +15,64 @@ export interface DataSurfaceField {
   /** The source asks for stepping the Modern editor cannot honour (date mask, unbounded range); the field is edited as plain text, like the Classic view. */
   spinPlain?: boolean
   suffixObject?: string
-  /** `computed` is a compute object; `button` is a per-row button in a grid (it raises the same Clicked event as the Classic button). */
-  kind?: 'computed' | 'button'
+  /**
+   * `computed` is a compute object; `button` is a per-row button in a grid (it raises the same Clicked event as the Classic button);
+   * `image` is a tableblob column shown as a read-only image.
+   */
+  kind?: 'computed' | 'button' | 'image'
   numeric?: boolean
   choice?: DwChoiceBinding
+  /** A checkbox whose source on/off values are identical: a read-only fixed indicator, never an editable choice. */
+  fixedCheckbox?: string
   lookup?: DataSurface
   multiline?: boolean
+}
+
+export interface DataSurfaceHeaderField {
+  object: string
+  labelObject?: string
+  label?: string
+  numeric?: boolean
+  /** A report heading painted in the header band, or in the background layer above it. */
+  band?: 'header' | 'background'
 }
 
 export interface DataSurface {
   name: string
   title: string
   kind: 'form' | 'grid'
-  sourceProcessing?: 0 | 1
+  sourceProcessing?: 0 | 1 | 6 | 7
+  /** Keep the original Classic DataWindow rendering: a validated compatibility fallback for a structure Modern cannot map. */
+  compatibility?: true
+  /** Place fields at their source coordinates, proportionally, when overlapping source rows cannot be a CSS grid. */
+  sourceLayout?: true
   fields: readonly DataSurfaceField[]
+  /** Source objects that keep their original runtime element inside a Modern form (an OLE document or container). */
+  embedded?: readonly string[]
+  /** Report-header values above a grid (header-band computes or columns), with their source labels. */
+  header?: readonly DataSurfaceHeaderField[]
   /** Groupbox sections; one section with an empty `object` holds fields that sit outside every groupbox. */
   groups?: readonly { object: string; fields: readonly string[] }[]
   separators?: readonly { object: string; before?: string }[]
   /** Plain source text (a heading or note) that belongs to no field; placed before the named field in a form, above the table in a grid. */
-  captions?: readonly { object: string; before?: string }[]
-  /** DataWindow buttons in a form: real buttons that raise the same Clicked event the Classic view raises for that object. */
-  buttons?: readonly { object: string; before?: string }[]
+  captions?: readonly { object: string; before?: string; group?: string; band?: 'header' | 'detail' | 'background' }[]
+  /**
+   * DataWindow buttons in a form: real buttons that raise the same Clicked event the Classic view raises for that object.
+   * `before` places a button before a field; `group` places a trailing button at the end of a groupbox.
+   */
+  buttons?: readonly { object: string; before?: string; group?: string }[]
   /** Static artwork (bitmaps and drawn boxes) in the source; accounted for but not painted by the Modern layout. */
   decorations?: readonly string[]
+  /** Visible bitmap objects a Modern form paints at their source position (pictures whose file may be set at run time). */
+  artwork?: readonly string[]
   bands?: readonly {
     /** Totals bands, or the header/trailer of a group level (`header.1`, `trailer.1`) when `grouped` is set. */
     band: 'summary' | 'footer' | `header.${number}` | `trailer.${number}`
     label: string
     /** Source text in this band that names no total (for example a lone "Total:"), shown above the values. */
     captions?: readonly string[]
-    fields: readonly Pick<DataSurfaceField, 'object' | 'labelObject' | 'label' | 'labelHidden' | 'numeric'>[]
+    /** A group header may carry an editable checkbox column (`choice.kind === 'checkbox'`). */
+    fields: readonly Pick<DataSurfaceField, 'object' | 'labelObject' | 'label' | 'labelHidden' | 'numeric' | 'choice'>[]
   }[]
   /** The grid is sorted by the source's groups: each break shows the group bands listed in `bands`. */
   /** A grid with a multiline field shows each row this many single-line heights tall (the source's detail band height). */
@@ -79,6 +107,26 @@ export function clippedObject(def: DwDef, object: DwObject): boolean {
   if (!Number.isFinite(height)) return false
   if (height === 0) return object.band === 'header' || object.band === 'detail'
   return height > 0 && Number(object.y ?? 0) >= height
+}
+
+/** A background-layer object in the report heading above a grid's column headers. */
+export function backgroundHeading(def: DwDef, object: DwObject): boolean {
+  if (object.band !== 'background') return false
+  const header = def.bands.header
+  const height = header && !Array.isArray(header) ? Number(header.height ?? 0) : 0
+  return height > 0 && Number(object.y ?? 0) < height
+}
+
+/** A header text with a later opaque object painted exactly over it: the source never shows it. */
+export function coveredHeaderText(def: DwDef, object: DwObject): boolean {
+  if (object.type !== 'text' || object.band !== 'header') return false
+  const index = def.objects.indexOf(object)
+  // Only an unconditionally visible covering object hides the text; a dynamic visibility may reveal it at run time.
+  const shown = (other: DwObject) => other.visible === undefined || other.visible === '' || other.visible === '1'
+  return def.objects.some((other, at) => at > index && other.band === 'header' && shown(other) &&
+    other['background.mode'] === '2' &&
+    Number(other.x ?? 0) <= Number(object.x ?? 0) && rightOf(other) >= rightOf(object) &&
+    Number(other.y ?? 0) <= Number(object.y ?? 0) && bottomOf(other) >= bottomOf(object))
 }
 
 /** A caption on the field's own row, ending left of it. */
@@ -353,11 +401,16 @@ export const DATA_SURFACES: readonly DataSurface[] = [
 ]
 
 export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: ReadonlyMap<string, string>): string[] {
+  if (surface.compatibility) return []
   const issues: string[] = []
-  const objects = new Map(def.objects.map((object) => [object.name.toLowerCase(), object]))
+  const processing = surface.sourceProcessing ?? (surface.kind === 'grid' ? 1 : 0)
+  // A RichText input field can lose its object name in recovery; its single table column names it.
+  const recoveredName = (object: DwObject): string => object.name ??
+    (Number(def.datawindow.processing ?? 0) === 7 && object.type === 'column' && def.table.columns.length === 1
+      ? def.table.columns[0].name : '')
+  const objects = new Map(def.objects.map((object) => [recoveredName(object).toLowerCase(), object]))
   const used = new Set<string>()
   if (objects.size !== def.objects.length) issues.push('Duplicate object identities')
-  const processing = surface.sourceProcessing ?? (surface.kind === 'grid' ? 1 : 0)
   if (Number(def.datawindow.processing ?? 0) !== processing) issues.push('Processing style changed')
   const groupLevels = new Map(((def.bands.group ?? []) as { level: string; 'header.height'?: string; 'trailer.height'?: string }[]).map((group) => [Number(group.level), group]))
   if (groupLevels.size && !surface.grouped) issues.push('Grouped bands require an explicit mapping')
@@ -365,7 +418,11 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
   if (surface.rowLines !== undefined && (surface.kind !== 'grid' || !Number.isInteger(surface.rowLines) || surface.rowLines < 2 || surface.rowLines > 12 || !surface.fields.some((field) => field.multiline))) {
     issues.push('Row lines need a grid with a multiline field')
   }
-  if (!surface.fields.length && !(surface.kind === 'form' && (surface.buttons?.length || surface.captions?.length))) issues.push('No fields mapped')
+  const bandContent = surface.bands?.some((band) => band.fields.length || band.captions?.length) ?? false
+  const sourceEmpty = def.objects.length === 0
+  if (!sourceEmpty && !surface.fields.length &&
+    !(surface.kind === 'form' && (surface.buttons?.length || surface.captions?.length || surface.artwork?.length || surface.embedded?.length)) &&
+    !(surface.kind === 'grid' && (bandContent || surface.captions?.length))) issues.push('No fields mapped')
   // An object the source never paints (below its band, or in a header or detail band without height) is decoration, never content.
   const painted = (name: string | undefined) => {
     const object = name ? objects.get(name) : undefined
@@ -375,8 +432,12 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
   const labelOwners = new Map<string, string>()
   for (const field of surface.fields) {
     const object = objects.get(field.object)
-    if (!object || object.type !== (field.kind === 'computed' ? 'compute' : field.kind === 'button' ? 'button' : 'column') || object.band !== 'detail') issues.push(`Unsupported field: ${field.object}`)
+    const expected = field.kind === 'computed' ? 'compute' : field.kind === 'button' ? 'button' : field.kind === 'image' ? 'tableblob' : 'column'
+    // A RichText presentation keeps its input field outside the recovered bands; it is still the row's editor.
+    const richtextInput = processing === 7 && surface.kind === 'form' && object?.type === 'column' && !object.band
+    if (!object || object.type !== expected || (!richtextInput && object.band !== 'detail')) issues.push(`Unsupported field: ${field.object}`)
     if (field.kind === 'button' && surface.kind !== 'grid') issues.push(`Button fields require a grid layout: ${field.object}`)
+    if (field.kind === 'image' && surface.kind !== 'form') issues.push(`Image fields require a form layout: ${field.object}`)
     if (used.has(field.object)) issues.push(`Duplicate field: ${field.object}`)
     used.add(field.object)
     painted(field.object)
@@ -404,10 +465,16 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
     }
     if (object) {
       const style = choiceStyle(object, overrides)
+      const fixedCheckbox = field.fixedCheckbox !== undefined
+      if (fixedCheckbox) {
+        if (object['checkbox.on'] === undefined || object['checkbox.on'] !== object['checkbox.off'] ||
+          field.fixedCheckbox !== object['checkbox.on']) issues.push(`Fixed checkbox binding changed: ${field.object}`)
+        if (field.choice) issues.push(`Fixed checkbox must not map a choice: ${field.object}`)
+      }
       const otherSelector = Object.keys(object).some((key) => /^(checkbox|radiobuttons)\./.test(key)) ||
         [...(overrides?.keys() ?? [])].some((key) => key.startsWith(`${field.object}.checkbox.`) || key.startsWith(`${field.object}.radiobuttons.`))
-      if (otherSelector && !(style.kind === 'checkbox' && field.choice?.kind === 'checkbox' || style.kind === 'radio' && field.choice?.kind === 'radio') ||
-        style.kind !== 'none' && !field.choice) issues.push(`Selector requires a mapped interaction: ${field.object}`)
+      if (!fixedCheckbox && (otherSelector && !(style.kind === 'checkbox' && field.choice?.kind === 'checkbox' || style.kind === 'radio' && field.choice?.kind === 'radio') ||
+        style.kind !== 'none' && !field.choice)) issues.push(`Selector requires a mapped interaction: ${field.object}`)
       if (field.choice) {
         if (style.kind === 'unsupported') issues.push(`${field.object}: ${style.reason}`)
         else if (style.kind !== field.choice.kind) issues.push(`Choice style changed: ${field.object}`)
@@ -443,7 +510,8 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
     }
     if (object) {
       const column = def.table.columns.find((column) => column.name.toLowerCase() === field.object)
-      const multiline = dwMultiline(object, column ? colKind(column.type) : '', overrides)
+      // A RichText input field is edited as a multi-line comment when the Modern form opens it.
+      const multiline = processing === 7 || dwMultiline(object, column ? colKind(column.type) : '', overrides)
       if (!!field.multiline !== multiline || field.multiline && surface.kind === 'grid' && !surface.rowLines) {
         issues.push(`Multiline field requires a matching form layout: ${field.object}`)
       }
@@ -490,13 +558,16 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
     }
   }
   if (surface.captions) {
-    const captionBand = surface.kind === 'grid' ? 'header' : 'detail'
     for (const caption of surface.captions) {
       const object = objects.get(caption.object)
-      if (!object || object.type !== 'text' || object.band !== captionBand) issues.push(`Unsupported caption: ${caption.object}`)
+      const captionBand = surface.kind === 'grid' ? caption.band ?? 'header' : 'detail'
+      if (!object || object.type !== 'text' || object.band !== captionBand ||
+        captionBand === 'background' && !backgroundHeading(def, object)) issues.push(`Unsupported caption: ${caption.object}`)
       if (used.has(caption.object)) issues.push(`Duplicate caption: ${caption.object}`)
       used.add(caption.object)
       painted(caption.object)
+      if (caption.before !== undefined && caption.group !== undefined) issues.push(`Caption position has before and group: ${caption.object}`)
+      if (caption.group !== undefined && !surface.groups?.some((group) => group.object === caption.group)) issues.push(`Unknown caption group: ${caption.object}`)
       if (caption.before !== undefined && !surface.fields.some((field) => field.object === caption.before)) issues.push(`Invalid caption position: ${caption.object}`)
       // A grid's column header travels with its column: the header of a hidden column is never a free caption.
       const column = surface.kind === 'grid' && object ? def.objects.find((item) => (item.type === 'column' || item.type === 'compute') &&
@@ -507,23 +578,69 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
   if (surface.buttons) {
     if (surface.kind !== 'form') issues.push('Buttons require a form layout')
     for (const button of surface.buttons) {
+      // A form button sits in the detail band, or in the header above the form's fields (a block of page actions).
       const object = objects.get(button.object)
-      if (!object || object.type !== 'button' || object.band !== 'detail') issues.push(`Unsupported button: ${button.object}`)
+      if (!object || object.type !== 'button' || !['detail', 'header'].includes(object.band)) issues.push(`Unsupported button: ${button.object}`)
       if (used.has(button.object)) issues.push(`Duplicate button: ${button.object}`)
       used.add(button.object)
       painted(button.object)
+      if (button.before !== undefined && button.group !== undefined) issues.push(`Button position has before and group: ${button.object}`)
       if (button.before !== undefined && !surface.fields.some((field) => field.object === button.before)) issues.push(`Invalid button position: ${button.object}`)
+      if (button.group !== undefined && !surface.groups?.some((group) => group.object === button.group)) issues.push(`Unknown button group: ${button.object}`)
+    }
+  }
+  if (surface.header) {
+    if (surface.kind !== 'grid') issues.push('Header values require a grid layout')
+    for (const field of surface.header) {
+      const object = objects.get(field.object)
+      const band = field.band ?? 'header'
+      if (!object || !(object.type === 'compute' || object.type === 'column') || object.band !== band ||
+        band === 'background' && !backgroundHeading(def, object)) issues.push(`Unsupported header value: ${field.object}`)
+      if (used.has(field.object)) issues.push(`Duplicate header value: ${field.object}`)
+      used.add(field.object)
+      painted(field.object)
+      if (field.labelObject) {
+        const label = objects.get(field.labelObject)
+        if (!label || label.type !== 'text' || label.band !== band ||
+          band === 'background' && !backgroundHeading(def, label)) issues.push(`Unsupported header label: ${field.labelObject}`)
+        if (!label?.text?.trim() && !field.label?.trim()) issues.push(`Missing header label: ${field.object}`)
+        if (used.has(field.labelObject)) issues.push(`Duplicate header label: ${field.labelObject}`)
+        used.add(field.labelObject)
+        painted(field.labelObject)
+      }
     }
   }
   for (const name of surface.decorations ?? []) {
     const object = objects.get(name)
     const clipped = !!object && clippedObject(def, object)
-    // Static artwork, or any object the source never paints (below its band, or in a header or detail band without height), is accounted
-    // for and not painted.  Text, columns and computed values in the background layer are painted content, never decoration.
-    const art = !!object && (object.type === 'line' || ['bitmap', 'rectangle', 'roundrectangle', 'ellipse'].includes(object.type) && !['summary', 'footer'].includes(object.band))
-    if (!object || !(clipped || art)) issues.push(`Unsupported decoration: ${name}`)
+    // Static artwork, or any object the source never paints (below its band, in a header or detail band without height, or under a later
+    // opaque header object), is accounted for and not painted.  Text, columns and computed values in the background layer are painted
+    // content, never decoration.
+    const art = !!object && (object.type === 'line' || ['bitmap', 'rectangle', 'roundrectangle', 'ellipse'].includes(object.type))
+    const covered = !!object && coveredHeaderText(def, object)
+    if (!object || !(clipped || art || covered)) issues.push(`Unsupported decoration: ${name}`)
     if (used.has(name)) issues.push(`Duplicate decoration: ${name}`)
     used.add(name)
+  }
+  if (surface.artwork) {
+    if (surface.kind !== 'form') issues.push('Artwork requires a form layout')
+    for (const name of surface.artwork) {
+      const object = objects.get(name)
+      if (!object || object.type !== 'bitmap') issues.push(`Unsupported artwork: ${name}`)
+      if (used.has(name)) issues.push(`Duplicate artwork: ${name}`)
+      used.add(name)
+      painted(name)
+    }
+  }
+  if (surface.embedded) {
+    if (surface.kind !== 'form') issues.push('Embedded objects require a form layout')
+    for (const name of surface.embedded) {
+      const object = objects.get(name)
+      if (!object || object.type !== 'ole') issues.push(`Unsupported embedded object: ${name}`)
+      if (used.has(name)) issues.push(`Duplicate embedded object: ${name}`)
+      used.add(name)
+      painted(name)
+    }
   }
   if (surface.bands) {
     if (surface.kind !== 'grid') issues.push('Totals require a grid layout')
@@ -541,7 +658,7 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
         if (seen.has(band.band) || band.band === 'summary' && seen.has('footer')) issues.push('Totals bands must appear once in source order')
         seen.add(band.band)
       }
-      if (!band.label.trim() || !band.fields.length && !(band.captions?.length && /\./.test(band.band))) issues.push(`Missing totals content: ${band.band}`)
+      if (!band.label.trim() || !band.fields.length && !band.captions?.length) issues.push(`Missing totals content: ${band.band}`)
       for (const name of band.captions ?? []) {
         const caption = objects.get(name)
         if (!caption || caption.type !== 'text' || caption.band !== band.band) issues.push(`Unsupported totals caption: ${name}`)
@@ -550,10 +667,21 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
       }
       for (const field of band.fields) {
         const object = objects.get(field.object)
-        if (!object || !(object.type === 'compute' || /\./.test(band.band) && object.type === 'column') || object.band !== band.band ||
-          // A group title may show a code by its lookup or list display text; it is display only, as in Classic.
-          choiceStyle(object, overrides).kind !== 'none' && !(/\./.test(band.band) && object.type === 'column' && ['lookup', 'list'].includes(choiceStyle(object, overrides).kind))) {
+        const style = object ? choiceStyle(object, overrides) : { kind: 'none' as const }
+        // A group title may show a code by its lookup or list display text; a group header may carry an editable checkbox.
+        const groupTitle = /\./.test(band.band) && object?.type === 'column' && ['lookup', 'list'].includes(style.kind)
+        const groupCheckbox = /^header\./.test(band.band) && object?.type === 'column' && style.kind === 'checkbox'
+        if (!object || !(object.type === 'compute' || object.type === 'column') || object.band !== band.band ||
+          style.kind !== 'none' && !groupTitle && !groupCheckbox) {
           issues.push(`Unsupported total: ${field.object}`)
+        }
+        if (groupCheckbox) {
+          if (!field.choice || field.choice.kind !== 'checkbox' || field.choice.on !== style.on || field.choice.off !== style.off ||
+            !!field.choice.leftText !== !!style.leftText) {
+            issues.push(`Group checkbox requires its mapped interaction: ${field.object}`)
+          }
+        } else if (field.choice) {
+          issues.push(`Unexpected band choice: ${field.object}`)
         }
         if (used.has(field.object)) issues.push(`Duplicate field: ${field.object}`)
         used.add(field.object)
@@ -568,7 +696,7 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
       }
     }
   }
-  for (const object of def.objects) if (!used.has(object.name.toLowerCase())) issues.push(`Unmapped object: ${object.name}`)
+  for (const object of def.objects) if (!used.has(recoveredName(object).toLowerCase())) issues.push(`Unmapped object: ${recoveredName(object)}`)
   return issues
 }
 
@@ -580,7 +708,10 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
  */
 export function dataSurfacePositionIssues(def: DwDef, surface: DataSurface): string[] {
   const issues: string[] = []
-  const objects = new Map(def.objects.map((object) => [object.name.toLowerCase(), object]))
+  const processing = Number(def.datawindow.processing ?? 0)
+  const recoveredName = (object: DwObject): string => object.name ??
+    (processing === 7 && object.type === 'column' && def.table.columns.length === 1 ? def.table.columns[0].name : '')
+  const objects = new Map(def.objects.map((object) => [recoveredName(object).toLowerCase(), object]))
   const fieldObjects = surface.fields.flatMap((field) => objects.get(field.object) ?? [])
   const peersOf = (object: DwObject) => fieldObjects.filter((other) => alwaysHidden(other.visible) === alwaysHidden(object.visible))
   const visibleIn = (names: readonly string[]) => names.flatMap((name) => objects.get(name) ?? []).filter((object) => !alwaysHidden(object.visible))
@@ -619,12 +750,14 @@ export function dataSurfacePositionIssues(def: DwDef, surface: DataSurface): str
         const object = objects.get(item.object)
         if (!object) continue
         const box = holderBox(groupboxes, object)?.name.toLowerCase() ?? ''
-        const placed = item.before === undefined ? '' : groupOf.get(item.before)
+        const placed = item.before !== undefined ? groupOf.get(item.before) : 'group' in item ? item.group ?? '' : ''
         if (placed !== box) issues.push(`Placed outside the groupbox that holds it: ${item.object}`)
       }
     }
   } else {
     for (const field of surface.fields) {
+      // A detail-band caption lives inside the row, not above the column.
+      if (field.labelBand === 'detail') continue
       const label = field.labelObject ? objects.get(field.labelObject) : undefined, object = objects.get(field.object)
       if (label && object && Math.min(rightOf(label), rightOf(object)) - Math.max(at(label, 'x'), at(object, 'x')) <= 0) {
         issues.push(`Column header is not above its column: ${field.object}`)

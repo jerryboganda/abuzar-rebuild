@@ -4,6 +4,8 @@ import type { DataSurface } from './data-surfaces.ts'
 export interface WindowSurface {
   name: string
   library: string
+  /** Place controls at their source coordinates, proportionally, when overlapping source rows cannot be a CSS grid. */
+  sourceLayout?: true
   /** A field is named by its source caption (`label`, a static text), or, when the source has none, by an accessible-only `name`. */
   fields: readonly { control: string; label?: string; name?: string }[]
   actions: readonly string[]
@@ -27,15 +29,18 @@ export interface WindowSurface {
   /** Visible pictures, drawn rectangles and progress bars (a photo, a colour key, a progress bar): kept as their original element at their
    * source position.  Hidden ones are `auxiliary`. */
   artwork?: readonly string[]
+  /** Non-visual controls (PowerBuilder `timing`) that stay in the runtime but have no presentation element of their own. */
+  nonVisual?: readonly string[]
   /** The content each groupbox (`frame` or `frames`) encloses in the source, by the centre of each item and innermost box only: the box
    * keeps its caption with exactly these controls.  A frame without an entry keeps the plain caption placement. */
   members?: Readonly<Record<string, readonly string[]>>
 }
 
-export const EMBEDDED_NATIVES: readonly string[] = ['tab', 'userobject', 'olecustomcontrol', 'richtextedit', 'listview', 'statichyperlink']
+export const EMBEDDED_NATIVES: readonly string[] = ['tab', 'userobject', 'olecustomcontrol', 'richtextedit', 'listview', 'statichyperlink', 'graph', 'mdiclient']
 /** A DataWindow may also be embedded when the source assigns its object at run time. */
 const EMBEDDABLE_NATIVES: readonly string[] = [...EMBEDDED_NATIVES, 'datawindow']
 export const ARTWORK_NATIVES: readonly string[] = ['picture', 'rectangle', 'hprogressbar']
+export const NON_VISUAL_NATIVES: readonly string[] = ['timing']
 
 /** A window control's source geometry (PowerBuilder units), as the generator and the position checks read it. */
 export interface ControlBox { name: string; native: string; x: number; y: number; width: number; height: number; hidden: boolean }
@@ -477,6 +482,12 @@ export const WINDOW_SURFACES: readonly WindowSurface[] = [
   { name: 'w_printer_copies', library: 'salerespwin', fields: [{ control: 'em_copies', label: 'st_1' }], actions: ['cb_ok'] },
 ]
 
+/** Shell windows: the MDI frame and the desktop background keep their native shell content, never a reflowed dialog. */
+export const SHELL_WINDOW_SURFACES: readonly WindowSurface[] = [
+  { name: 'w_main', library: 'abuzarapp', fields: [], actions: [], embedded: ['mdi_1'] },
+  { name: 'w_bkg', library: 'abuzarapp', fields: [], actions: [], artwork: ['p_1'] },
+]
+
 export const CALENDAR_WINDOW_SURFACES: readonly WindowSurface[] = [
   { name: 'w_calendar', library: 'components', fields: [], calendars: ['mc_calendar'], actions: ['cb_ok', 'cb_cancel'] },
   { name: 'w_calendar2', library: 'components', fields: [], calendars: ['mc_calendar'], actions: ['cb_ok', 'cb_cancel'] },
@@ -826,6 +837,55 @@ export const CONTACT_DETAIL_SURFACE: DataSurface = {
   ],
 }
 
+export const SMS_TEMPLATE_DETAIL_SURFACE: DataSurface = {
+  name: 'd_smstemplatedetail', title: 'SMS template', kind: 'form', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'smstypecode', labelObject: 'smstypecode_t', choice: {
+      kind: 'lookup', name: 'ddd_smstype', dataColumn: 'smstypecode', displayColumn: 'name', percentWidth: 100, lines: 10,
+    } },
+    { object: 'smsdatacode', labelObject: 'smsdatacode_t', choice: {
+      kind: 'lookup', name: 'ddd_smsdatadefinition_enabled', dataColumn: 'smsdatacode', displayColumn: 'name', percentWidth: 100, lines: 10,
+    } },
+    { object: 'moduleid', labelObject: 'moduleid_t', choice: {
+      kind: 'lookup', name: 'ddd_module_sms_template', dataColumn: 'module', displayColumn: 'name', percentWidth: 100, lines: 5,
+    } },
+    { object: 'event', labelObject: 'event_t', choice: {
+      kind: 'lookup', name: 'ddd_module_event', dataColumn: 'event', displayColumn: 'event', percentWidth: 150,
+    } },
+    { object: 'active', labelObject: 'active_t', choice: { kind: 'list', sorted: true } },
+    { object: 'scheduled', labelObject: 'scheduled_t', choice: { kind: 'list', sorted: true } },
+    { object: 'scheduletype', labelObject: 'scheduletype_t', choice: { kind: 'list', sorted: true } },
+    { object: 'runonce', labelObject: 'runonce_t' },
+    { object: 'runevery', label: 'Run every', labelHidden: true },
+    { object: 'runeveryfreq', label: 'Run every frequency', labelHidden: true, choice: { kind: 'list', sorted: true } },
+    { object: 'runparameters', labelObject: 'runparameters_t' },
+    { object: 'executedon', labelObject: 'executedon_t' }, { object: 'nextrunon', labelObject: 'nextrunon_t' },
+  ],
+}
+
+export const SMS_TEMPLATE_LIST_SURFACE: DataSurface = {
+  name: 'd_smstemplatelist', title: 'SMS templates', kind: 'grid', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'smstypecode', labelObject: 'smstypecode_t', choice: {
+      kind: 'lookup', name: 'ddd_smstype', dataColumn: 'smstypecode', displayColumn: 'name',
+    } },
+    { object: 'smsdatacode', labelObject: 'smsdatacode_t', choice: {
+      kind: 'lookup', name: 'ddd_smsdatadefinition_enabled', dataColumn: 'smsdatacode', displayColumn: 'name',
+    } },
+    { object: 'active', labelObject: 'active_t', choice: { kind: 'list' } },
+  ],
+}
+
+export const SMS_TEMPLATE_RECIPIENT_SURFACE: DataSurface = {
+  name: 'd_smstemplate_associatedrecipient', title: 'Associated recipients', kind: 'grid', fields: [
+    { object: 'contactgroupcode', labelObject: 'contactgroupcode_t', choice: {
+      kind: 'lookup', name: 'ddd_contactgroup', dataColumn: 'contactgroupcode', displayColumn: 'name', percentWidth: 250,
+    } },
+  ],
+  // The footer holds a usage instruction, not a total: the source paints only the caption.
+  bands: [{ band: 'footer', label: 'Template text', captions: ['t_1'], fields: [] }],
+}
+
 export const ENTRY_WINDOW_SURFACES: readonly EntryWindowSurface[] = [{
   name: 'w_agingintervals', library: 'accounts', family: 'multi',
   controls: entryControlPaths(['dw_detail', 'dw_itemsdetail', 'dw_footer', 'dw_itemslist']),
@@ -868,6 +928,19 @@ export const ENTRY_WINDOW_SURFACES: readonly EntryWindowSurface[] = [{
       { object: 'web', labelObject: 'web_t' },
     ],
   },
+}, {
+  name: 'w_smstemplate_form', library: 'smscomponents', family: 'multi',
+  controls: [
+    ...entryControlPaths(['dw_detail', 'dw_itemsdetail', 'dw_footer', 'dw_itemslist']),
+    { path: `${detailPage}.mle_smstemplate`, native: 'multilineedit' },
+  ],
+  details: [
+    { control: 'dw_detail', kind: 'form', surface: SMS_TEMPLATE_DETAIL_SURFACE },
+    { control: 'dw_itemsdetail', kind: 'grid', surface: SMS_TEMPLATE_RECIPIENT_SURFACE },
+    { control: 'mle_smstemplate', kind: 'control' },
+    { control: 'dw_footer', kind: 'auxiliary' }, { control: 'dw_itemslist', kind: 'auxiliary' },
+  ],
+  list: SMS_TEMPLATE_LIST_SURFACE,
 }, ...SINGLE_ENTRIES.map((binding) => singleEntrySurface(binding.name,
   codeNameSurface(binding.detail, 'form'), codeNameSurface(binding.list, 'grid'), binding.library)),
 ...DESCRIPTIVE_ENTRIES.map(descriptiveEntrySurface),
@@ -1062,6 +1135,199 @@ singleEntrySurface('w_emailtemplate_form', {
     { object: 'subject', labelObject: 'subject_t' }, { object: 'code', labelObject: 'code_t' },
   ],
 }),
+singleEntrySurface('w_department', {
+  name: 'd_department_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 't_1' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'description', labelObject: 't_3' },
+    { object: 'active', labelObject: 'description_t', choice: { kind: 'list' } },
+  ],
+}, {
+  name: 'd_department_list', title: 'List', kind: 'grid', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'description', labelObject: 'description_t' },
+    { object: 'active', labelObject: 'active_t', choice: { kind: 'list' } },
+  ],
+}),
+singleEntrySurface('w_servicecomponentunit_form', {
+  name: 'd_servicecomponentunit_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'servicecomponentunitcode_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'valuetype', labelObject: 'valuetype_t',
+      choice: { kind: 'lookup', name: 'ddd_servicecompunit_valuetype', dataColumn: 'code', displayColumn: 'name' } },
+  ],
+}, {
+  name: 'd_servicecomponentunit_list', title: 'List', kind: 'grid', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'valuetype', labelObject: 'valuetype_t',
+      choice: { kind: 'lookup', name: 'ddd_servicecompunit_valuetype', dataColumn: 'code', displayColumn: 'name' } },
+  ],
+}, 'servicecomponents'),
+singleEntrySurface('w_servicecomponenttype_form', {
+  name: 'd_servicecomponenttype_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'servicecomponenttypecode_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'askunit', labelObject: 't_1', choice: { kind: 'list', sorted: true } },
+    { object: 'askcutoff', labelObject: 't_5', choice: { kind: 'list' } },
+    { object: 'askrefrange', labelObject: 't_2', choice: { kind: 'list', sorted: true } },
+    { object: 'askoptions', labelObject: 't_3', choice: { kind: 'list', sorted: true } },
+    { object: 'askcomments', labelObject: 't_4', choice: { kind: 'list', sorted: true } },
+  ],
+}, {
+  name: 'd_servicecomponenttype_list', title: 'List', kind: 'grid', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+  ],
+}, 'servicecomponents'),
+singleEntrySurface('w_emp_allowances', {
+  name: 'd_emp_allowances', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'allowancecode_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'attendancewise', labelObject: 'attendancewise_t', choice: { kind: 'list' } },
+    { object: 'percentage', labelObject: 'percentage_t' }, { object: 'flatamount', labelObject: 'flatamount_t' },
+  ],
+}, {
+  name: 'd_emp_allowances_list', title: 'List', kind: 'grid', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'attendancewise', labelObject: 'attendancewise_t', choice: { kind: 'list' } },
+    { object: 'percentage', labelObject: 'percentage_t' }, { object: 'flatamount', labelObject: 'flatamount_t' },
+  ],
+}, 'employee'),
+singleEntrySurface('w_itemcategory_form', {
+  name: 'd_item_category', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 't_1' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'numericalfactor', labelObject: 't_2' }, { object: 'saleexpirydays', labelObject: 'saleexpirydays_t' },
+    { object: 'categorysegmentcode', labelObject: 't_3',
+      choice: { kind: 'lookup', name: 'ddd_categorysegment', dataColumn: 'code', displayColumn: 'name', percentWidth: 150, lines: 10 } },
+  ],
+}, {
+  name: 'd_itemcategorylist', title: 'List', kind: 'grid', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'saleexpirydays', labelObject: 'saleexpirydays_t' },
+    { object: 'categorysegment', labelObject: 'categorysegment_t' },
+  ],
+}, 'singleentryitem'),
+singleEntrySurface('w_patientlocation_form', {
+  name: 'd_patientlocation_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'locationcode_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'description', labelObject: 'description_t' },
+    { object: 'wardcode', labelObject: 'wardcode_t',
+      choice: { kind: 'lookup', name: 'ddd_ward', dataColumn: 'code', displayColumn: 'name', percentWidth: 100, lines: 10 } },
+  ],
+}, {
+  name: 'd_patientlocation_list', title: 'List', kind: 'grid', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'wardcode', labelObject: 'wardcode_t',
+      choice: { kind: 'lookup', name: 'ddd_ward', dataColumn: 'code', displayColumn: 'name' } },
+    { object: 'description', labelObject: 'description_t' }, { object: 'occupied', labelObject: 't_1' },
+  ],
+}, 'patientcomponents'),
+singleEntrySurface('w_salestaxschedule_form', {
+  name: 'd_salestaxschedule_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'applicable', labelObject: 'applicable_t', choice: { kind: 'list' } },
+    { object: 'taxperc', labelObject: 't_2' },
+    { object: 'taxtype', labelObject: 't_3',
+      choice: { kind: 'lookup', name: 'ddd_saletaxschedulle_taxtype', dataColumn: 'taxtypecode', displayColumn: 'taxtypename', percentWidth: 200 } },
+  ],
+}, {
+  name: 'd_salestaxschedule_list', title: 'List', kind: 'grid', fields: [
+    { object: 'name', labelObject: 'name_t' }, { object: 'taxperc', labelObject: 'taxperc_t' },
+    { object: 'taxtype', labelObject: 'taxtype_t',
+      choice: { kind: 'lookup', name: 'ddd_saletaxschedulle_taxtype', dataColumn: 'taxtypecode', displayColumn: 'taxtypename' } },
+    { object: 'compute_1', labelObject: 't_1', kind: 'computed' }, { object: 'code', labelObject: 'code_t' },
+  ],
+}, 'singleentryitem'),
+singleEntrySurface('w_cataccounts_form', {
+  name: 'd_cataccounts_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 't_1' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'main_acc_code', labelObject: 'mainacccode_t',
+      choice: { kind: 'lookup', name: 'ddd_mainaccounts', dataColumn: 'mainacccode', displayColumn: 'name', percentWidth: 100, lines: 10 } },
+  ],
+}, {
+  name: 'd_cataccounts_list', title: 'List', kind: 'grid', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'type', labelObject: 'type_t' },
+  ],
+}),
+singleEntrySurface('w_resource_form', {
+  name: 'd_resource_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'resourcecode_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'resourcecatcode', labelObject: 'resourcecatcode_t',
+      choice: { kind: 'lookup', name: 'ddd_resourcecategory', dataColumn: 'resourcecatcode', displayColumn: 'name', percentWidth: 100, lines: 10 } },
+    { object: 'cost', labelObject: 't_1' }, { object: 'description', labelObject: 'description_t', multiline: true },
+  ],
+}, {
+  name: 'd_resource_list', title: 'List', kind: 'grid', fields: [
+    { object: 'code', labelObject: 'resourcecode_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'resourcecatcode', labelObject: 'resourcecatcode_t',
+      choice: { kind: 'lookup', name: 'ddd_resourcecategory', dataColumn: 'resourcecatcode', displayColumn: 'name' } },
+    { object: 'description', labelObject: 'description_t' },
+  ],
+}),
+singleEntrySurface('w_saleordercategory_form', {
+  name: 'd_saleordercategory_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'shortname', labelObject: 'shortname_t' }, { object: 'counter', labelObject: 'counter_t' },
+    { object: 'posted', labelObject: 'posted_t', choice: { kind: 'list', sorted: true } },
+  ],
+}, {
+  name: 'd_saleordercategory_list', title: 'List', kind: 'grid', fields: [
+    { object: 'code', labelObject: 'socatcode_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'shortname', labelObject: 'shortname_t' }, { object: 'counter', labelObject: 'counter_t' },
+    { object: 'posted', labelObject: 'posted_t' },
+  ],
+}, 'saleorder'),
+singleEntrySurface('w_doctor_form', {
+  name: 'd_doctor_detail', title: 'Doctor detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'doctcode_t' }, { object: 'aliasname', labelObject: 't_3' },
+    { object: 'active', labelObject: 't_17', choice: { kind: 'list' } },
+    { object: 'lasttokenno', labelObject: 't_13' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'address1', labelObject: 't_2' }, { object: 'blob_1', labelObject: 't_18', kind: 'image' },
+    { object: 'address2', labelObject: 't_4' },
+    { object: 'city', labelObject: 'remarks_t' }, { object: 'country', labelObject: 't_5' },
+    { object: 'phone', labelObject: 't_6' }, { object: 'fax', labelObject: 't_7' },
+    { object: 'email', labelObject: 't_8' }, { object: 'fee', labelObject: 't_1' },
+    { object: 'acccode', labelObject: 't_14',
+      choice: { kind: 'lookup', name: 'ddd_supplier', dataColumn: 'code', displayColumn: 'supplier_name' } },
+    { object: 'headerno', labelObject: 't_16',
+      choice: { kind: 'lookup', name: 'ddd_headerno', dataColumn: 'code', displayColumn: 'name' } },
+    { object: 'doctorcategorycode', labelObject: 't_19',
+      choice: { kind: 'lookup', name: 'ddd_doctorcategory', dataColumn: 'code', displayColumn: 'name' } },
+    { object: 'title1', labelObject: 't_9' },
+    { object: 'title2', label: 'Title2', labelHidden: true },
+    { object: 'title3', label: 'Title3', labelHidden: true },
+    { object: 'title4', label: 'Title4', labelHidden: true },
+    { object: 'footer1', labelObject: 't_10' },
+    { object: 'footer2', label: 'Footer2', labelHidden: true },
+    { object: 'footer3', label: 'Footer3', labelHidden: true },
+    { object: 'footer4', label: 'Footer4', labelHidden: true },
+    { object: 'servicetemplatecode', labelObject: 't_11',
+      choice: { kind: 'lookup', name: 'ddd_servicetemplate', dataColumn: 'code', displayColumn: 'name', percentWidth: 100 } },
+    { object: 'timeslotinterval', labelObject: 't_15' },
+    { object: 'estpatientcountperday', labelObject: 't_12' },
+  ],
+}, {
+  name: 'd_doctor_list', title: 'Doctor list', kind: 'grid', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+  ],
+}, 'singleentry'),
+singleEntrySurface('w_spo_form', {
+  name: 'd_spo_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'gender', labelObject: 'gender_t', choice: { kind: 'list' } },
+    { object: 'fathername', labelObject: 'fathername_t' }, { object: 'husbandname', labelObject: 'husbandname_t' },
+    { object: 'address', labelObject: 'address_t' }, { object: 'address2', labelObject: 'address2_t' },
+    { object: 'mobileno', labelObject: 'mobileno_t' }, { object: 'phone', labelObject: 'phone_t' },
+    { object: 'fax', labelObject: 'fax_t' }, { object: 'email', labelObject: 'email_t' },
+    { object: 'remarks', labelObject: 'remarks_t' },
+  ],
+}, {
+  name: 'd_spo_list', title: 'List', kind: 'grid', fields: [
+    { object: 'name', labelObject: 'name_t' }, { object: 'fathername', labelObject: 'fathername_t' },
+    { object: 'gender', labelObject: 'gender_t', choice: { kind: 'list' } },
+    { object: 'husbandname', labelObject: 'husbandname_t' }, { object: 'address', labelObject: 'address_t' },
+    { object: 'address2', labelObject: 'address2_t' }, { object: 'mobileno', labelObject: 'mobileno_t' },
+    { object: 'phone', labelObject: 'phone_t' }, { object: 'fax', labelObject: 'fax_t' },
+    { object: 'email', labelObject: 'email_t' }, { object: 'remarks', labelObject: 'remarks_t' },
+    { object: 'code', labelObject: 'code_t' },
+  ],
+}, 'custcomponents'),
 singleEntrySurface('w_itemmeterlog', {
   name: 'd_itemmeterlog_detail', title: 'Detail', kind: 'form', fields: [
     { object: 'code', labelObject: 'code_t' },
@@ -1269,6 +1535,7 @@ export function windowSurfaceIssues(
   for (const action of surface.actions) use(action, ['commandbutton'])
   for (const name of surface.buttons ?? []) use(name, ['commandbutton'])
   for (const name of surface.artwork ?? []) use(name, ARTWORK_NATIVES)
+  for (const name of surface.nonVisual ?? []) use(name, NON_VISUAL_NATIVES)
   if (surface.members) {
     const frames = [...(surface.frame ? [surface.frame] : []), ...(surface.frames ?? [])]
     const content = new Set(windowContentItems(surface))

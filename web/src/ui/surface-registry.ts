@@ -1,6 +1,8 @@
 import { DATA_SURFACES } from './data-surfaces.ts'
 import type { DataSurface } from './data-surfaces.ts'
 import { DERIVED_DATA_SURFACES } from './derived-data-surfaces.ts'
+import { DERIVED_SCREEN_DATA_SURFACES } from './derived-screen-data-surfaces.ts'
+import { DERIVED_COMPATIBILITY_DATA_SURFACES } from './derived-compatibility-data-surfaces.ts'
 import { ENTRY_WINDOW_SURFACES } from './window-surfaces.ts'
 import type { EntryWindowSurface } from './window-surfaces.ts'
 import { DERIVED_ENTRY_WINDOW_SURFACES } from './derived-entry-windows.ts'
@@ -9,6 +11,8 @@ import { DERIVED_ENTRY_WINDOW_SURFACES } from './derived-entry-windows.ts'
 // web/tools/derive-*.ts.  Both kinds are re-validated against the live definition before they are used.
 const dataByName = new Map<string, DataSurface>()
 for (const surface of DERIVED_DATA_SURFACES) dataByName.set(surface.name, surface)
+for (const surface of DERIVED_SCREEN_DATA_SURFACES) dataByName.set(surface.name, surface)
+for (const surface of DERIVED_COMPATIBILITY_DATA_SURFACES) dataByName.set(surface.name, surface)
 for (const surface of DATA_SURFACES) dataByName.set(surface.name, surface)
 
 export function dataSurfaceByName(name: string): DataSurface | undefined {

@@ -6,8 +6,10 @@ import { readFile, readdir, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
+import { recoverObjectNames } from '../src/dw/def.ts'
 import { DERIVED_MODAL_WINDOW_SURFACES } from '../src/ui/derived-modal-windows.ts'
 import { DERIVED_DATA_SURFACES } from '../src/ui/derived-data-surfaces.ts'
+import { DERIVED_SCREEN_DATA_SURFACES } from '../src/ui/derived-screen-data-surfaces.ts'
 import { ENTRY_WINDOW_SURFACES } from '../src/ui/window-surfaces.ts'
 import { ALL_ENTRY_WINDOW_SURFACES, dataSurfaceByName } from '../src/ui/surface-registry.ts'
 
@@ -54,7 +56,11 @@ export async function dataWindows(names, dwRoot) {
   for (const name of names) {
     const library = index[name]
     if (!library) continue
-    if (!bundles.has(library)) bundles.set(library, JSON.parse(gunzipSync(await readFile(resolve(dwRoot, library + '.json.gz'))).toString('utf8')))
+    if (!bundles.has(library)) {
+      const bundle = JSON.parse(gunzipSync(await readFile(resolve(dwRoot, library + '.json.gz'))).toString('utf8'))
+      for (const definition of Object.values(bundle)) recoverObjectNames(definition)
+      bundles.set(library, bundle)
+    }
     const definition = bundles.get(library)[name]
     data[name] = { datawindow: definition.datawindow, bands: definition.bands, objects: definition.objects,
       table: { columns: definition.table.columns, arguments: definition.table.arguments } }
@@ -127,8 +133,9 @@ export async function buildDerivedFixtures({ here, outDir }) {
     bindings,
   }
   await writeFile(resolve(outDir, 'presentation-derived-entry.json'), JSON.stringify(entry))
+  const derivedSurfaces = [...DERIVED_DATA_SURFACES, ...DERIVED_SCREEN_DATA_SURFACES]
   const surfaceNames = new Set()
-  for (const surface of DERIVED_DATA_SURFACES) {
+  for (const surface of derivedSurfaces) {
     surfaceNames.add(surface.name)
     for (const lookup of lookupNames(surface)) surfaceNames.add(lookup)
   }
@@ -136,9 +143,9 @@ export async function buildDerivedFixtures({ here, outDir }) {
   const classification = JSON.parse(await readFile(resolve(here, '..', '..', 'docs', 'ui-print-classification.json'), 'utf8')).members
   const exempt = ['report-or-document', 'print-target', 'registered-template'].flatMap((key) => classification[key] ?? [])
   await writeFile(resolve(outDir, 'presentation-derived-surfaces.json'), JSON.stringify({
-    surfaces: DERIVED_DATA_SURFACES.map((surface) => surface.name), exempt, data: await dataWindows(surfaceNames, dwRoot),
+    surfaces: derivedSurfaces.map((surface) => surface.name), exempt, data: await dataWindows(surfaceNames, dwRoot),
   }))
-  return { modal: modalNames.length, entry: entryNames.length, surfaces: DERIVED_DATA_SURFACES.length }
+  return { modal: modalNames.length, entry: entryNames.length, surfaces: derivedSurfaces.length }
 }
 
 /** One generated modal window per distinct structural layout, so the appearance matrix covers every layout shape. */

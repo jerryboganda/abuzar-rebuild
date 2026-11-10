@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { Runtime } from '../src/runtime/interp.ts'
 import { registerSysFuncs } from '../src/runtime/sysfuncs.ts'
 import { DwModel, NOT_MODIFIED, NEW_MODIFIED } from '../src/dw/model.ts'
+import { DwCatalog } from '../src/dw/def.ts'
 import type { DwDef } from '../src/dw/def.ts'
 import { Dec } from '../src/runtime/values.ts'
 import type { Db } from '../src/runtime/wire.ts'
@@ -472,4 +473,17 @@ test('SetValidate / GetValidate keep the run-time rule and fall back to the desi
   assert.equal(await dw.n_setvalidate('qty', 'Real(GetText()) > 0'), 1)
   assert.equal(await dw.n_getvalidate('qty'), 'Real(GetText()) > 0')
   assert.equal(dw.columnValidationMessage(0), "'Qty must be zero or more'")
+})
+
+test('a RichText input field takes its single table column name when the export lost it', async () => {
+  const definition = {
+    datawindow: { processing: '7' },
+    bands: { detail: { text: '' } },
+    table: { columns: [{ type: 'char(4000)', name: 'comments' }] },
+    objects: [{ type: 'column', visible: '1' }],
+  } as unknown as DwDef
+  const catalog = new DwCatalog(async (path) => path.endsWith('_index.json') ? JSON.stringify({ rich: 'test' })
+    : path.endsWith('/test.json') ? JSON.stringify({ rich: definition }) : undefined)
+  const loaded = await catalog.get('rich')
+  assert.equal(loaded?.objects[0].name, 'comments')
 })

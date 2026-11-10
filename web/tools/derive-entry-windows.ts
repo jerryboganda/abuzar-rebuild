@@ -12,7 +12,7 @@ import { ENTRY_WINDOW_SURFACES, entryControlPaths, entryWindowIssues } from '../
 import type { EntryWindowSurface } from '../src/ui/window-surfaces.ts'
 import { DATA_SURFACES, CRITERIA_DATA_SURFACES, TRANSACTION_DATA_SURFACES, dataSurfaceIssues } from '../src/ui/data-surfaces.ts'
 import type { DataSurface } from '../src/ui/data-surfaces.ts'
-import { derive, deriveValidated, loadDefinitions } from './derive-data-surfaces.ts'
+import { derive, deriveValidated, loadDefinitions, canonicalDataWindowName, MISSING_CONTROL_DATAWINDOWS } from './derive-data-surfaces.ts'
 
 const here = import.meta.dirname
 const objectsRoot = resolve(here, '..', '..', 'data', 'src', 'objects')
@@ -71,7 +71,14 @@ export async function deriveWindow(
       // A DataWindow whose object is assigned at run time cannot be mapped ahead of time: it keeps its original element.
       if (!dataobject) { placed.push({ detail: { control: controlName, kind: 'control' }, ...at }); continue }
       const found = lookup(dataobject)
-      if (!found) return { reason: `unmapped DataWindow: ${dataobject}` }
+      if (!found) {
+        // The recovered source has no definition: keep the original Classic DataWindow element rather than inventing fields.
+        if (MISSING_CONTROL_DATAWINDOWS.has(dataobject)) {
+          placed.push({ detail: { control: controlName, kind: 'control' }, ...at })
+          continue
+        }
+        return { reason: `unmapped DataWindow: ${dataobject}` }
+      }
       placed.push({ detail: { control: controlName, kind: found.surface.kind === 'form' ? 'form' : 'grid', ...(found.inline ? { surface: found.surface } : {}) }, ...at })
       data.push(dataobject)
     }
@@ -107,7 +114,7 @@ export async function deriveWindows(): Promise<{ surfaces: EntryWindowSurface[];
   }
   // A DataWindow hosted by an entry master keeps a context-only mapping, so unrelated uses are not re-presented.
   const lookup = (dataobject: string) => {
-    const def = definitions.get(dataobject)
+    const def = definitions.get(canonicalDataWindowName(dataobject))
     if (!def) return undefined
     const reviewed = global.get(dataobject)
     if (reviewed) return !dataSurfaceIssues(def, reviewed).length ? { surface: reviewed, inline: false } : undefined

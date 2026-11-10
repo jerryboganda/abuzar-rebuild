@@ -16,6 +16,7 @@ import {
 } from '../src/ui/window-surfaces.ts'
 import type { WindowSurface, ControlBox } from '../src/ui/window-surfaces.ts'
 import { DATA_SURFACES, CRITERIA_DATA_SURFACES, TRANSACTION_DATA_SURFACES, dataSurfaceIssues } from '../src/ui/data-surfaces.ts'
+import { canonicalDataWindowName } from './derive-data-surfaces.ts'
 import type { DataSurface } from '../src/ui/data-surfaces.ts'
 import { deriveValidated, loadDefinitions } from './derive-data-surfaces.ts'
 import { dataSurfaceByName } from '../src/ui/surface-registry.ts'
@@ -62,7 +63,7 @@ export const REVIEWED_MODAL_WINDOWS = [...WINDOW_SURFACES, ...CALCULATOR_WINDOW_
 export const NOT_MODAL = 'not a dialog or sheet window'
 type Resolve = (dataobject: string) => DataSurface | undefined
 
-const SUPPORTED = new Set(['commandbutton', 'editmask', 'singlelineedit', 'statictext', 'groupbox', 'listbox', 'datawindow', 'checkbox', 'radiobutton', 'monthcalendar', 'hprogressbar', 'dropdownlistbox', 'multilineedit', 'picture', 'rectangle', ...EMBEDDED_NATIVES])
+const SUPPORTED = new Set(['commandbutton', 'editmask', 'singlelineedit', 'statictext', 'groupbox', 'listbox', 'datawindow', 'checkbox', 'radiobutton', 'monthcalendar', 'hprogressbar', 'dropdownlistbox', 'multilineedit', 'picture', 'rectangle', 'timing', ...EMBEDDED_NATIVES])
 
 /**
  * `ancestors` holds the control geometry of each ancestor window class, nearest first: a hidden inherited control keeps the caption
@@ -83,11 +84,22 @@ function inheritedCaption(input: Box, statics: readonly Box[], ancestors: readon
   return undefined
 }
 
+const scriptsRoot = resolve(here, '..', '..', 'data', 'src', 'scripts')
+/** Controls whose DataWindow object the window's own script assigns from a caller-supplied parameter. */
+function runtimeAssignedDataWindows(name: string, library: string): ReadonlySet<string> {
+  const path = resolve(scriptsRoot, library, name + '.pbs')
+  if (!existsSync(path)) return new Set()
+  const text = readFileSync(path, 'utf8')
+  const found = new Set<string>()
+  for (const match of text.matchAll(/\bthis\.(\w+)\.dataobject\s*=/gi)) found.add(match[1].toLowerCase())
+  return found
+}
+
+/** Dialogs whose overlapping source rows the Modern renderer cannot reproduce; they keep the labelled Classic layout. */
 const STAGGERED_DIALOGS: ReadonlySet<string> = new Set(['w_arg_cust_sdate_ldate_v13', 'w_arg_customers_sdate_ldate_v7'])
 
 export async function deriveModal(name: string, library: string, rt: Runtime, resolveSurface: Resolve, definitions: Map<string, DwDef>,
   ancestors: readonly (readonly ControlBox[])[] = []): Promise<ModalDerivation> {
-  // Dialogs whose staggered rows the Modern grid does not reproduce (structure gate, see derive-data-surfaces.ts STAGGERED_ROWS).
   if (STAGGERED_DIALOGS.has(name)) return { reason: 'staggered rows the Modern grid does not reproduce (structure gate)' }
   let window: PBObject
   try { window = await rt.instantiate(name) } catch (error) { return { reason: `instantiate: ${(error as Error).message.slice(0, 80)}` } }
@@ -97,6 +109,7 @@ export async function deriveModal(name: string, library: string, rt: Runtime, re
     if (type !== 3 && type !== 2 && type != null) return { reason: NOT_MODAL }
     const sheet = type !== 3
     const boxes = [...window.children.values()].map(toBox)
+    const runtimeAssigned = runtimeAssignedDataWindows(name, library)
     const unsupported = boxes.find((box) => !SUPPORTED.has(box.native) || box.control.children.size && !EMBEDDED_NATIVES.includes(box.native))
     if (unsupported) return { reason: `unsupported control: ${unsupported.native}` }
     const by = (native: string) => boxes.filter((box) => box.native === native)
@@ -169,6 +182,9 @@ export async function deriveModal(name: string, library: string, rt: Runtime, re
     // The shared price selector is bound last so a primary criteria DataWindow claims its caption first.
     for (const box of by('datawindow').sort((a, b) => Number(a.name === 'dw_price') - Number(b.name === 'dw_price') || a.y - b.y || a.x - b.x)) {
       const dataobject = String(box.control.pbGet('dataobject') ?? '').toLowerCase()
+      // A script assigns this control's object from a caller-supplied parameter: no single recovered surface can define it.
+      if (runtimeAssigned.has(box.name.toLowerCase())) { dynamic.push(box); continue }
+      const canonical = dataobject ? canonicalDataWindowName(dataobject) : ''
       const surface = dataobject ? resolveSurface(dataobject) : undefined
       let labels: { field: string; control: string }[] | undefined
       if (surface && surface.kind === 'form') {
@@ -195,9 +211,9 @@ export async function deriveModal(name: string, library: string, rt: Runtime, re
       else if (!dataobject) dynamic.push(box)
       // A print, PDF or report DataWindow is exempt from structural parity (its design is redesigned separately): the window around it
       // still gets its Modern layout, and the document keeps its original element inside that frame.
-      else if (documents.has(dataobject)) dynamic.push(box)
+      else if (documents.has(dataobject) || documents.has(canonical)) dynamic.push(box)
       // A DataWindow that holds only artwork (a picture holder the window script fills) or nothing at all has no field to map.
-      else if (definitions.has(dataobject) && definitions.get(dataobject)!.objects.every((object) => ART.has(object.type))) dynamic.push(box)
+      else if (definitions.has(canonical) && definitions.get(canonical)!.objects.every((object) => ART.has(object.type))) dynamic.push(box)
       else return { reason: `unmapped DataWindow: ${dataobject}` }
     }
     const options = [...by('checkbox').map((box) => ({ box, native: 'checkbox' as const })), ...by('radiobutton').map((box) => ({ box, native: 'radiobutton' as const }))]
@@ -210,6 +226,7 @@ export async function deriveModal(name: string, library: string, rt: Runtime, re
     const actions = commands.filter((box) => box.hidden || !amongContent(box, boxes)).map((box) => box.name)
     const buttons = commands.filter((box) => !box.hidden && amongContent(box, boxes)).map((box) => box.name)
     const captions = statics.filter((text) => !fields.some((field) => field.label === text.name) && !lists.some((list) => list.label === text.name)).sort((a, b) => a.y - b.y || a.x - b.x).map((text) => text.name)
+    const nonVisual = by('timing').map((box) => box.name)
     const position = new Map(boxes.map((box) => [box.name, box]))
     const surface: WindowSurface = {
       name, library, fields, actions,
@@ -217,6 +234,7 @@ export async function deriveModal(name: string, library: string, rt: Runtime, re
       ...(lists.length ? { lists } : {}), ...(captions.length ? { captions } : {}), ...(options.length ? { options } : {}),
       ...(calendars.length ? { calendars } : {}), ...(embedded.length ? { embedded } : {}), ...(data.length ? { data } : {}), ...(auxiliary.length ? { auxiliary } : {}),
       ...(buttons.length ? { buttons } : {}), ...(artwork.length ? { artwork } : {}),
+      ...(nonVisual.length ? { nonVisual } : {}),
     }
     const contentOrder = windowContentItems(surface).sort((a, b) => position.get(a)!.y - position.get(b)!.y || position.get(a)!.x - position.get(b)!.x)
     // Each groupbox keeps its caption with exactly the content it encloses in the source.

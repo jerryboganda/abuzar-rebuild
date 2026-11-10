@@ -6,7 +6,7 @@ import { gunzipSync } from 'node:zlib'
 import { WINDOW_SURFACES, CALCULATOR_WINDOW_SURFACES, CRITERIA_WINDOW_SURFACES, LOOKUP_CRITERIA_WINDOWS, REFERENCE_CRITERIA_WINDOWS, NUMERIC_CRITERIA_WINDOWS, DATE_OPTION_CRITERIA_WINDOWS, DATE_CHOICE_CRITERIA_WINDOWS, windowSurfaceIssues, ENTRY_WINDOW_SURFACES, entryWindowIssues } from '../src/ui/window-surfaces.ts'
 import { Runtime } from '../src/runtime/interp.ts'
 import { entryControls } from '../src/ui/modern-entry-window.ts'
-import { DATA_SURFACES, dataSurfaceIssues } from '../src/ui/data-surfaces.ts'
+import { DATA_SURFACES, dataSurfaceIssues, dataSurfacePositionIssues } from '../src/ui/data-surfaces.ts'
 import { colKind, type DwDef } from '../src/dw/def.ts'
 import { codeTable } from '../src/dw/choices.ts'
 import { numericSpin } from '../src/ui/numeric-spin.ts'
@@ -562,14 +562,26 @@ const richerFields = new Map([
   ['w_goodscompany_form', [['code', 'name', 'address1', 'address2', 'city', 'country', 'phone', 'fax', 'email'], ['code', 'name']]],
   ['w_emailtemplate_form', [['code', 'subject', 'body'], ['subject', 'code']]],
   ['w_itemmeterlog', [['code', 'usercode', 'date', 'itemmetercode', 'meterreading', 'reason', 'newreading'], ['code', 'date', 'usercode', 'itemmetercode', 'meterreading', 'reason', 'newreading']]],
+  ['w_doctor_form', [['code', 'aliasname', 'active', 'lasttokenno', 'name', 'address1', 'blob_1', 'address2', 'city', 'country', 'phone', 'fax', 'email', 'fee', 'acccode', 'headerno', 'doctorcategorycode', 'title1', 'title2', 'title3', 'title4', 'footer1', 'footer2', 'footer3', 'footer4', 'servicetemplatecode', 'timeslotinterval', 'estpatientcountperday'], ['code', 'name']]],
+  ['w_spo_form', [['code', 'name', 'gender', 'fathername', 'husbandname', 'address', 'address2', 'mobileno', 'phone', 'fax', 'email', 'remarks'], ['name', 'fathername', 'gender', 'husbandname', 'address', 'address2', 'mobileno', 'phone', 'fax', 'email', 'remarks', 'code']]],
+  ['w_department', [['code', 'name', 'description', 'active'], ['code', 'name', 'description', 'active']]],
+  ['w_servicecomponentunit_form', [['code', 'name', 'valuetype'], ['code', 'name', 'valuetype']]],
+  ['w_servicecomponenttype_form', [['code', 'name', 'askunit', 'askcutoff', 'askrefrange', 'askoptions', 'askcomments'], ['code', 'name']]],
+  ['w_cataccounts_form', [['code', 'name', 'main_acc_code'], ['code', 'name', 'type']]],
+  ['w_resource_form', [['code', 'name', 'resourcecatcode', 'cost', 'description'], ['code', 'name', 'resourcecatcode', 'description']]],
+  ['w_saleordercategory_form', [['code', 'name', 'shortname', 'counter', 'posted'], ['code', 'name', 'shortname', 'counter', 'posted']]],
+  ['w_emp_allowances', [['code', 'name', 'attendancewise', 'percentage', 'flatamount'], ['code', 'name', 'attendancewise', 'percentage', 'flatamount']]],
+  ['w_itemcategory_form', [['code', 'name', 'numericalfactor', 'saleexpirydays', 'categorysegmentcode'], ['code', 'name', 'saleexpirydays', 'categorysegment']]],
+  ['w_patientlocation_form', [['code', 'name', 'description', 'wardcode'], ['code', 'name', 'wardcode', 'description', 'occupied']]],
+  ['w_salestaxschedule_form', [['code', 'name', 'applicable', 'taxperc', 'taxtype'], ['name', 'taxperc', 'taxtype', 'compute_1', 'code']]],
 ])
 
-test('entry registry has 43 Code/Name and 54 custom single-entry windows without duplicate identities', () => {
+test('entry registry has 43 Code/Name and 66 custom single-entry windows without duplicate identities', () => {
   const singles = ENTRY_WINDOW_SURFACES.filter((surface) => surface.family === 'single')
-  assert.equal(singles.length, 97)
+  assert.equal(singles.length, 109)
   assert.equal(singles.filter((surface) => !richerFields.has(surface.name)).length, 43)
-  assert.equal(singles.filter((surface) => richerFields.has(surface.name)).length, 54)
-  assert.equal(ENTRY_WINDOW_SURFACES.length, 100)
+  assert.equal(singles.filter((surface) => richerFields.has(surface.name)).length, 66)
+  assert.equal(ENTRY_WINDOW_SURFACES.length, 113)
   assert.equal(new Set(ENTRY_WINDOW_SURFACES.map((surface) => surface.name)).size, ENTRY_WINDOW_SURFACES.length)
 })
 
@@ -612,6 +624,58 @@ test('Contact Card retains all controls, exact fields, sorted choices and its hi
     .includes('Multiline field requires a matching form layout: address'))
   assert.ok(dataSurfaceIssues(def, { ...detail, fields: detail.fields.map(({ multiline, ...field }) => field) })
     .includes('Multiline field requires a matching form layout: address'))
+})
+
+test('SMS-template layout keeps the multiline body and the caption-only recipient footer', async () => {
+  const surface = ENTRY_WINDOW_SURFACES.find((surface) => surface.name === 'w_smstemplate_form')!
+  const sources = new Map([
+    ['w_entry_primitives', ['components', 'window']], ['w_multi_entry', ['components', 'window']],
+    [surface.name, [surface.library, 'window']], ['u_dwstandard', ['components', 'userobject']],
+  ])
+  const rt = new Runtime({ load: async (name) => {
+    const location = sources.get(name)
+    if (!location) return undefined
+    const definition = JSON.parse(readFileSync(resolve(dataRoot, 'objects', ...location, name + '.json'), 'utf8'))
+    definition.routines = new Map()
+    return definition
+  } })
+  const controls = entryControls(await rt.instantiate(surface.name))
+  assert.equal(controls.size, 24)
+  assert.deepEqual(entryWindowIssues([...controls].map(([path, control]) => ({ path, native: control.native })), surface), [])
+  assert.equal(controls.get('tab_retrieve.tabpage_detail.mle_smstemplate')?.native, 'multilineedit')
+  assert.equal(controls.get('tab_retrieve.tabpage_detail.dw_footer')?.props.get('visible'), false)
+  const detail = surface.details.find((binding) => binding.control === 'dw_detail')!.surface!
+  const recipients = surface.details.find((binding) => binding.control === 'dw_itemsdetail')!.surface!
+  assert.equal(controls.get('tab_retrieve.tabpage_detail.dw_detail')?.props.get('dataobject'), detail.name)
+  assert.equal(controls.get('tab_retrieve.tabpage_detail.dw_itemsdetail')?.props.get('dataobject'), recipients.name)
+  for (const binding of [detail, recipients, surface.list!]) {
+    assert.deepEqual(dataSurfaceIssues(dataDefinition(binding.name), binding), [], binding.name)
+    assert.ok(!DATA_SURFACES.some((global) => global.name === binding.name))
+  }
+  assert.deepEqual(detail.fields.map((field) => field.object), [
+    'code', 'name', 'smstypecode', 'smsdatacode', 'moduleid', 'event', 'active', 'scheduled',
+    'scheduletype', 'runonce', 'runevery', 'runeveryfreq', 'runparameters', 'executedon', 'nextrunon',
+  ])
+  assert.deepEqual(recipients.fields.map((field) => field.object), ['contactgroupcode'])
+  assert.deepEqual(recipients.bands, [{ band: 'footer', label: 'Template text', captions: ['t_1'], fields: [] }])
+  assert.deepEqual(surface.list!.fields.map((field) => field.object), ['code', 'name', 'smstypecode', 'smsdatacode', 'active'])
+})
+
+test('Doctor form maps its signature tableblob as a read-only image in source order', () => {
+  const surface = ENTRY_WINDOW_SURFACES.find((surface) => surface.name === 'w_doctor_form')!
+  const detail = surface.details[0].surface!
+  const image = detail.fields.find((field) => field.object === 'blob_1')!
+  const definition = dataDefinition(detail.name)
+  assert.equal(image.kind, 'image')
+  assert.equal(image.labelObject, 't_18')
+  assert.ok(detail.fields.findIndex((field) => field.object === 'address1') <
+    detail.fields.findIndex((field) => field.object === 'blob_1'))
+  assert.deepEqual(dataSurfaceIssues(definition, detail), [])
+  assert.deepEqual(dataSurfacePositionIssues(definition, detail), [])
+  assert.ok(dataSurfaceIssues(definition, {
+    ...detail, fields: detail.fields.map((field) => field.object === 'blob_1' ? { ...field, kind: 'computed' as const } : field),
+  }).includes('Unsupported field: blob_1'))
+  assert.ok(dataSurfaceIssues(definition, { ...detail, kind: 'grid' }).includes('Image fields require a form layout: blob_1'))
 })
 
 test('contact-group layout retains every inherited control and scopes its member lookup grid', async () => {
@@ -726,10 +790,10 @@ test('richer masters retain original label identities, checkbox codes and comput
   assert.equal(dataDefinition(relation.list!.name).objects.find((object) => object.name === 'compute_1')?.expression, 'GetRow()')
   for (const surface of ENTRY_WINDOW_SURFACES.filter((entry) => richerFields.has(entry.name))) {
     const serial = surface.list?.fields.find((field) => field.object === 'compute_1')
-    if (serial) {
+    const expression = serial ? dataDefinition(surface.list!.name).objects.find((object) => object.name === 'compute_1')?.expression : undefined
+    if (serial && expression === 'GetRow()') {
       assert.equal(serial.kind, 'computed', surface.name)
       assert.equal(serial.numeric, true, surface.name)
-      assert.equal(dataDefinition(surface.list!.name).objects.find((object) => object.name === 'compute_1')?.expression, 'GetRow()', surface.name)
     }
   }
 })

@@ -108,6 +108,14 @@ export function splitExpr(v: string | undefined): { value: string; expr?: string
   return { value: head, expr: v.slice(v[i] === '	' ? i + 1 : i + 2) }
 }
 
+/** Restore an identity the exporter lost: a RichText input field takes its single table column's name. */
+export function recoverObjectNames(def: DwDef): DwDef {
+  if (Number(def.datawindow.processing ?? 0) !== 7 || def.table.columns.length !== 1) return def
+  const name = def.table.columns[0].name
+  for (const object of def.objects) if (object.type === 'column' && !object.name) object.name = name
+  return def
+}
+
 export class DwCatalog {
   private bundles = new Map<string, Record<string, DwDef>>()
   private index: Record<string, string> | null = null
@@ -128,6 +136,7 @@ export class DwCatalog {
     if (!b) {
       const t = await this.read(`dw/${lib}.json`)
       b = t ? (JSON.parse(t) as Record<string, DwDef>) : {}
+      for (const definition of Object.values(b)) recoverObjectNames(definition)
       this.bundles.set(lib, b)
     }
     return b[key]

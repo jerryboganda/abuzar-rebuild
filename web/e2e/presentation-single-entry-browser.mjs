@@ -67,7 +67,7 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
         const row = model.insertRow(0)
         for (const [column, value] of Object.entries(values)) model.setItem(row, column, value)
         for (const field of binding?.fields ?? []) {
-          if (field.kind === 'computed' || Object.hasOwn(values, field.object)) continue
+          if (field.kind === 'computed' || field.kind === 'image' || Object.hasOwn(values, field.object)) continue
           const kind = model.kinds[model.colIndex(field.object)]
           if (field.choice?.kind === 'checkbox') model.setItem(row, field.object, field.choice.off)
           else if (kind === 'string') model.setItem(row, field.object, field.multiline ? 'First line\r\nSecond line' : fitted('Synthetic details', source.data[dataName], field.object))
@@ -243,7 +243,7 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
           'pointer and Space cannot modify a readonly list checkbox')
         }
         for (const field of surface.details[0].surface.fields.filter((field) =>
-          !['code', displayName].includes(field.object) && field.kind !== 'computed' && !field.choice && !['date', 'datetime', 'time'].includes(f.detail.kinds[f.detail.colIndex(field.object)]) &&
+          !['code', displayName].includes(field.object) && field.kind !== 'computed' && field.kind !== 'image' && !field.choice && !['date', 'datetime', 'time'].includes(f.detail.kinds[f.detail.colIndex(field.object)]) &&
           (() => {
             const source = f.detail.def.objects.find((object) => object.name === field.object)
             // A field whose visibility expression is the constant 0 (visible="1~t0") is never shown, so it has no editor.

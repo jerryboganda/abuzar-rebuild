@@ -1,15 +1,19 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { DATA_SURFACES, CRITERIA_DATA_SURFACES, TRANSACTION_DATA_SURFACES, dataSurfaceIssues } from '../src/ui/data-surfaces.ts'
+import { DATA_SURFACES, CRITERIA_DATA_SURFACES, TRANSACTION_DATA_SURFACES, dataSurfaceIssues, dataSurfacePositionIssues, coveredHeaderText } from '../src/ui/data-surfaces.ts'
 import type { DataSurface } from '../src/ui/data-surfaces.ts'
 import { ENTRY_WINDOW_SURFACES, entryWindowIssues, WINDOW_SURFACES, CRITERIA_WINDOW_SURFACES, windowSurfaceIssues } from '../src/ui/window-surfaces.ts'
 import { DERIVED_DATA_SURFACES } from '../src/ui/derived-data-surfaces.ts'
+import { DERIVED_SCREEN_DATA_SURFACES } from '../src/ui/derived-screen-data-surfaces.ts'
+import { DERIVED_COMPATIBILITY_DATA_SURFACES } from '../src/ui/derived-compatibility-data-surfaces.ts'
 import { DERIVED_ENTRY_WINDOW_SURFACES } from '../src/ui/derived-entry-windows.ts'
 import { DERIVED_MODAL_WINDOW_SURFACES } from '../src/ui/derived-modal-windows.ts'
 import { modalWindowSurfaceByName } from '../src/ui/window-registry.ts'
 import { ALL_ENTRY_WINDOW_SURFACES, dataSurfaceByName, ALL_DATA_SURFACES } from '../src/ui/surface-registry.ts'
 import * as dataTool from '../tools/derive-data-surfaces.ts'
+import * as screenTool from '../tools/derive-screen-data-surfaces.ts'
+import * as compatibilityTool from '../tools/derive-compatibility-data-surfaces.ts'
 import * as entryTool from '../tools/derive-entry-windows.ts'
 import * as modalTool from '../tools/derive-modal-windows.ts'
 
@@ -42,9 +46,132 @@ test('every derived DataWindow surface passes the runtime validator and never sh
     assert.ok(definition, surface.name)
     assert.deepEqual(dataSurfaceIssues(definition, surface), [], surface.name)
   }
-  assert.equal(ALL_DATA_SURFACES.length, new Set([...DERIVED_DATA_SURFACES, ...DATA_SURFACES].map((surface) => surface.name)).size)
+  assert.equal(ALL_DATA_SURFACES.length,
+    new Set([...DERIVED_DATA_SURFACES, ...DERIVED_SCREEN_DATA_SURFACES, ...DERIVED_COMPATIBILITY_DATA_SURFACES, ...DATA_SURFACES]
+      .map((surface) => surface.name)).size)
   assert.equal(dataSurfaceByName('d_aginginterval'), DATA_SURFACES.find((surface) => surface.name === 'd_aginginterval'))
   assert.equal(dataSurfaceByName(DERIVED_DATA_SURFACES[0].name), DERIVED_DATA_SURFACES[0])
+})
+
+test('generated screen surfaces cover entry-hosted DataWindows without a contextual mapping', () => {
+  const outcome = screenTool.deriveScreenDataSurfaces()
+  assert.equal(screenTool.render(outcome.surfaces), readFileSync(screenTool.OUTPUT_TS, 'utf8'),
+    'Run node tools/derive-screen-data-surfaces.ts from web/')
+  assert.equal(screenTool.renderBacklog(outcome.total, outcome.surfaces.length, outcome.backlog),
+    readFileSync(screenTool.OUTPUT_BACKLOG, 'utf8'))
+  assert.equal(DERIVED_SCREEN_DATA_SURFACES.length, outcome.surfaces.length)
+  assert.ok(DERIVED_SCREEN_DATA_SURFACES.length >= 40)
+  const names = new Set<string>()
+  for (const surface of DERIVED_SCREEN_DATA_SURFACES) {
+    assert.ok(!names.has(surface.name), surface.name)
+    names.add(surface.name)
+    const definition = definitions.get(surface.name)
+    assert.ok(definition, surface.name)
+    assert.deepEqual(dataSurfaceIssues(definition, surface), [], surface.name)
+  }
+})
+
+test('OLE and RichText presentation styles map to true Modern surfaces', () => {
+  const ole = definitions.get('d_oletest')!
+  const oleSurface = dataTool.deriveValidated('d_oletest', ole).surface
+  assert.ok(oleSurface)
+  assert.equal(oleSurface.kind, 'form')
+  assert.equal(oleSurface.sourceProcessing, 6)
+  assert.deepEqual(oleSurface.embedded, ['ole_1'])
+  assert.deepEqual(dataSurfaceIssues(ole, oleSurface), [])
+  assert.ok(dataSurfaceIssues(ole, { ...oleSurface, embedded: ['missing'] }).includes('Unsupported embedded object: missing'))
+  assert.ok(dataSurfaceIssues(ole, { ...oleSurface, embedded: undefined }).includes('No fields mapped'))
+  const rich = definitions.get('d_serviceresult_comments')!
+  const richSurface = dataTool.deriveValidated('d_serviceresult_comments', rich).surface
+  assert.ok(richSurface)
+  assert.equal(richSurface.kind, 'form')
+  assert.equal(richSurface.sourceProcessing, 7)
+  assert.deepEqual(richSurface.fields, [{ object: 'comments', label: 'Comments', labelHidden: true, multiline: true }])
+  assert.deepEqual(dataSurfaceIssues(rich, richSurface), [])
+  assert.deepEqual(dataSurfacePositionIssues(rich, richSurface), [])
+})
+
+test('a group-header checkbox is an interactive band field', () => {
+  for (const name of ['d_postedsale_for_population', 'd_postedsale_for_proformainvoice']) {
+    const definition = definitions.get(name)!
+    const derived = dataTool.deriveValidated(name, definition).surface
+    assert.ok(derived, name)
+    assert.equal(derived.grouped, true, name)
+    const band = derived.bands?.find((item) => item.band === 'header.1')!
+    const checkbox = band.fields.find((field) => field.object === 'invselected')!
+    assert.deepEqual(checkbox.choice, { kind: 'checkbox', on: 'Y', off: 'N' }, name)
+    assert.equal(checkbox.labelHidden, true, name)
+    assert.deepEqual(dataSurfaceIssues(definition, derived), [], name)
+    assert.deepEqual(dataSurfacePositionIssues(definition, derived), [], name)
+    const unmapped = {
+      ...derived,
+      bands: derived.bands!.map((item) => item.band === 'header.1'
+        ? { ...item, fields: item.fields.map((field) => field.object === 'invselected' ? { ...field, choice: undefined } : field) }
+        : item),
+    }
+    assert.ok(dataSurfaceIssues(definition, unmapped).includes('Group checkbox requires its mapped interaction: invselected'), name)
+  }
+})
+
+test('visible bitmap holders derive as painted artwork, not compatibility fallbacks', () => {
+  for (const [name, count] of [
+    ['d_employeeimage_rowid', 1], ['d_itemimage_rowid', 1], ['d_patientimage_rowid', 1],
+    ['d_qualifiedpersonimage_rowid', 1], ['d_studentimage_rowid', 1], ['d_packpicture', 15],
+  ] as const) {
+    const definition = definitions.get(name)!
+    const derived = dataTool.deriveValidated(name, definition).surface
+    assert.ok(derived, name)
+    assert.equal(derived.kind, 'form', name)
+    assert.equal(derived.artwork?.length, count, name)
+    assert.ok(derived.artwork?.every((object) =>
+      definition.objects.find((item) => item.name.toLowerCase() === object)?.type === 'bitmap'), name)
+    assert.ok(!derived.decorations?.some((object) => derived.artwork!.includes(object)), name)
+    assert.deepEqual(dataSurfaceIssues(definition, derived), [], name)
+  }
+  assert.ok(!DERIVED_COMPATIBILITY_DATA_SURFACES.some((surface) =>
+    surface.name === 'd_packpicture' || surface.name.endsWith('_image_rowid')))
+  const packs = definitions.get('d_packpicture')!
+  const packSurface = dataTool.deriveValidated('d_packpicture', packs).surface!
+  assert.ok(dataSurfaceIssues(packs, { ...packSurface, artwork: ['p_case', 'missing'] }).includes('Unsupported artwork: missing'))
+  assert.ok(dataSurfaceIssues(packs, { ...packSurface, kind: 'grid' }).includes('Artwork requires a form layout'))
+})
+
+test('identical checkbox on/off values derive as read-only fixed indicators', () => {
+  const hpc = definitions.get('d_mr_hpc')!
+  const surface = dataTool.deriveValidated('d_mr_hpc', hpc).surface
+  assert.ok(surface)
+  assert.deepEqual(surface.fields.filter((field) => field.fixedCheckbox).map((field) => [field.object, field.fixedCheckbox]), [
+    ['hpc_chestheavinessradiatedtojawneck', '0'],
+    ['hpc_shortnessofbreathasswithvomitting', 'Y'],
+  ])
+  assert.ok(surface.fields.filter((field) => field.fixedCheckbox).every((field) => !field.choice))
+  assert.deepEqual(dataSurfaceIssues(hpc, surface), [])
+  const xray = definitions.get('d_mr_xray')!
+  const xraySurface = dataTool.deriveValidated('d_mr_xray', xray).surface!
+  assert.equal(xraySurface.fields.find((field) => field.object === 'findingswithinnormallimits')?.fixedCheckbox, 'Y')
+  const changed = { ...xraySurface, fields: xraySurface.fields.map((field) =>
+    field.object === 'findingswithinnormallimits' ? { ...field, fixedCheckbox: 'N' } : field) }
+  assert.ok(dataSurfaceIssues(xray, changed).includes('Fixed checkbox binding changed: findingswithinnormallimits'))
+  const editable = { ...xraySurface, fields: xraySurface.fields.map((field) =>
+    field.object === 'findingswithinnormallimits' ? { ...field, choice: { kind: 'list' as const } } : field) }
+  assert.ok(dataSurfaceIssues(xray, editable).some((issue) => issue.startsWith('Fixed checkbox must not map a choice')))
+  assert.ok(!DERIVED_COMPATIBILITY_DATA_SURFACES.some((candidate) => candidate.name === 'd_mr_hpc' || candidate.name === 'd_mr_xray'))
+})
+
+test('compatibility surfaces keep the original rendering for structures Modern cannot map', () => {
+  const outcome = compatibilityTool.deriveCompatibilitySurfaces()
+  assert.equal(compatibilityTool.render(outcome.surfaces), readFileSync(compatibilityTool.OUTPUT_TS, 'utf8'),
+    'Run node tools/derive-compatibility-data-surfaces.ts from web/')
+  assert.equal(compatibilityTool.renderBacklog(outcome.surfaces, outcome.missing),
+    readFileSync(compatibilityTool.OUTPUT_BACKLOG, 'utf8'))
+  assert.equal(outcome.missing.length, 0)
+  assert.equal(DERIVED_COMPATIBILITY_DATA_SURFACES.length, outcome.surfaces.length)
+  assert.deepEqual(DERIVED_COMPATIBILITY_DATA_SURFACES.map((surface) => surface.name), [])
+  for (const surface of DERIVED_COMPATIBILITY_DATA_SURFACES) {
+    assert.equal(surface.compatibility, true, surface.name)
+    assert.deepEqual(surface.fields, [], surface.name)
+    assert.deepEqual(dataSurfaceIssues(definitions.get(surface.name)!, surface), [], surface.name)
+  }
 })
 
 test('the derivation reproduces every reviewed mapping it can derive (independent calibration)', () => {
@@ -64,13 +191,147 @@ test('the derivation reproduces every reviewed mapping it can derive (independen
     // A grid DataWindow deliberately presented as a one-row form is a reviewed exception, not a derivable layout.
     // A one-row criteria form built on a header-captioned DataWindow is a reviewed presentation choice, not derivable from the source
     // (its header caption may sit in a band without height, which the source never paints).
+    // An unlabelled source field keeps an accessible-only name; the derivation reuses a neighbouring caption it cannot see is not painted.
     if (!derived || surface.sourceProcessing !== undefined || derived.sourceProcessing !== undefined ||
-      surface.fields.some((field) => field.labelBand === 'header')) continue
+      surface.fields.some((field) => field.labelBand === 'header' || field.labelHidden)) continue
     compared++
     if (sequence(derived) !== sequence(surface)) differing.push(name)
   }
   assert.ok(compared >= 200, `compared ${compared}`)
   assert.deepEqual(differing, [])
+})
+
+test('the derivation maps a tableblob column as a read-only image field', () => {
+  const definition = definitions.get('d_doctor_detail')!
+  const derived = dataTool.deriveValidated('d_doctor_detail', definition).surface
+  assert.ok(derived)
+  const image = derived.fields.find((field) => field.object === 'blob_1')!
+  assert.equal(image.kind, 'image')
+  assert.equal(image.labelObject, 't_18')
+  assert.deepEqual(dataSurfaceIssues(definition, derived), [])
+  assert.deepEqual(dataSurfacePositionIssues(definition, derived), [])
+})
+
+test('a background report heading maps as a header value and unlocks the appointment list', () => {
+  const definition = definitions.get('d_visitappointment_for_a_period')!
+  const derived = dataTool.deriveValidated('d_visitappointment_for_a_period', definition).surface
+  assert.ok(derived)
+  assert.deepEqual(derived.header, [{ object: 'compute_1', band: 'background' }])
+  assert.deepEqual(dataSurfaceIssues(definition, derived), [])
+  assert.deepEqual(dataSurfacePositionIssues(definition, derived), [])
+  const appointment = DERIVED_MODAL_WINDOW_SURFACES.find((surface) => surface.name === 'w_appointtments_for_a_period')!
+  assert.equal(appointment.data?.find((data) => data.control === 'dw_control')?.surface.name, 'd_visitappointment_for_a_period')
+  const siblingsDefinition = definitions.get('d_student_siblings_discount')!
+  const siblings = dataTool.deriveValidated('d_student_siblings_discount', siblingsDefinition).surface
+  assert.ok(siblings)
+  assert.deepEqual(siblings.captions, [{ object: 't_1', band: 'background' }])
+  assert.equal(siblings.header, undefined)
+  assert.deepEqual(dataSurfaceIssues(siblingsDefinition, siblings), [])
+  assert.ok(DERIVED_MODAL_WINDOW_SURFACES.some((surface) => surface.name === 'w_student_siblings_discount'))
+})
+
+test('a window-level graph stays embedded and the graph viewer derives', () => {
+  const viewer = DERIVED_MODAL_WINDOW_SURFACES.find((surface) => surface.name === 'w_graphviewer')!
+  assert.deepEqual(viewer.embedded, ['gr_mygraph'])
+  assert.deepEqual(viewer.auxiliary, ['dw_hidden'])
+  assert.equal(viewer.actions.length, 0)
+})
+
+test('non-visual timing controls derive the SMS center without presentation elements', () => {
+  const sms = DERIVED_MODAL_WINDOW_SURFACES.find((surface) => surface.name === 'w_sms_center')!
+  assert.deepEqual([...sms.nonVisual ?? []].sort(), ['timing_1', 'timing_2'])
+  assert.ok(sms.embedded?.includes('tab_smscenter'))
+})
+
+test('missing and runtime-assigned DataWindows keep their original element', () => {
+  const dashboard = DERIVED_MODAL_WINDOW_SURFACES.find((surface) => surface.name === 'w_dashboard')!
+  assert.ok(dashboard.embedded?.includes('dw_top10items'))
+  for (const name of ['w_populate_finalizedsaleorder', 'w_populate_saleinvoices']) {
+    const window = DERIVED_MODAL_WINDOW_SURFACES.find((surface) => surface.name === name)!
+    assert.deepEqual((window.embedded ?? []).filter((control) => control.startsWith('dw_')), ['dw_master', 'dw_detail', 'dw_footer'], name)
+  }
+  const deletedDue = DERIVED_ENTRY_WINDOW_SURFACES.find((surface) => surface.name === 'w_delete_due')!
+  assert.equal(deletedDue.details.find((detail) => detail.control === 'dw_itemsdetail')?.kind, 'control')
+})
+
+test('a trailing group button maps to the end of its groupbox', () => {
+  const definition = definitions.get('d_childserver_controlpanel')!
+  const derived = dataTool.deriveValidated('d_childserver_controlpanel', definition).surface
+  assert.ok(derived)
+  assert.deepEqual(derived.groups?.map((group) => group.object), ['gb_1', 'gb_2'])
+  assert.deepEqual(derived.buttons, [
+    { object: 'b_import', before: 'lastdatasynchronization' },
+    { object: 'b_sync', before: 'lastsaletransmited' },
+    { object: 'b_saletrans', group: 'gb_2' },
+  ])
+  assert.deepEqual(dataSurfaceIssues(definition, derived), [])
+  assert.deepEqual(dataSurfacePositionIssues(definition, derived), [])
+  const window = DERIVED_MODAL_WINDOW_SURFACES.find((surface) => surface.name === 'w_childerserver_controlpanel')!
+  assert.equal(window.data?.find((data) => data.control === 'dw_control')?.surface.name, 'd_childserver_controlpanel')
+  const wrong = { ...derived, buttons: derived.buttons!.map((button) => button.object === 'b_saletrans' ? { ...button, group: 'missing' } : button) }
+  assert.ok(dataSurfaceIssues(definition, wrong).includes('Unknown button group: b_saletrans'))
+})
+
+test('mixed header/detail captions derive the visit tables as grids', () => {
+  for (const [name, fields] of [
+    ['d_visitdiagnostics', ['compute_1', 'itemname', 'details', 'diagnosticvalue']],
+    ['d_visitphysicalexam', ['compute_1', 'itemname', 'details']],
+    ['d_visitsymptoms', ['compute_1', 'itemname', 'details', 'severitylevelcode', 'duration']],
+  ] as const) {
+    const definition = definitions.get(name)!
+    const derived = dataTool.deriveValidated(name, definition).surface
+    assert.ok(derived, name)
+    assert.equal(derived.kind, 'grid', name)
+    assert.deepEqual(derived.fields.map((field) => field.object), fields, name)
+    assert.equal(derived.fields.find((field) => field.object === 'details')?.labelBand, 'detail', name)
+    assert.ok(derived.fields.some((field) => field.labelBand === 'header'), name)
+    assert.deepEqual(dataSurfaceIssues(definition, derived), [], name)
+    assert.deepEqual(dataSurfacePositionIssues(definition, derived), [], name)
+  }
+  for (const name of ['w_visitdiagnostics', 'w_visitphysicalexam', 'w_visitsymptoms', 'w_visitsymptoms1']) {
+    assert.ok(DERIVED_MODAL_WINDOW_SURFACES.some((surface) => surface.name === name), name)
+  }
+  const symptoms = DERIVED_MODAL_WINDOW_SURFACES.find((surface) => surface.name === 'w_visitsymptoms')!
+  assert.equal(symptoms.data?.[0]?.surface.name, 'd_visitsymptoms')
+})
+
+test('a grid report header keeps header values, its title and the text hidden under it', () => {
+  const definition = definitions.get('d_activemarkeditems')!
+  const derived = dataTool.deriveValidated('d_activemarkeditems', definition).surface
+  assert.ok(derived)
+  assert.deepEqual(derived.header?.map((field) => field.object), [
+    'compute_4', 'compute_5', 'c_companyname', 'c_address1', 'c_address2',
+  ])
+  assert.equal(derived.header?.[0].labelObject, 't_6')
+  assert.deepEqual(derived.captions, [{ object: 't_2' }])
+  assert.deepEqual(derived.decorations, ['l_1', 'l_2', 't_3'])
+  assert.deepEqual(dataSurfaceIssues(definition, derived), [])
+  assert.deepEqual(dataSurfacePositionIssues(definition, derived), [])
+  const t3 = definition.objects.find((object) => object.name === 't_3')!
+  const t2 = definition.objects.find((object) => object.name === 't_2')!
+  assert.equal(coveredHeaderText(definition, t3), true)
+  assert.equal(coveredHeaderText(definition, t2), false)
+  assert.ok(dataSurfaceIssues(definition, { ...derived, kind: 'form' }).includes('Header values require a grid layout'))
+  assert.ok(dataSurfaceIssues(definition, { ...derived, header: [{ object: 't_3' }] }).length)
+  for (const name of ['w_salereturn_activeitemlist', 'w_saletemplate_saleestimates']) {
+    assert.ok(DERIVED_MODAL_WINDOW_SURFACES.some((surface) => surface.name === name), name)
+  }
+})
+
+test('the derivation accepts a form whose header band holds the only action buttons', () => {
+  const definition = definitions.get('d_visit_footer')!
+  const derived = dataTool.deriveValidated('d_visit_footer', definition).surface
+  assert.ok(derived)
+  assert.equal(derived.kind, 'form')
+  assert.deepEqual(derived.fields, [])
+  assert.deepEqual(derived.buttons?.map((button) => button.object), [
+    'b_registerpatient', 'b_vitalsign', 'b_diagnosis', 'b_physicalexam', 'b_diagnostics',
+    'b_rx', 'b_patienthistory', 'b_search', 'b_precaution', 'b_patientimage',
+  ])
+  assert.deepEqual(dataSurfaceIssues(definition, derived), [])
+  assert.deepEqual(dataSurfacePositionIssues(definition, derived), [])
+  const visit = DERIVED_ENTRY_WINDOW_SURFACES.find((surface) => surface.name === 'w_visit_form')!
+  assert.deepEqual(visit.details.find((detail) => detail.control === 'dw_footer')?.surface, derived)
 })
 
 test('generated entry windows match the recovered window trees', async () => {
@@ -207,7 +468,7 @@ test('the browser fixtures for the generated families carry every class, DataWin
     }
     assert.ok(entry.data.d_find)
     const surfaces = JSON.parse(readFileSync(join(out, 'presentation-derived-surfaces.json'), 'utf8'))
-    assert.equal(surfaces.surfaces.length, DERIVED_DATA_SURFACES.length)
+    assert.equal(surfaces.surfaces.length, DERIVED_DATA_SURFACES.length + DERIVED_SCREEN_DATA_SURFACES.length)
     for (const name of surfaces.surfaces) assert.ok(surfaces.data[name], `${name} definition`)
     assert.ok(['w_multi_entry', 'u_dwstandard'].every((name) => entryClasses.has(name)))
   } finally { rmSync(out, { recursive: true, force: true }) }
@@ -300,8 +561,9 @@ test('uncaptioned fields and lists carry exactly one accessible name', () => {
 })
 
 test('a grouped grid must say so, and group bands only exist for real group levels', () => {
-  const grouped = DERIVED_DATA_SURFACES.find((item) => item.grouped)
-    ?? DERIVED_ENTRY_WINDOW_SURFACES.flatMap((entry) => [entry.list, ...entry.details.map((detail) => detail.surface)]).find((item) => item?.grouped)
+  const grouped = DERIVED_DATA_SURFACES.find((item) => item.grouped && item.bands?.some((band) => band.band.includes('.')))
+    ?? DERIVED_ENTRY_WINDOW_SURFACES.flatMap((entry) => [entry.list, ...entry.details.map((detail) => detail.surface)])
+      .find((item) => item?.grouped && item.bands?.some((band) => band.band.includes('.')))
   assert.ok(grouped, 'a generated grid maps group bands')
   const definition = definitions.get(grouped.name)!
   assert.deepEqual(dataSurfaceIssues(definition, grouped), [])

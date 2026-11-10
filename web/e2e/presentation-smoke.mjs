@@ -3524,7 +3524,7 @@ try {
             return { value: String(window.presentationCalculatorPreview.model.getItem(1, field)), active: active ? `${active.tagName}.${active.className} [${active.closest('[data-obj]')?.dataset.obj ?? ''}]` : null,
               bounds: bounds?.toJSON(), viewport: [innerWidth, innerHeight], scrollers }
           }, field)
-          throw new Error(`${name}/${width}/${scale}: the next field after Tab must be focused and visible: ${JSON.stringify(state)}`, { cause: error })
+          throw new Error(`${name}/${width}/${scale}: the next field after Tab must be focused and visible: ${JSON.stringify(state, (_, value) => typeof value === 'bigint' ? value.toString() : value)}`, { cause: error })
         })
         await page.screenshot({ path: resolve(output, `${name}-${theme}-${scale}-${width}.png`) })
         const ok = form.getByRole('button', { name: 'Ok', exact: true })

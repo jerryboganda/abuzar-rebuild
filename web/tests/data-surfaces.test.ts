@@ -204,10 +204,38 @@ for (const surface of TRANSACTION_DATA_SURFACES) test(`${surface.name}: transact
     'Hidden record keys remain outside the explicit presentation')
 })
 
+test('caption-only footer bands retain source instructions without inventing totals', () => {
+  const def = definition('d_smstemplate_associatedrecipient')
+  const surface = { name: def.name, title: 'Recipients', kind: 'grid' as const, fields: [
+    { object: 'contactgroupcode', labelObject: 'contactgroupcode_t', choice: {
+      kind: 'lookup' as const, name: 'ddd_contactgroup', dataColumn: 'contactgroupcode', displayColumn: 'name', percentWidth: 250,
+    } },
+  ], bands: [{ band: 'footer' as const, label: 'Template text', captions: ['t_1'], fields: [] }] }
+  assert.deepEqual(dataSurfaceIssues(def, surface), [])
+  assert.ok(dataSurfaceIssues(def, { ...surface, bands: [{ ...surface.bands[0], captions: [] }] })
+    .includes('Missing totals content: footer'))
+  assert.ok(dataSurfaceIssues(def, { ...surface, bands: [{ ...surface.bands[0], captions: ['missing_caption'] }] })
+    .includes('Unsupported totals caption: missing_caption'))
+})
+
+test('header-band action buttons map as a form without inventing fields', () => {
+  const def = definition('d_visit_footer')
+  const buttons = def.objects.filter((object) => object.type === 'button')
+    .sort((a, b) => Number(a.y) - Number(b.y) || Number(a.x) - Number(b.x))
+    .map((object) => ({ object: object.name.toLowerCase() }))
+  const surface = { name: def.name, title: 'Visit actions', kind: 'form' as const, fields: [], buttons }
+  assert.deepEqual(dataSurfaceIssues(def, surface), [])
+  assert.ok(dataSurfaceIssues(def, { ...surface, buttons: [] }).includes('No fields mapped'))
+  assert.ok(dataSurfaceIssues(def, { ...surface, buttons: buttons.slice(1) }).includes('Unmapped object: b_registerpatient'))
+  const moved = structuredClone(def)
+  moved.objects.find((object) => object.name === 'b_rx')!.band = 'summary'
+  assert.ok(dataSurfaceIssues(moved, surface).includes('Unsupported button: b_rx'))
+})
+
 test('totals cannot omit source objects or substitute editable/detail fields', () => {
   const surface = TRANSACTION_DATA_SURFACES[0], def = definition(surface.name), band = surface.bands![0]
   assert.ok(dataSurfaceIssues(def, { ...surface, bands: undefined }).includes('Unmapped object: compute_1'))
-  def.objects.find((object) => object.name === 'compute_1')!.type = 'column'
+  def.objects.find((object) => object.name === 'compute_1')!.type = 'text'
   assert.ok(dataSurfaceIssues(def, surface).includes('Unsupported total: compute_1'))
   assert.ok(dataSurfaceIssues(def, { ...surface, bands: [{ ...band, fields: [{ object: 'debit', label: 'Amount' }] }] })
     .includes('Unsupported total: debit'))

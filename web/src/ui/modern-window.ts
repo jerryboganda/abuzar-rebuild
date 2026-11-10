@@ -1,6 +1,7 @@
 import type { WinView } from './dom-ui.ts'
 import type { PBObject } from '../runtime/object.ts'
 import { windowSurfaceIssues, windowContentItems } from './window-surfaces.ts'
+import type { WindowSurface } from './window-surfaces.ts'
 import { modalWindowSurfaceByName } from './window-registry.ts'
 import { ModernDwView } from './modern-dwview.ts'
 import { planGrid, applyGrid, anchoredBox, resolveAnchors } from './grid-plan.ts'
@@ -253,7 +254,8 @@ export function applyModernWindow(view: WinView): boolean {
     content.insertBefore(element, first ?? null)
     areas.set(frame, element)
   }
-  arrangeGrid(view, content, contentItems, itemControls, flexible, areas)
+  if (surface.sourceLayout) arrangeSourceWindow(view, content, contentItems, areas, surface)
+  else arrangeGrid(view, content, contentItems, itemControls, flexible, areas)
   const actions = document.createElement('footer')
   actions.className = 'window-actions'
   for (const name of surface.actions) actions.append(elements.get(name)!)
@@ -262,9 +264,34 @@ export function applyModernWindow(view: WinView): boolean {
     element.classList.add('window-auxiliary')
     return element
   })
-  view.client.replaceChildren(content, actions, ...auxiliary)
+  // Timing controls have no UI; keep their runtime element attached but invisible.
+  const nonVisual = (surface.nonVisual ?? []).flatMap((name) => {
+    const element = elements.get(name)
+    if (!element) return []
+    element.classList.add('window-nonvisual')
+    element.hidden = true
+    return [element]
+  })
+  view.client.replaceChildren(content, actions, ...auxiliary, ...nonVisual)
   view.el.classList.add('modern-window')
   view.el.classList.toggle('modern-data-window', data.length > 0)
+  // Tab moves through the window: bring the newly focused field fully into the scroll area. A programmatic redraw
+  // restores focus too, but must keep the user's scroll position.
+  let tabbing = false
+  view.el.addEventListener('keydown', (event) => {
+    if (event.key !== 'Tab') return
+    tabbing = true
+    setTimeout(() => { tabbing = false }, 0)
+  })
+  view.el.addEventListener('focusin', (event) => {
+    if (!tabbing) return
+    const target = event.target
+    if (!(target instanceof HTMLElement) || !view.client.contains(target)) return
+    const editor = target.closest<HTMLElement>('input,select,textarea,button,[tabindex]')
+    if (!editor) return
+    const bounds = editor.getBoundingClientRect(), area = view.client.getBoundingClientRect()
+    if (bounds.top < area.top || bounds.bottom > area.bottom) editor.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  })
   const close = view.el.querySelector('.tbar .cls')
   if (close) {
     const button = document.createElement('button')
@@ -297,6 +324,84 @@ export function frameDescribed(item: HTMLElement): HTMLElement[] {
   // A drop-down copies its own ARIA names onto its inner fields: it is described on the drop-down itself.
   return [...new Set([item, ...item.querySelectorAll<HTMLElement>(focusable)].filter((target) => target.matches(focusable) && target.tabIndex >= 0 &&
     !target.closest('.window-data,.window-embedded,[role=listbox]')).map((target) => target.closest<HTMLElement>('.pb-dropdown') ?? target))]
+}
+
+/**
+ * Source-proportional placement for dialogs whose rows overlap by less than a CSS grid track can represent: every item keeps
+ * its source box, scaled to the dialog width, so the Classic row-sharing survives.  Labels are positioned over their source
+ * boxes without enlarging the measured field.
+ */
+function arrangeSourceWindow(view: WinView, content: HTMLElement, items: ReadonlyMap<string, HTMLElement>,
+  frames: ReadonlyMap<string, HTMLElement>, surface: WindowSurface): void {
+  const read = (name: string): GridBox | null => {
+    const control = view.w.children?.get(name)
+    if (!control?.props) return null
+    const at = (key: string) => { const value = control.props!.get(key); return value === undefined || value === null || value === '' ? 0 : Number(value) }
+    const box = { left: at('x'), top: at('y'), right: at('x') + Number(control.props.get('width')), bottom: at('y') + Math.max(1, Number(control.props.get('height'))) }
+    return [box.left, box.top, box.right, box.bottom].every(Number.isFinite) ? { key: name, ...box } : null
+  }
+  const placed = new Map<HTMLElement, GridBox>()
+  for (const [name, element] of [...items, ...frames]) {
+    const box = read(name)
+    if (box) placed.set(element, box)
+  }
+  if (!placed.size) return
+  const left = Math.min(...[...placed.values()].map((box) => box.left))
+  const top = Math.min(...[...placed.values()].map((box) => box.top))
+  const right = Math.max(...[...placed.values()].map((box) => box.right))
+  const bottom = Math.max(...[...placed.values()].map((box) => box.bottom))
+  const width = Math.max(1, right - left)
+  const height = Math.max(1, bottom - top)
+  content.classList.add('window-source-layout')
+  content.style.position = 'relative'
+  content.style.padding = '0'
+  content.style.aspectRatio = `${width} / ${height}`
+  content.style.height = 'auto'
+  for (const [element, box] of placed) {
+    element.style.position = 'absolute'
+    element.style.margin = '0'
+    element.style.padding = '0'
+    element.style.boxSizing = 'border-box'
+    element.style.left = `${(box.left - left) / width * 100}%`
+    element.style.top = `${(box.top - top) / height * 100}%`
+    element.style.width = `${(box.right - box.left) / width * 100}%`
+    element.style.height = `${(box.bottom - box.top) / height * 100}%`
+  }
+  for (const frame of frames.values()) {
+    frame.style.zIndex = '0'
+  }
+  const labelOf = (element: HTMLElement, editor: GridBox, name: string | undefined) => {
+    const label = element.querySelector<HTMLElement>(':scope > label')
+    if (!label) return
+    const labelBox = name ? read(name) : null
+    label.style.position = 'absolute'
+    label.style.margin = '0'
+    if (labelBox) {
+      label.style.left = `${(labelBox.left - editor.left) / Math.max(1, editor.right - editor.left) * 100}%`
+      label.style.top = `${(labelBox.top - editor.top) / Math.max(1, editor.bottom - editor.top) * 100}%`
+      label.style.width = `${(labelBox.right - labelBox.left) / Math.max(1, editor.right - editor.left) * 100}%`
+      label.style.height = `${(labelBox.bottom - labelBox.top) / Math.max(1, editor.bottom - editor.top) * 100}%`
+    } else {
+      label.style.left = '0'
+      label.style.bottom = '100%'
+    }
+    const input = element.querySelector<HTMLElement>('input,select,textarea,button')
+    if (input) {
+      input.style.width = '100%'
+      input.style.height = '100%'
+      input.style.boxSizing = 'border-box'
+    }
+  }
+  for (const field of surface.fields) {
+    const element = items.get(field.control)
+    const editor = element ? placed.get(element) : undefined
+    if (element && editor) labelOf(element, editor, field.label)
+  }
+  for (const list of surface.lists ?? []) {
+    const element = items.get(list.control)
+    const editor = element ? placed.get(element) : undefined
+    if (element && editor) labelOf(element, editor, list.label ?? list.caption)
+  }
 }
 
 /**

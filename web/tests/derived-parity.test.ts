@@ -7,9 +7,11 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { dataSurfaceIssues, dataSurfacePositionIssues } from '../src/ui/data-surfaces.ts'
 import type { DataSurface } from '../src/ui/data-surfaces.ts'
-import { windowSurfaceIssues, windowSurfacePositionIssues, windowContentItems } from '../src/ui/window-surfaces.ts'
+import { windowSurfaceIssues, windowSurfacePositionIssues, windowContentItems, SHELL_WINDOW_SURFACES } from '../src/ui/window-surfaces.ts'
 import type { WindowSurface, ControlBox } from '../src/ui/window-surfaces.ts'
 import { DERIVED_DATA_SURFACES } from '../src/ui/derived-data-surfaces.ts'
+import { DERIVED_SCREEN_DATA_SURFACES } from '../src/ui/derived-screen-data-surfaces.ts'
+import { DERIVED_COMPATIBILITY_DATA_SURFACES } from '../src/ui/derived-compatibility-data-surfaces.ts'
 import { DERIVED_ENTRY_WINDOW_SURFACES } from '../src/ui/derived-entry-windows.ts'
 import { DERIVED_MODAL_WINDOW_SURFACES } from '../src/ui/derived-modal-windows.ts'
 import * as dataTool from '../tools/derive-data-surfaces.ts'
@@ -26,6 +28,7 @@ const geometry = async (name: string): Promise<ControlBox[]> => {
 }
 const generated: DataSurface[] = [
   ...DERIVED_DATA_SURFACES,
+  ...DERIVED_SCREEN_DATA_SURFACES,
   ...DERIVED_ENTRY_WINDOW_SURFACES.flatMap((entry) => [...entry.details.flatMap((detail) => detail.surface ?? []), ...(entry.list ? [entry.list] : [])]),
   ...DERIVED_MODAL_WINDOW_SURFACES.flatMap((window) => (window.data ?? []).map((binding) => binding.surface)),
 ]
@@ -64,9 +67,17 @@ test('a band without height paints nothing: its text is decoration, never a capt
   assert.ok(dataSurfaceIssues(def, wrong).includes('Not painted by the source: category_t'))
 })
 
-test('painted background text and values are content: a DataWindow showing them keeps Classic (d_view_item_satisfiable)', () => {
-  for (const name of ['d_view_item_satisfiable', 'd_visithistory', 'd_itemtransferhistory']) {
-    assert.equal(refused(name), 'unsupported object: compute in background', name)
+test('painted background headings are mapped as report header values (d_view_item_satisfiable)', () => {
+  for (const [name, objects] of [
+    ['d_view_item_satisfiable', ['compute_2', 'compute_3']],
+    ['d_visithistory', ['compute_2']],
+    ['d_itemtransferhistory', ['compute_1']],
+  ] as const) {
+    const grid = surface(name)
+    assert.deepEqual(grid.header?.map((item) => item.object), objects, name)
+    assert.ok(grid.header?.every((item) => item.band === 'background'), name)
+    assert.ok(!grid.decorations?.some((item) => objects.includes(item as never)), name)
+    assert.equal(refused(name), undefined, name)
   }
   const def = definitions.get('d_view_item_satisfiable')!
   const columns = def.objects.filter((object) => object.band === 'detail' && object.type === 'column').map((object) => object.name.toLowerCase())
@@ -75,8 +86,8 @@ test('painted background text and values are content: a DataWindow showing them 
 })
 
 test('dialog captions pair with the control beside them, not across another control (date and format criteria)', async () => {
-  // w_arg_cust_sdate_ldate_v13 had the format drop-down captioned "End Date:"; it now keeps Classic (staggered rows), and the same
-  // date and format captions are pinned on w_arg_cust_dates_caption_disc_terms, where the format drop-down got "Start Date:".
+  // w_arg_cust_sdate_ldate_v13 had the format drop-down captioned "End Date:"; it keeps Classic (staggered rows, browser
+  // structure gate), and the same caption trap is pinned on w_arg_cust_dates_caption_disc_terms.
   assert.equal(modal('w_arg_cust_sdate_ldate_v13'), undefined)
   const terms = modal('w_arg_cust_dates_caption_disc_terms')
   assert.deepEqual(terms.fields.find((item) => item.control === 'em_enddate'), { control: 'em_enddate', label: 'st_2' })
@@ -162,9 +173,37 @@ test('a groupbox keeps its caption with exactly the content it encloses', async 
     .includes('Duplicate frame member: em_startdate'))
 })
 
+test('shell windows keep their native shell content without a dialog reflow', async () => {
+  for (const surface of SHELL_WINDOW_SURFACES) {
+    const controls = (await geometry(surface.name)).map(({ name, native }) => ({ name, native, children: 0 }))
+    assert.deepEqual(windowSurfaceIssues(controls, surface), [], surface.name)
+  }
+})
+
+test('overlapping source rows use source-proportional placement', () => {
+  for (const name of [
+    'd_alnaseeb_deliveryorder_saleinvprint', 'd_normalpurchasereturnfooter', 'd_old_general1',
+    'd_opensalereturnfooter', 'd_salereturnfooter_view', 'd_servicefooter_view',
+  ]) {
+    const item = surface(name)
+    assert.equal(item.sourceLayout, true, name)
+    assert.deepEqual(dataSurfaceIssues(definitions.get(name)!, item), [], name)
+    assert.ok(!DERIVED_COMPATIBILITY_DATA_SURFACES.some((surface) => surface.name === name), name)
+  }
+  for (const name of ['w_arg_cust_sdate_ldate_v13', 'w_arg_customers_sdate_ldate_v7']) {
+    assert.equal(modal(name), undefined, name)
+  }
+})
+
 test('a heading or button stays in the groupbox that holds it, or the form keeps Classic', () => {
-  assert.equal(refused('d_adjustmentpreferences'), 'heading after the last field of its groupbox')
-  assert.equal(refused('d_childserver_controlpanel'), 'button after the last field of its groupbox')
+  const preferences = surface('d_adjustmentpreferences')
+  assert.ok(preferences.captions?.some((caption) => caption.group))
+  assert.deepEqual(dataSurfacePositionIssues(definitions.get('d_adjustmentpreferences')!, preferences), [])
+  assert.equal(refused('d_adjustmentpreferences'), undefined)
+  const child = surface('d_childserver_controlpanel')
+  assert.deepEqual(child.buttons?.find((button) => button.object === 'b_saletrans'), { object: 'b_saletrans', group: 'gb_2' })
+  assert.deepEqual(dataSurfacePositionIssues(definitions.get('d_childserver_controlpanel')!, child), [])
+  assert.equal(refused('d_childserver_controlpanel'), undefined)
   const grouped = generated.find((item) => item.groups && item.groups.length > 1 && item.captions?.some((caption) => caption.before))!
   const def = definitions.get(grouped.name)!
   const caption = grouped.captions!.find((item) => item.before)!

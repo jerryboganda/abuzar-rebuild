@@ -71,9 +71,9 @@ const withoutDatabase = (impl) => async (...args) => {
 
 // Structural parity gate: the Classic phase records which controls share a row (from the real DOM geometry); the Modern phase must
 // reproduce exactly those rows.  Rows are sets of control names; order within a row and the pixels are not compared.
-// Classic is measured on the editors themselves; in Modern an editor shares its cell with a caption above it, so the cell (the field
-// wrapper, which stretches to the row) is measured: two cells on one row have different editor tops only because of the captions.
-const rowsOf = (entries, modern = false) => {
+// Classic is measured on the editors themselves; in Modern an editor shares its content-sized field with a caption above it, so the
+// field wrapper; two fields on one row have different editor tops only because of their captions.
+const rowsOf = (entries, modern = false, tolerance = 0) => {
   const boxes = entries.flatMap(([key, found]) => {
     const element = modern ? found?.closest?.('.surface-field, .window-field, .window-list') ?? found : found
     if (!element || !element.getClientRects().length) return []
@@ -87,7 +87,10 @@ const rowsOf = (entries, modern = false) => {
     for (let j = i + 1; j < boxes.length; j++) {
       const [a, b] = boxes[i].left <= boxes[j].left ? [boxes[i], boxes[j]] : [boxes[j], boxes[i]]
       const overlap = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)
-      if (overlap >= 0.5 * Math.min(a.bottom - a.top, b.bottom - b.top) && b.left >= a.right - 2) relations.push(`${a.key}<${b.key}`)
+      // Sub-pixel rounding at the exact half-overlap boundary (a 13 px field starting 6.5 px into a row) is not
+      // a structural difference: one CSS pixel absorbs it without treating genuinely separate rows as shared.
+      // Only a source-proportional layout, which copies the source boxes, needs it; the grid has its own row model.
+      if (overlap >= 0.5 * Math.min(a.bottom - a.top, b.bottom - b.top) - tolerance && b.left >= a.right - 2) relations.push(`${a.key}<${b.key}`)
     }
   }
   relations.sort()
@@ -208,7 +211,7 @@ const fitted = (text, definition, column) => {
 }
 const synthetic = (model, row, binding, definition) => {
   for (const field of binding?.fields ?? []) {
-    if (field.kind === 'computed') continue
+    if (field.kind === 'computed' || field.kind === 'image') continue
     const kind = model.kinds[model.colIndex(field.object)]
     if (field.choice?.kind === 'checkbox') model.setItem(row, field.object, field.choice.off)
     else if (kind === 'string') model.setItem(row, field.object, field.multiline ? 'First line\r\nSecond line' : fitted('Synthetic', definition, field.object))
@@ -306,7 +309,7 @@ async function checkDerivedDataSurfacesImpl(fixture, check, settle, filter) {
         await within(preview.render(), 'rendering')
         await settle()
         const active = !!preview.root.classList.contains('modern-surface')
-        if (!modern && binding.kind === 'form' && !exempt.has(name)) compareStructure('form', name, false, rowsOf(binding.fields.map((field) => [field.object, preview.root.querySelector(`[data-obj="${field.object}"]`)])), check, label)
+        if (!modern && binding.kind === 'form' && !exempt.has(name)) compareStructure('form', name, false, rowsOf(binding.fields.map((field) => [field.object, preview.root.querySelector(`[data-obj="${field.object}"]`)]), false, binding.sourceLayout ? 1 : 0), check, label)
         check(active === modern, `${label}: the surface is active only in Modern`)
         if (modern) {
           check(!preview.root.textContent.includes('Classic layout retained'), `${label}: the generated surface passes runtime validation`)
@@ -323,7 +326,7 @@ async function checkDerivedDataSurfacesImpl(fixture, check, settle, filter) {
               rect: round(element.getBoundingClientRect()), tracks: getComputedStyle(element).gridTemplateRows, hidden: element.hidden,
             }))
           }
-          if (binding.kind === 'form' && !exempt.has(name)) compareStructure('form', name, true, rowsOf(binding.fields.map((field) => [field.object, preview.root.querySelector(`[data-obj="${field.object}"]`)]), true), check, label)
+          if (binding.kind === 'form' && !exempt.has(name)) compareStructure('form', name, true, rowsOf(binding.fields.map((field) => [field.object, preview.root.querySelector(`[data-obj="${field.object}"]`)]), true, binding.sourceLayout ? 1 : 0), check, label)
         }
       } catch (error) {
         check(false, `${label}: ${error.message}`)

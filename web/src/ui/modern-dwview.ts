@@ -20,6 +20,7 @@ import { lookupDialog } from './dw-lookup-dialog.ts'
 import type { LookupDialog } from './dw-lookup-dialog.ts'
 import type { PresentationDialog } from './presentation-dialogs.ts'
 import { choiceStyle, sameChoiceValue } from '../dw/choices.ts'
+import { imageDataUrl } from './image-data.ts'
 
 let nextSurface = 0
 const WINDOW_ROWS = 60
@@ -30,7 +31,7 @@ export class ModernDwView extends DwView {
   private contextSurface: DataSurface | null = null
   private contextLabels: ReadonlyMap<string, HTMLElement> = new Map()
   private identity = `data-surface-${++nextSurface}`
-  private bindings = new Map<string, { label: string; labelShown: boolean; object: DwObject; suffix?: DwObject; numeric: boolean; spin: NumericSpin | null; choice: boolean; toggle: boolean; radio: boolean; multiline: boolean }>()
+  private bindings = new Map<string, { label: string; labelShown: boolean; object: DwObject; suffix?: DwObject; numeric: boolean; spin: NumericSpin | null; choice: boolean; toggle: boolean; radio: boolean; multiline: boolean; labelBand: 'header' | 'detail'; fixedCheckbox?: string }>()
   /** a focus request (SetFocus, SelectText) made while an entry is being validated: it takes effect when validation ends */
   private deferredEdit: { model: DwModel; object: string; row: number; activate: boolean | number } | null = null
   private columnSelected = false
@@ -192,7 +193,7 @@ export class ModernDwView extends DwView {
       const object = model.def.objects.find((item) => item.name.toLowerCase() === draft.obj.toLowerCase())
       if (!object || !(await this.canEdit(model, object, draft.row))) { this.retainStaleDraft(draft.value); return }
     }
-    if (!surface || issues.length || preview) {
+    if (!surface || issues.length || preview || surface.compatibility) {
       this.revealEditor = null
       this.surface = null
       this.navigation = null
@@ -247,6 +248,8 @@ export class ModernDwView extends DwView {
         toggle: field.choice?.kind === 'checkbox',
         radio: field.choice?.kind === 'radio',
         multiline: !!field.multiline,
+        labelBand: field.labelBand ?? (surface.kind === 'grid' && surface.sourceProcessing !== 0 ? 'header' : 'detail'),
+        fixedCheckbox: field.fixedCheckbox,
       })
     }
     // A grid column a script switched on after the layout appears after the last visible column, as in the Classic grid.
@@ -258,7 +261,10 @@ export class ModernDwView extends DwView {
     }
     const body = document.createElement('div')
     body.className = surface.kind === 'grid' ? 'surface-body surface-body-grid' : 'surface-body'
-    if (surface.kind === 'grid') {
+    if (surface.kind === 'grid' && (surface.header?.length || surface.captions?.some((caption) => caption.band === 'background'))) {
+      const header = await this.gridHeader(model, surface)
+      if (header) body.append(header)
+    } else if (surface.kind === 'grid') {
       for (const caption of surface.captions ?? []) {
         const object = model.def.objects.find((item) => item.name.toLowerCase() === caption.object)!
         if (await this.prop(model, object, 'visible', 0, 'header') === '0') continue
@@ -298,7 +304,10 @@ export class ModernDwView extends DwView {
         label.textContent = field.label
         const source = this.surface?.fields.find((item) => item.object === name)
         // Hidden only while the source caption is blank or hidden by its own visibility; a script-set caption is painted.
-        if (source?.labelHidden && field.label === source.label || !field.labelShown) label.classList.add('presentation-visually-hidden')
+        // A detail-band caption is painted inside each row, not in the column-header row.
+        if (source?.labelHidden && field.label === source.label || !field.labelShown || field.labelBand === 'detail') {
+          label.classList.add('presentation-visually-hidden')
+        }
         th.append(label)
         if (dwRequired(field.object, model.overrides)) th.append(this.requiredHint(`${this.identity}-${name}-required`))
         if (field.numeric) th.classList.add('surface-number')
@@ -468,17 +477,40 @@ export class ModernDwView extends DwView {
       if (label.textContent) item.append(label)
       if (value) {
         const result = document.createElement('dd')
-        value.removeAttribute('style')
-        value.classList.add('surface-total-value')
-        if (field.numeric) value.classList.add('surface-number')
-        value.setAttribute('role', 'textbox')
-        value.setAttribute('aria-readonly', 'true')
-        if (label.textContent) value.setAttribute('aria-labelledby', label.id)
-        else value.setAttribute('aria-label', await this.label(model, field, row))
-        value.tabIndex = grouped ? -1 : 0
-        value.addEventListener('focus', () => { if (!this.restoringFocus) this.revealFocus(value) })
-        result.append(value)
-        item.append(result)
+        if (field.choice?.kind === 'checkbox' && band.band.startsWith('header.')) {
+          // A group-header checkbox is editable for every group of the source's grid.
+          const style = choiceStyle(object, model.overrides)
+          const checked = style.kind === 'checkbox' && sameChoiceValue(model.getItem(row, field.object), style.on)
+          const control = document.createElement('button')
+          control.type = 'button'
+          control.className = 'surface-band-checkbox'
+          control.setAttribute('role', 'checkbox')
+          control.setAttribute('aria-checked', String(checked))
+          if (label.textContent) control.setAttribute('aria-labelledby', label.id)
+          else control.setAttribute('aria-label', await this.label(model, field, row))
+          const marker = document.createElement('span')
+          marker.className = `cbx${checked ? ' on' : ''}`
+          marker.setAttribute('aria-hidden', 'true')
+          marker.textContent = checked ? '✓' : ''
+          control.append(marker)
+          control.addEventListener('click', () => {
+            void this.toggleBandCheckbox(model, field.object, row).catch((error) => this.ctl.rt.onError(error))
+          })
+          result.append(control)
+          item.append(result)
+        } else {
+          value.removeAttribute('style')
+          value.classList.add('surface-total-value')
+          if (field.numeric) value.classList.add('surface-number')
+          value.setAttribute('role', 'textbox')
+          value.setAttribute('aria-readonly', 'true')
+          if (label.textContent) value.setAttribute('aria-labelledby', label.id)
+          else value.setAttribute('aria-label', await this.label(model, field, row))
+          value.tabIndex = grouped ? -1 : 0
+          value.addEventListener('focus', () => { if (!this.restoringFocus) this.revealFocus(value) })
+          result.append(value)
+          item.append(result)
+        }
       }
       values.append(item)
     }
@@ -529,6 +561,121 @@ export class ModernDwView extends DwView {
     return hint
   }
 
+  /** A grid's report header: header-band values and captions, arranged by their source geometry. */
+  private async gridHeader(model: DwModel, surface: DataSurface): Promise<HTMLElement | null> {
+    const row = Math.max(1, model.row)
+    const items: { key: string; element: HTMLElement; box: GridBox }[] = []
+    const cells = new Map<string, HTMLElement>()
+    for (const field of surface.header ?? []) {
+      const band = field.band === 'background' ? 'background' : 'header'
+      const object = model.def.objects.find((item) => item.name.toLowerCase() === field.object)
+      if (!object || await this.prop(model, object, 'visible', row, band) === '0') continue
+      const value = await this.object(model, object, row, band, (n) => n, (n) => n, null)
+      if (!value) continue
+      value.removeAttribute('style')
+      value.classList.add('surface-header-value')
+      if (field.numeric) value.classList.add('surface-number')
+      const cell = document.createElement('div')
+      cell.className = 'surface-header-field'
+      const label = field.labelObject || field.label?.trim() ? await this.label(model, field, row) : ''
+      if (label) {
+        const text = document.createElement('span')
+        text.className = 'surface-header-label'
+        text.textContent = label
+        cell.append(text)
+      }
+      cell.append(value)
+      const box = sourceBoxOf(model.def, [field.object, field.labelObject], `header:${field.object}`, field.object, model.overrides)
+      if (!box) continue
+      const key = `header:${field.object}`
+      items.push({ key, element: cell, box })
+      cells.set(key, cell)
+    }
+    for (const caption of surface.captions ?? []) {
+      const band = caption.band === 'background' ? 'background' : caption.band === 'detail' ? 'detail' : 'header'
+      const object = model.def.objects.find((item) => item.name.toLowerCase() === caption.object)
+      if (!object || await this.prop(model, object, 'visible', row, band) === '0') continue
+      const text = await this.label(model, { object: caption.object, labelObject: caption.object }, row)
+      if (!text) continue
+      const note = document.createElement('p')
+      note.className = 'surface-caption surface-header-caption'
+      note.dataset.caption = caption.object
+      note.textContent = text
+      const box = sourceBoxOf(model.def, [caption.object], `header-caption:${caption.object}`, undefined, model.overrides)
+      if (!box) continue
+      const key = `header-caption:${caption.object}`
+      items.push({ key, element: note, box })
+      cells.set(key, note)
+    }
+    if (!items.length) return null
+    items.sort((a, b) => a.box.top - b.box.top || a.box.left - b.box.left)
+    const header = document.createElement('div')
+    header.className = 'surface-header'
+    for (const item of items) header.append(item.element)
+    applyGrid(header, planGrid(items.map((item) => item.box)), cells)
+    return header
+  }
+
+  /** A fixed indicator (a checkbox whose source on/off values are identical) is never enterable. */
+  protected override async canEdit(model: DwModel, object: DwObject, row: number): Promise<boolean> {
+    const field = this.surface?.fields.find((item) => item.object === object.name.toLowerCase())
+    if (field?.fixedCheckbox !== undefined) return false
+    return super.canEdit(model, object, row)
+  }
+
+  /**
+   * A group-header checkbox: toggling commits the source on/off value through the same ItemChanged path as a grid cell.
+   * The group break row becomes current, as clicking the header cell does in the original grid.
+   */
+  private async toggleBandCheckbox(model: DwModel, name: string, row: number): Promise<void> {
+    if (this.committing || this.stale || this.changes.signal.aborted || this.ctl.model !== model) return
+    const object = model.def.objects.find((item) => item.name.toLowerCase() === name.toLowerCase())
+    if (!object || object.type !== 'column' || this.ctl.props.get('enabled') === false) return
+    if (await this.prop(model, object, 'protect', row, object.band) === '1') return
+    const style = choiceStyle(object, model.overrides)
+    if (style.kind !== 'checkbox') return
+    const column = model.colIndex(object.name)
+    const record = model.rowAt(row)
+    if (column < 0 || !record) return
+    const current = model.getItem(row, object.name)
+    const next = sameChoiceValue(current, style.on) ? style.off : style.on
+    model.row = row
+    model.col = column + 1
+    this.committing = true
+    try {
+      const result = await commitDwValue(this.ctl, model, row, column, object, next, () => {
+        if (this.changes.signal.aborted || this.stale || this.ctl.model !== model || model.rowAt(row) !== record) {
+          throw new Error('The record or layout changed during validation. The entry was not written to the data model.')
+        }
+      })
+      if (result === 'accepted') this.status.textContent = 'Ready'
+      else if (result === 'discarded') this.status.textContent = 'The entry was rejected. The stored value was not replaced.'
+      else this.status.textContent = 'The entry was not accepted.'
+    } finally {
+      this.committing = false
+      this.schedule()
+    }
+  }
+
+  /** A tableblob column is a read-only picture; an empty value keeps its labelled placeholder area. */
+  private async tableblob(model: DwModel, field: DataSurfaceField, row: number): Promise<HTMLElement | null> {
+    const object = model.def.objects.find((item) => item.name.toLowerCase() === field.object)
+    if (!object || await this.prop(model, object, 'visible', row, 'detail') === '0') return null
+    const holder = document.createElement('div')
+    holder.className = 'surface-image'
+    holder.dataset.obj = field.object
+    const url = imageDataUrl(model.getItem(row, field.object))
+    holder.dataset.empty = String(!url)
+    if (url) {
+      const image = document.createElement('img')
+      image.src = url
+      image.alt = ''
+      image.draggable = false
+      holder.append(image)
+    }
+    return holder
+  }
+
   private async makeRow(model: DwModel, row: number, grid: boolean): Promise<HTMLElement> {
     const element: HTMLElement = document.createElement(grid ? 'tr' : 'section')
     element.className = 'row surface-row'
@@ -544,16 +691,15 @@ export class ModernDwView extends DwView {
     element.addEventListener('mousedown', (event) => this.pointerDown(model, row, event))
     element.addEventListener('dblclick', () => this.pointerDouble(model, row))
     const grouped = new Map<string, HTMLElement>()
+    const groupBoxes = new Map<string, HTMLElement>()
     for (const group of this.surface!.groups ?? []) {
-      if (group.object === '') {
-        const plain = document.createElement('div')
-        plain.className = 'surface-group surface-group-plain'
-        for (const name of group.fields) grouped.set(name, plain)
-        element.append(plain)
-        continue
-      }
+      // Source-proportional layout places every field by its own source box; a group container is painted as a
+      // decoration at its source box and never owns (and so never nests) the fields.
+      if (group.object === '') continue
       const object = model.def.objects.find((object) => object.name.toLowerCase() === group.object)!
       const visible = await this.prop(model, object, 'visible', row, 'detail') !== '0'
+      // A hidden groupbox is not painted; in source layout its fields are placed independently anyway.
+      if (this.surface!.sourceLayout && !visible) continue
       const text = visible ? await this.label(model, { object: group.object, labelObject: group.object }, row) : ''
       const container = document.createElement('div')
       container.className = 'surface-group'
@@ -569,8 +715,36 @@ export class ModernDwView extends DwView {
       }
       // A DataWindow groupbox is decoration, not the owner of its enclosed fields.
       container.classList.toggle('surface-group-plain', !visible)
-      for (const name of group.fields) grouped.set(name, container)
+      groupBoxes.set(group.object, container)
+      if (!this.surface!.sourceLayout) for (const name of group.fields) grouped.set(name, container)
       element.append(container)
+    }
+    for (const name of this.surface!.artwork ?? []) {
+      const object = model.def.objects.find((item) => item.name.toLowerCase() === name)
+      if (!object || await this.prop(model, object, 'visible', row, object.band) === '0') continue
+      const image = await this.object(model, object, row, object.band, (n) => n, (n) => n, null)
+      if (!image) continue
+      image.removeAttribute('style')
+      image.classList.add('surface-artwork-image')
+      const wrapper = document.createElement('div')
+      wrapper.className = 'surface-artwork'
+      wrapper.dataset.artwork = name
+      wrapper.append(image)
+      element.append(wrapper)
+    }
+    // An OLE document/container keeps the original runtime element, placed at its source geometry.
+    for (const name of this.surface!.embedded ?? []) {
+      const object = model.def.objects.find((item) => item.name.toLowerCase() === name)
+      if (!object || await this.prop(model, object, 'visible', row, object.band) === '0') continue
+      const embedded = await this.object(model, object, row, object.band, (n) => n, (n) => n, null)
+      if (!embedded) continue
+      embedded.removeAttribute('style')
+      embedded.classList.add('surface-embedded-object')
+      const wrapper = document.createElement('div')
+      wrapper.className = 'surface-embedded'
+      wrapper.dataset.embedded = name
+      wrapper.append(embedded)
+      element.append(wrapper)
     }
     const appendSeparator = async (before?: string) => {
       for (const separator of this.surface!.separators ?? []) {
@@ -595,18 +769,24 @@ export class ModernDwView extends DwView {
         note.className = 'surface-caption'
         note.dataset.caption = caption.object
         note.textContent = text
-        ;(before === undefined ? element : grouped.get(before) ?? element).append(note)
+        const target = before !== undefined ? grouped.get(before) ?? element :
+          caption.group ? groupBoxes.get(caption.group) ?? element : element
+        target.append(note)
       }
     }
     const appendButtons = async (before?: string) => {
       for (const item of this.surface!.buttons ?? []) {
         if (item.before !== before) continue
         const object = model.def.objects.find((object) => object.name.toLowerCase() === item.object)!
-        if (await this.prop(model, object, 'visible', row, 'detail') === '0') continue
+        // A form button lives in the detail band, or in the source header above the form's fields.
+        const band = object.band === 'header' ? 'header' : 'detail'
+        if (await this.prop(model, object, 'visible', row, band) === '0') continue
         const text = await this.label(model, { object: item.object, labelObject: item.object }, row)
         const button = this.dwButton(model, row, item.object, text || item.object,
-          /^(no|false|0)$/i.test(await this.prop(model, object, 'enabled', row, 'detail')))
-        ;(before === undefined ? element : grouped.get(before) ?? element).append(button)
+          /^(no|false|0)$/i.test(await this.prop(model, object, 'enabled', row, band)))
+        const target = before !== undefined ? grouped.get(before) ?? element :
+          item.group ? groupBoxes.get(item.group) ?? element : element
+        target.append(button)
       }
     }
     for (const [name, field] of this.bindings) {
@@ -619,10 +799,22 @@ export class ModernDwView extends DwView {
       wrapper.dataset.field = name
       if (grid) wrapper.setAttribute('role', 'presentation')
       const external = !grid && this.surface === this.contextSurface ? this.contextLabels.get(name) : null
-      const labelId = grid ? `${this.identity}-${name}-heading` : external?.id || `${this.identity}-${row}-${name}-label`
+      const rowLabel = grid && this.bindings.get(name)?.labelBand === 'detail'
+      const labelId = rowLabel ? `${this.identity}-${row}-${name}-label` :
+        grid ? `${this.identity}-${name}-heading` : external?.id || `${this.identity}-${row}-${name}-label`
       if (external && this.contextLabels.size > 1) wrapper.append(external)
       const source = this.surface?.fields.find((item) => item.object === name)
-      if (!grid && !external?.id) {
+      if (rowLabel) {
+        // A detail-band caption lives in each row, before its multiline value.
+        const label = document.createElement('span')
+        label.id = labelId
+        label.className = 'surface-label surface-row-label'
+        const text = source ? await this.label(model, source, row) : field.label
+        label.textContent = text
+        const shown = source ? await this.labelShown(model, source, row) : true
+        if (source?.labelHidden && text === source.label || !shown) label.classList.add('presentation-visually-hidden')
+        wrapper.append(label)
+      } else if (!grid && !external?.id) {
         // Each record's caption is its own (the source evaluates the caption, and its visibility, per row).
         const label = document.createElement('span')
         label.id = labelId
@@ -646,6 +838,17 @@ export class ModernDwView extends DwView {
           control.setAttribute('aria-describedby', `${this.identity}-${name}-heading`)
           wrapper.append(control)
         }
+        container.append(wrapper)
+        continue
+      }
+      if (source?.kind === 'image') {
+        const image = await this.tableblob(model, source, row)
+        if (image) {
+          image.id = `${this.identity}-${row}-${name}-value`
+          image.setAttribute('aria-labelledby', labelId)
+          image.setAttribute('role', 'img')
+          wrapper.append(image)
+        } else wrapper.hidden = true
         container.append(wrapper)
         continue
       }
@@ -741,6 +944,20 @@ export class ModernDwView extends DwView {
       }
       const activeName = this.activeField(model)
       value.tabIndex = grid ? (row === this.rovingRow && name === activeName ? 0 : -1) : 0
+      if (source?.fixedCheckbox !== undefined) {
+        const checked = sameChoiceValue(model.getItem(row, name), source.fixedCheckbox)
+        value.textContent = ''
+        value.classList.add('surface-fixed-checkbox')
+        const marker = document.createElement('span')
+        marker.className = `cbx${checked ? ' on' : ''}`
+        marker.setAttribute('aria-hidden', 'true')
+        marker.textContent = checked ? '✓' : ''
+        value.append(marker)
+        value.setAttribute('role', 'checkbox')
+        value.setAttribute('aria-checked', String(checked))
+        value.setAttribute('aria-readonly', 'true')
+        value.tabIndex = -1
+      }
       value.addEventListener('focusin', (event) => {
         if (!this.restoringFocus && event.target instanceof HTMLElement) {
           this.revealFocus(event.target)
@@ -801,8 +1018,97 @@ export class ModernDwView extends DwView {
     await appendSeparator()
     await appendCaptions()
     await appendButtons()
-    if (!grid) this.arrangeLines(element, model)
+    if (!grid && this.surface?.sourceLayout) this.arrangeSource(element, model)
+    else if (!grid) this.arrangeLines(element, model)
     return element
+  }
+
+  /**
+   * Source-proportional placement for forms whose rows overlap: every field keeps its source box, scaled with the
+   * container width, so a field that shares part of a row with a neighbour still does. Labels are positioned beside or
+   * above their editor without enlarging the measured field box. Used only where the CSS grid cannot represent the
+   * source row-sharing (see `SOURCE_LAYOUT_FORMS`).
+   */
+  private arrangeSource(element: HTMLElement, model: DwModel): void {
+    const surface = this.surface
+    if (!surface) return
+    const def = model.def
+    const box = (names: readonly (string | undefined)[], key: string) => sourceBoxOf(def, names, key, undefined, model.overrides)
+    const placed = new Map<HTMLElement, GridBox>()
+    const add = (child: HTMLElement | null, names: readonly (string | undefined)[], key: string) => {
+      if (!child) return
+      const found = box(names, key)
+      if (found) placed.set(child, found)
+    }
+    for (const group of surface.groups ?? []) {
+      if (!group.object) continue
+      add(element.querySelector<HTMLElement>(`:scope > .surface-group[data-group="${group.object}"]`), [group.object], `group:${group.object}`)
+    }
+    for (const field of surface.fields) add(element.querySelector<HTMLElement>(`:scope > .surface-field[data-field="${field.object}"]`), [field.object], `field:${field.object}`)
+    for (const caption of surface.captions ?? []) add(element.querySelector<HTMLElement>(`:scope > .surface-caption[data-caption="${caption.object}"]`), [caption.object], `caption:${caption.object}`)
+    for (const button of surface.buttons ?? []) add(element.querySelector<HTMLElement>(`:scope > .surface-button[data-obj="${button.object}"]`), [button.object], `button:${button.object}`)
+    for (const name of surface.artwork ?? []) add(element.querySelector<HTMLElement>(`:scope > .surface-artwork[data-artwork="${name}"]`), [name], `artwork:${name}`)
+    for (const name of surface.embedded ?? []) add(element.querySelector<HTMLElement>(`:scope > .surface-embedded[data-embedded="${name}"]`), [name], `embedded:${name}`)
+    if (!placed.size) return
+    const left = Math.min(...[...placed.values()].map((item) => item.left))
+    const top = Math.min(...[...placed.values()].map((item) => item.top))
+    const right = Math.max(...[...placed.values()].map((item) => item.right))
+    const bottom = Math.max(...[...placed.values()].map((item) => item.bottom))
+    const width = Math.max(1, right - left)
+    const height = Math.max(1, bottom - top)
+    element.classList.add('surface-source-layout')
+    element.style.position = 'relative'
+    element.style.padding = '0'
+    element.style.aspectRatio = `${width} / ${height}`
+    element.style.height = 'auto'
+    const position = (target: HTMLElement, item: GridBox) => {
+      target.style.position = 'absolute'
+      target.style.margin = '0'
+      target.style.padding = '0'
+      target.style.boxSizing = 'border-box'
+      target.style.left = `${(item.left - left) / width * 100}%`
+      target.style.top = `${(item.top - top) / height * 100}%`
+      target.style.width = `${(item.right - item.left) / width * 100}%`
+      target.style.height = `${(item.bottom - item.top) / height * 100}%`
+    }
+    for (const [target, item] of placed) position(target, item)
+    // A label or suffix is painted at its source position without changing the editor's measured box.
+    for (const field of surface.fields) {
+      const wrapper = element.querySelector<HTMLElement>(`:scope > .surface-field[data-field="${field.object}"]`)
+      if (!wrapper) continue
+      const editor = placed.get(wrapper)
+      if (!editor) continue
+      const label = wrapper.querySelector<HTMLElement>('.surface-label')
+      const labelBox = field.labelObject && label ? box([field.labelObject], field.labelObject) : null
+      if (label && labelBox) {
+        label.style.position = 'absolute'
+        label.style.margin = '0'
+        label.style.left = `${(labelBox.left - editor.left) / Math.max(1, editor.right - editor.left) * 100}%`
+        label.style.top = `${(labelBox.top - editor.top) / Math.max(1, editor.bottom - editor.top) * 100}%`
+        label.style.width = `${(labelBox.right - labelBox.left) / Math.max(1, editor.right - editor.left) * 100}%`
+        label.style.height = `${(labelBox.bottom - labelBox.top) / Math.max(1, editor.bottom - editor.top) * 100}%`
+      } else if (label) {
+        label.style.position = 'absolute'
+        label.style.left = '0'
+        label.style.bottom = '100%'
+        label.style.margin = '0'
+      }
+      const value = wrapper.querySelector<HTMLElement>('.surface-value')
+      if (value) {
+        value.style.width = '100%'
+        value.style.height = '100%'
+        value.style.maxWidth = 'none'
+        value.style.minHeight = '0'
+        value.style.boxSizing = 'border-box'
+      }
+      const suffix = wrapper.querySelector<HTMLElement>('.surface-suffix')
+      const suffixBox = field.suffixObject && suffix ? box([field.suffixObject], field.suffixObject) : null
+      if (suffix && suffixBox) {
+        suffix.style.position = 'absolute'
+        suffix.style.left = `${(suffixBox.left - editor.left) / Math.max(1, editor.right - editor.left) * 100}%`
+        suffix.style.top = `${(suffixBox.top - editor.top) / Math.max(1, editor.bottom - editor.top) * 100}%`
+      }
+    }
   }
 
   /**
@@ -838,6 +1144,8 @@ export class ModernDwView extends DwView {
         return { editor, anchored: anchoredBox(`field:${field.object}`, editor, others) }
       }
       if (child.dataset.caption) return plain(boxOf(def, [child.dataset.caption], `caption:${child.dataset.caption}`))
+      if (child.classList.contains('surface-artwork') && child.dataset.artwork) return plain(boxOf(def, [child.dataset.artwork], `artwork:${child.dataset.artwork}`))
+      if (child.classList.contains('surface-embedded') && child.dataset.embedded) return plain(boxOf(def, [child.dataset.embedded], `embedded:${child.dataset.embedded}`))
       if (child.classList.contains('surface-button') && child.dataset.obj) return plain(boxOf(def, [child.dataset.obj], `button:${child.dataset.obj}`))
       if (child.dataset.separator) { const box = lineBox(child.dataset.separator); return plain(box ? { ...box, key: `separator:${child.dataset.separator}` } : null) }
       return null
@@ -845,6 +1153,8 @@ export class ModernDwView extends DwView {
     const keyOf = (child: HTMLElement): string | null => {
       if (child.classList.contains('surface-field') && child.dataset.field) return `field:${child.dataset.field}`
       if (child.dataset.caption) return `caption:${child.dataset.caption}`
+      if (child.classList.contains('surface-artwork') && child.dataset.artwork) return `artwork:${child.dataset.artwork}`
+      if (child.classList.contains('surface-embedded') && child.dataset.embedded) return `embedded:${child.dataset.embedded}`
       if (child.classList.contains('surface-button') && child.dataset.obj) return `button:${child.dataset.obj}`
       if (child.dataset.separator) return `separator:${child.dataset.separator}`
       return null

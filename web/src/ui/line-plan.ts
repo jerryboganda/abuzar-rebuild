@@ -35,19 +35,23 @@ export function planLines(boxes: readonly PlanBox[]): PlanCell[][] {
  */
 export function boxOf(def: DwDef, names: readonly (string | undefined)[], key: string, weightOf?: string,
   overrides?: ReadonlyMap<string, string>): PlanBox | null {
-  const property = (object: DwObject, name: string) => overrides?.get(`${object.name.toLowerCase()}.${name}`) ?? object[name]
+  // A RichText input field can lose its object name in recovery; its single table column names it.
+  const nameOf = (object: DwObject): string => object.name ??
+    (Number(def.datawindow.processing ?? 0) === 7 && object.type === 'column' && def.table.columns.length === 1
+      ? def.table.columns[0].name : '')
+  const property = (object: DwObject, name: string) => overrides?.get(`${nameOf(object).toLowerCase()}.${name}`) ?? object[name]
   const num = (object: DwObject | undefined, name: string): number => {
     const value = Number(object ? property(object, name) : undefined)
     return Number.isFinite(value) ? value : 0
   }
   const objects = names.flatMap((name) => {
-    const found = name ? def.objects.find((object) => object.name.toLowerCase() === name.toLowerCase()) : undefined
+    const found = name ? def.objects.find((object) => nameOf(object).toLowerCase() === name.toLowerCase()) : undefined
     return found ? [found] : []
   }).filter((object) => property(object, 'visible') !== '0')
   if (!objects.length) return null
   const left = Math.min(...objects.map((object) => num(object, 'x')))
   const top = Math.min(...objects.map((object) => num(object, 'y')))
-  const editor = weightOf ? def.objects.find((object) => object.name.toLowerCase() === weightOf.toLowerCase()) : undefined
+  const editor = weightOf ? def.objects.find((object) => nameOf(object).toLowerCase() === weightOf.toLowerCase()) : undefined
   return {
     key, left, top, ...(editor && num(editor, 'width') > 0 ? { weight: num(editor, 'width') } : {}),
     right: Math.max(...objects.map((object) => num(object, 'x') + num(object, 'width'))),

@@ -130,5 +130,11 @@ export function applyGrid(container: HTMLElement, plan: GridPlan, elements: Read
     element.classList.add('grid-cell')
     element.style.gridColumn = `${placement.colStart} / ${placement.colEnd}`
     element.style.gridRow = `${placement.rowStart + rowOffset} / ${placement.rowEnd + rowOffset}`
+    // A field confined to one track sizes to its content; a field spanning tracks fills them, so its source
+    // row-sharing with a neighbour in a lower track survives. Lists always fill the rows they span.
+    if (element.classList.contains('window-list')) element.style.alignSelf = 'stretch'
+    else if (element.classList.contains('surface-field') || element.classList.contains('window-field')) {
+      element.style.alignSelf = placement.rowEnd - placement.rowStart > 1 ? 'stretch' : 'start'
+    }
   }
 }

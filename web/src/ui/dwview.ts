@@ -138,6 +138,8 @@ export class DwView {
   private releaseAcceptance: (() => void) | null = null
   private disposed = false
   protected choiceEdit: DwChoiceEditor | null = null
+  /** A checkbox click made while a choice editor was loading; it survives a rebuilt editor. */
+  private pendingChoiceToggle: { row: number; column: number } | null = null
   private checkChoiceEditor: (() => boolean) | null = null
   protected choiceDestination: { model: DwModel; row: number; object: string | undefined; activate: boolean | number } | null = null
   private onChange = () => { this.bindAcceptance(this.ctl.model); this.schedule() }
@@ -1832,6 +1834,7 @@ export class DwView {
     this.choiceEdit?.cancel()
     this.choiceEdit = null
     this.checkChoiceEditor = null
+    this.pendingChoiceToggle = null
   }
 
   protected lookupSurface(_object: DwObject): DataSurface | undefined { return undefined }
@@ -1853,6 +1856,14 @@ export class DwView {
       this.ctl.model === model && model.rowAt(row) === record
     const configured = (): boolean => current() && model.row === row && model.col === column + 1 &&
       choiceSignature(model.def, object, model.overrides) === signature
+    // A click queued while this checkbox was loading: the view holds it so a repaint that rebuilds the editor
+    // does not lose it. This editor takes it only while it is still the current one.
+    const takeToggle = (): boolean => {
+      const queued = this.pendingChoiceToggle
+      if (!queued || queued.row !== row || queued.column !== column || !current()) return false
+      this.pendingChoiceToggle = null
+      return true
+    }
     const guard = async () => {
       if (!configured() || !(await this.canEdit(model, object, row)) || !configured()) {
         throw new Error('The record, field or choice configuration changed. The entry was not applied.')
@@ -1885,7 +1896,12 @@ export class DwView {
           else await this.tabNext(1)
         },
       } : undefined,
-      current, guard,
+      current, guard, takeToggle,
+      // a second click before loading ends cancels the first, as two clicks on the original's checkbox do
+      queueToggle: () => {
+        const queued = this.pendingChoiceToggle
+        this.pendingChoiceToggle = queued?.row === row && queued.column === column ? null : { row, column }
+      },
       load: (retry) => this.choiceOptions(model, object, style, retry, lookup),
       details: lookup ? (editor) => this.browseChoices(editor) : undefined,
       commit: (value, check) => this.commitEditValue(model, row, column, object, value, check),
@@ -1935,6 +1951,11 @@ export class DwView {
     }
     choice.element.focus()
     choice.start()
+    // A queued checkbox click whose editor was rebuilt while loading is applied by the rebuilt editor.
+    if (this.pendingChoiceToggle?.row === row && this.pendingChoiceToggle.column === column && this.choiceEdit === choice) {
+      this.pendingChoiceToggle = null
+      void choice.toggle().catch((error) => this.ctl.rt.onError(error))
+    }
     // after start() a lookup editor shows the display text, not the data code
     this.editorInitial = choice.read()
     if (activate !== false) void choice.activate(activate).catch((error) => this.ctl.rt.onError(error))

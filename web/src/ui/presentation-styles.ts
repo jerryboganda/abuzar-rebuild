@@ -79,6 +79,9 @@ export const PRESENTATION_CSS = `
 .modern-window .window-field {display:grid;gap:6px;min-width:0;align-content:start;}
 .modern-window .window-fields.has-grid {grid-template-columns:var(--grid-columns);grid-template-rows:var(--grid-rows);column-gap:0;row-gap:0;align-items:stretch;}
 .modern-window .window-fields.has-grid > .grid-cell {padding:3px 8px;min-width:0;}
+/* A field owns its content box, not the whole (possibly tall) source row track: adjacent rows must not visually swallow it.
+   A list stretches over the rows it spans. */
+.modern-window .window-fields.has-grid > .window-field {align-self:start;}
 @media (max-width:520px) {
   .modern-window .window-fields.has-grid {grid-template-columns:minmax(0,1fr);grid-template-rows:none;row-gap:12px;}
   .modern-window .window-fields.has-grid > * {grid-column:auto!important;grid-row:auto!important;}
@@ -260,6 +263,15 @@ export const PRESENTATION_CSS = `
 .modern-surface .surface-header-flow th {position:static;}
 .modern-surface td {padding:0;border-bottom:1px solid var(--p-line);}
 .modern-surface .surface-value {position:relative;min-width:min(8em,100cqi);min-height:var(--surface-row-height);padding:6px 12px;line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:min(34em,100cqi);}
+.modern-surface .surface-image {display:flex;align-items:center;justify-content:center;min-height:var(--surface-row-height);height:100%;border:1px solid var(--p-line);border-radius:4px;background:var(--p-canvas);overflow:hidden;}
+.modern-surface .surface-image img {display:block;max-width:100%;max-height:100%;object-fit:contain;}
+.modern-surface .surface-artwork {min-width:0;min-height:var(--surface-row-height);}
+.modern-surface .surface-artwork-image,.modern-surface .surface-artwork-image img {display:block;width:100%;height:100%;object-fit:contain;}
+.modern-surface .surface-band-checkbox {display:inline-flex;align-items:center;justify-content:center;min-width:var(--surface-row-height);min-height:var(--surface-row-height);padding:4px;border:1px solid var(--p-line);border-radius:4px;background:var(--p-surface);cursor:pointer;}
+.modern-surface .surface-band-checkbox .cbx {display:inline-flex;align-items:center;justify-content:center;width:1.1em;height:1.1em;border:1px solid var(--p-line);border-radius:2px;background:var(--p-surface);font-size:.9em;line-height:1;}
+.modern-surface .surface-band-checkbox .cbx.on {border-color:var(--p-accent);background:var(--p-accent);color:var(--p-on-accent);}
+.modern-surface .surface-embedded {min-width:0;min-height:var(--surface-row-height);border:1px solid var(--p-line);border-radius:4px;background:var(--p-canvas);}
+.modern-surface .surface-embedded-object {display:block;width:100%;height:100%;}
 .modern-surface td .surface-value {height:calc(var(--surface-row-height) - 1px);min-height:0;}
 .modern-surface td .surface-multiline {white-space:pre-wrap;overflow:auto;overflow-wrap:anywhere;text-overflow:clip;}
 .modern-surface .surface-number {text-align:right;font-variant-numeric:tabular-nums;}
@@ -292,6 +304,8 @@ export const PRESENTATION_CSS = `
 .modern-surface .surface-group {grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16em),1fr));gap:16px;min-width:0;padding-block:12px;border-block-start:1px solid var(--p-line);}
 .modern-surface section.surface-row.has-grid,.modern-surface .surface-group.has-grid {display:grid;grid-template-columns:var(--grid-columns);grid-template-rows:var(--grid-rows);column-gap:0;row-gap:0;align-items:stretch;}
 .modern-surface .grid-cell.surface-field,.modern-surface .grid-cell.surface-caption,.modern-surface .grid-cell.surface-button {padding:3px 8px;min-width:0;}
+/* The cell keeps the source row track; the field itself stays content-sized, so a tall row does not merge neighbour rows. */
+.modern-surface .grid-cell.surface-field {align-self:start;}
 .modern-surface .has-grid > .grid-cell.surface-group {min-width:0;}
 @container (max-width:30em) {
   .modern-surface section.surface-row.has-grid,.modern-surface .surface-group.has-grid {grid-template-columns:minmax(0,1fr);grid-template-rows:none;row-gap:12px;}
@@ -300,9 +314,19 @@ export const PRESENTATION_CSS = `
 .modern-surface .surface-group-caption {grid-column:1/-1;font-weight:650;overflow-wrap:anywhere;}
 .modern-surface .surface-group-plain {border-color:transparent;}
 .modern-surface .surface-caption {grid-column:1/-1;margin:0;overflow-wrap:anywhere;}
+.modern-surface .surface-header {margin:0 0 12px;padding:10px 12px;border-bottom:1px solid var(--p-line);background:var(--p-canvas);}
+.modern-surface .surface-header.has-grid {display:grid;grid-template-columns:var(--grid-columns);grid-template-rows:var(--grid-rows);column-gap:0;row-gap:6px;}
+.modern-surface .surface-header-field {display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;min-width:0;padding:2px 6px;}
+.modern-surface .surface-header-label {font-weight:600;overflow-wrap:anywhere;}
+.modern-surface .surface-header-value {min-width:0;overflow-wrap:anywhere;}
+.modern-surface .surface-header-caption {font-weight:600;}
 .modern-surface .surface-separator {grid-column:1/-1;width:100%;margin:0;border:0;border-block-start:1px solid var(--p-line);}
 .modern-surface .surface-field {min-width:0;}
 .modern-surface .surface-label {display:block;margin-bottom:6px;font-weight:600;overflow-wrap:anywhere;}
+.modern-surface td .surface-row-label {margin-bottom:2px;font-size:.9em;}
+.modern-surface .surface-fixed-checkbox {display:flex;align-items:center;min-height:var(--surface-row-height);cursor:default;}
+.modern-surface .surface-fixed-checkbox .cbx {display:inline-flex;align-items:center;justify-content:center;width:1.1em;height:1.1em;border:1px solid var(--p-line);border-radius:2px;background:var(--p-surface);font-size:.9em;line-height:1;}
+.modern-surface .surface-fixed-checkbox .cbx.on {border-color:var(--p-accent);background:var(--p-accent);color:var(--p-on-accent);}
 .modern-surface .surface-input-group {display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;}
 .modern-surface .surface-input-group > .surface-value {flex:1 1 8em;}
 .modern-surface .surface-suffix {max-width:100%;overflow-wrap:anywhere;}

@@ -30,6 +30,10 @@ interface ChoiceEditorHost {
   status(message: string): void
   error(error: unknown): void
   details?(editor: DwChoiceEditor): Promise<number | null>
+  /** A checkbox click that arrives while the editor is loading, kept across an editor rebuild. */
+  queueToggle?(): void
+  /** Takes that queued click when it belongs to this editor; false leaves it for the rebuilt editor. */
+  takeToggle?(): boolean
 }
 
 let nextRadioGroup = 0
@@ -90,7 +94,10 @@ export class DwChoiceEditor {
           event.preventDefault()
           // A click or Space that arrives while the checkbox is still loading is applied once it is ready, as the
           // original's checkbox never drops a keystroke (a second one before then cancels the first).
-          if (this.loading && !this.failed) this.pendingToggles = (this.pendingToggles + 1) % 2
+          if (this.loading && !this.failed) {
+            if (this.host.queueToggle) this.host.queueToggle()
+            else this.pendingToggles = (this.pendingToggles + 1) % 2
+          }
           this.host.status(this.failed ? 'Press Enter to retry loading the checkbox.' : 'Wait for the checkbox to load.')
         }
       })
@@ -444,7 +451,8 @@ export class DwChoiceEditor {
       if (this.host.editable && this.element instanceof HTMLInputElement) this.element.readOnly = this.failed
       this.syncBrowse()
       if (this.host.showList && !this.failed && this.active() && this.ownsFocus()) this.popup?.show()
-      const toggle = this.pendingToggles === 1 && !this.failed && this.active()
+      const toggle = !this.failed && this.active() &&
+        (this.host.takeToggle ? this.host.takeToggle() : this.pendingToggles === 1)
       this.pendingToggles = 0
       // toggle() waits for this load to finish, so it is started, not awaited
       if (toggle) void this.toggle().catch((error) => this.host.error(error))
