@@ -2496,7 +2496,24 @@ try {
       await cell.focus()
       await cell.press('Enter')
       await input.press('Space')
-      await page.waitForFunction(() => window.selectorVariantPreview.view.editor?.getAttribute('aria-invalid') === 'true')
+      await page.waitForFunction(() => window.selectorVariantPreview.view.editor?.getAttribute('aria-invalid') === 'true', null, { timeout: 15000 })
+        .catch(async (error) => {
+          const state = await page.evaluate((column) => {
+            const f = window.selectorVariantPreview
+            const editor = f.view.editor
+            const active = document.activeElement
+            const describe = (element) => element ? `${element.tagName}.${element.className}${element.dataset?.obj ? `[${element.dataset.obj}]` : ''}` : null
+            return {
+              column, value: f.model.getItem(1, column), reject: f.state.reject,
+              editor: describe(editor), editorConnected: editor?.isConnected, checked: editor?.checked,
+              invalid: editor?.getAttribute('aria-invalid'), active: describe(active),
+              activeInEditor: !!editor && editor.contains(active), currentField: f.model.col, row: f.model.row,
+              events: f.events.slice(-8).map((event) => ({ event: event.event, args: (event.args ?? []).map((a) => String(a)) })),
+              viewport: [innerWidth, innerHeight],
+            }
+          }, column)
+          throw new Error(`Rejected checkbox ${column} did not show aria-invalid: ${JSON.stringify(state)}\n${error.message}`)
+        })
       assert.equal(await input.isChecked(), true, 'The rejected proposed checkbox state remains visible')
       assert.equal(await page.evaluate((column) => window.selectorVariantPreview.model.getItem(1, column), column), 'N')
     } else if (kind === 'lookup') {
