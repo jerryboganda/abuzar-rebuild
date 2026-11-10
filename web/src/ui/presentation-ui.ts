@@ -17,6 +17,8 @@ import type { DwView } from './dwview.ts'
 import { applyModernWindow } from './modern-window.ts'
 import { applyModernEntryWindow } from './modern-entry-window.ts'
 import { nativeAppearance, nativeTheme } from './native-appearance.ts'
+import { ModernHeader, groupToolbar } from './modern-header.ts'
+import type { ThemeChoice } from './modern-header.ts'
 import type { NativeAppearance, NativeTheme } from './native-appearance.ts'
 
 /** Incremental Modern shell; business screens stay explicitly labelled compatibility views until migrated. */
@@ -39,6 +41,7 @@ export class PresentationUi extends DomUi {
   private lastNativeTheme: NativeTheme | undefined
   private nativeRevision = 0
   private nativeAppearance: NativeAppearance
+  private header: ModernHeader | null = null
 
   constructor(rt: Runtime, desktop: HTMLElement, session: PresentationSession, appearance: NativeAppearance = nativeAppearance) {
     super(rt, desktop)
@@ -52,9 +55,10 @@ export class PresentationUi extends DomUi {
       this.shell = document.createElement('section')
       this.shell.className = 'presentation-ui'
       this.shell.setAttribute('aria-label', 'Modern workspace preview')
-      this.shell.innerHTML = `<header class="presentation-header"><strong>Waseela Trader</strong><span>Modern workspace preview</span><button class="presentation-action" type="button">Appearance</button></header>
-        <aside class="presentation-sidebar"><label>Find a command<input type="search" autocomplete="off"></label><p class="command-status" role="status"></p><div class="presentation-commands"></div></aside>
+      this.shell.innerHTML = `<aside class="presentation-sidebar"><label>Find a command<input type="search" autocomplete="off"></label><p class="command-status" role="status"></p><div class="presentation-commands"></div></aside>
         <section class="presentation-work"><div class="presentation-tabs" role="tablist" aria-label="Open workspaces"></div><p class="presentation-compatibility">Classic compatibility layouts / Modern screen migration is in progress</p><div class="presentation-stage"></div></section>`
+      this.header = this.buildHeader()
+      this.shell.prepend(this.header.element)
       desktop.before(this.shell)
       this.shell.querySelector('.presentation-stage')!.append(desktop)
       const search = this.shell.querySelector('input')!
@@ -66,7 +70,6 @@ export class PresentationUi extends DomUi {
       sidebar.addEventListener('pointerenter', () => {
         if (!sidebar.contains(document.activeElement) || document.activeElement === search) this.refreshCommands()
       })
-      this.shell.querySelector('button')!.addEventListener('click', () => this.openSettings())
     }
     this.systemTheme.addEventListener('change', () => this.applyAppearance(), { signal: this.cleanup.signal })
     desktop.addEventListener('focusin', (event) => {
@@ -238,6 +241,7 @@ export class PresentationUi extends DomUi {
       const view = this.views.get(window)
       if (view) view.el.hidden = !active
     }
+    this.header?.refresh()
     const notice = this.shell?.querySelector('.presentation-compatibility')
     if (notice) notice.textContent = this.selected && this.views.get(this.selected)?.el.classList.contains('modern-entry-window')
       ? 'Modern entry layout preview / Production workflow acceptance is pending'
@@ -375,6 +379,57 @@ export class PresentationUi extends DomUi {
     }
   }
 
+  override toolbarRendered(tool: HTMLElement): void {
+    if (this.shell) groupToolbar(tool)
+  }
+
+  /** The Modern context bar: every action runs the live menu item or window (approved parity exception, docs/HANDOFF.md). */
+  private buildHeader(): ModernHeader {
+    const COLLAPSED = 'trader-modern-commands-hidden'
+    const header = new ModernHeader({
+      commands: () => { const root = this.commandRoot(); return root ? menuCommands(root, { includeDisabled: true }) : [] },
+      run: async (command) => {
+        const root = this.commandRoot()
+        if (this.executing || this.hasModal() || !root) return
+        this.executing = true
+        try {
+          if (!(await executeMenuCommand(this.rt, root, command))) {
+            await this.messageBox('Command unavailable', 'This command is no longer available in the active workspace.', 'information!', 'ok!', 1)
+          }
+        } catch (error) {
+          this.rt.onError(error)
+        } finally {
+          this.executing = false
+          this.refreshCommands()
+        }
+      },
+      windows: () => [...this.tabs].map(([window, controls]) => ({
+        title: String(window.props.get('title') || window.name), active: window === this.selected, activate: () => controls.tab.click(),
+      })),
+      frameTitle: () => this.mdi?.ttlEl?.textContent || String(this.mdi?.w.props.get('title') ?? ''),
+      windowTitle: () => this.selected ? String(this.selected.props.get('title') || this.selected.name) : 'Home',
+      theme: () => this.session.preferences.theme as ThemeChoice,
+      setTheme: (theme) => {
+        try {
+          this.session.save(validatePreferences({ ...this.session.preferences, theme }))
+          this.applyAppearance(true)
+        } catch (error) {
+          this.rt.onError(error)
+        }
+      },
+      openSettings: () => this.openSettings(),
+      busy: () => this.executing || this.hasModal() || this.settings.open,
+    })
+    const apply = (hidden: boolean) => this.shell?.classList.toggle('mh-commands-hidden', hidden)
+    try { apply(localStorage.getItem(COLLAPSED) === '1') } catch { /* storage unavailable: panel stays shown */ }
+    header.onToggleCommands(() => {
+      const hidden = !this.shell?.classList.contains('mh-commands-hidden')
+      apply(hidden)
+      try { localStorage.setItem(COLLAPSED, hidden ? '1' : '0') } catch { /* per-session only */ }
+    })
+    return header
+  }
+
   private buildSettings(): HTMLDialogElement {
     const dialog = document.createElement('dialog')
     dialog.className = 'presentation-settings'
@@ -471,6 +526,7 @@ export class PresentationUi extends DomUi {
   }
 
   private applyAppearance(retryNative = false): void {
+    this.header?.refresh()
     for (const element of [this.shell, this.settings, ...this.dialogs]) {
       if (!element) continue
       this.styleAppearance(element)
@@ -569,6 +625,7 @@ export class PresentationUi extends DomUi {
     this.settings.close()
     this.settings.remove()
     this.presentationStyle.remove()
+    this.header?.dispose()
     if (this.shell) {
       this.shell.before(this.desktop)
       this.shell.remove()

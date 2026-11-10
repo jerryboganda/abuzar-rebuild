@@ -41,14 +41,14 @@ places every field at its source box scaled to the container; labels and suffixe
 are painted at their source geometry without enlarging the measured field.
 `ModernDwView` uses this mode only for these forms.
 
-| DataWindow | Previous finding | Status |
-|---|---|---|
-| `d_alnaseeb_deliveryorder_saleinvprint` | staggered row relations | replaced — source-proportional layout |
-| `d_normalpurchasereturnfooter` | adjacent rows overlap | replaced — source-proportional layout |
-| `d_old_general1` | staggered row relations | replaced — source-proportional layout |
-| `d_opensalereturnfooter` | adjacent rows overlap | replaced — source-proportional layout |
-| `d_salereturnfooter_view` | adjacent rows overlap | replaced — source-proportional layout |
-| `d_servicefooter_view` | near-threshold row overlap | replaced — source-proportional layout |
+| DataWindow | Previous finding | Host / use | Status |
+|---|---|---|---|
+| `d_alnaseeb_deliveryorder_saleinvprint` | staggered row relations | `w_sale` | replaced — source-proportional layout |
+| `d_normalpurchasereturnfooter` | adjacent rows overlap | `w_purchasereturn` | replaced — source-proportional layout |
+| `d_old_general1` | staggered row relations | referenced by name, no static call site | replaced — source-proportional layout |
+| `d_opensalereturnfooter` | adjacent rows overlap | `w_salereturn`, `w_editpostedinvoice` | replaced — source-proportional layout |
+| `d_salereturnfooter_view` | adjacent rows overlap | `w_invoicedetail` | replaced — source-proportional layout |
+| `d_servicefooter_view` | near-threshold row overlap | `w_invoicedetail` | replaced — source-proportional layout |
 
 The focused structure gate for the six footers plus the compact student transport
 card passes 35 assertions with 0 failures. The row-sharing gate applies a

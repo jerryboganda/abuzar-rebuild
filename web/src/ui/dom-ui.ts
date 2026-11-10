@@ -124,6 +124,8 @@ export class DomUi implements UiHost {
   }
   windowActivated(_window: NWindow): void {}
   menuRendered(_bar: HTMLElement): void {}
+  /** Called after the frame toolbar is rebuilt (the Modern workspace groups and labels its buttons). */
+  toolbarRendered(_tool: HTMLElement): void {}
   accessibleTabs(): boolean { return false }
 
   dispose(): void {
@@ -794,6 +796,8 @@ export class WinView {
         const b = document.createElement('button')
         b.className = 'tb' + (button.enabled ? '' : ' dis')
         b.title = button.text
+        b.dataset.stock = button.stock.toLowerCase()
+        b.dataset.label = button.text
         const pic = document.createElement('span')
         pic.className = 'pic'
         const spot = iconPos(button.stock)
@@ -816,6 +820,8 @@ export class WinView {
         const b = document.createElement('button')
         b.className = 'tb'
         b.title = 'Exit this Window'
+        b.dataset.stock = 'exit!'
+        b.dataset.label = 'Exit this Window'
         const pic = document.createElement('span')
         pic.className = 'pic'
         const spot = iconPos('exit!')
@@ -824,6 +830,7 @@ export class WinView {
         b.onclick = () => void this.ui.rt.closeWindow(sheet)
         tool.appendChild(b)
       }
+      this.ui.toolbarRendered(tool)
     }
     this.menuSig = [...(this.shownMenu?.children.values() ?? [])].map((i) => `${i.props.get('visible') === false ? 0 : 1}${str(i, 'text')}`).join('|')
     refresh()

@@ -39,6 +39,8 @@ and actions, and the same validation, masks, wording and behaviour. Visual
 design (colours, fonts, spacing, icons, elevation) is free to be modern.
 Any Classic/Modern difference in structure or behaviour is a defect to fix in
 Modern, never a check to relax.
+The only exceptions are the user-approved ones listed in `docs/HANDOFF.md`,
+**Approved parity exceptions** (first: Pack Purchase, 2026-11-11).
 
 **Exempt from parity: PDF, print and report output.** Printed documents,
 PDF/report layouts, labels and print design may be redesigned freely into

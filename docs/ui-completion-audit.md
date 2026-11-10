@@ -1,6 +1,6 @@
 # Classic/Modern completion audit
 
-Generated from the working tree on 2026-11-10T07:08:43.438Z.
+Generated from the working tree on 2026-11-10T19:35:19.905Z.
 Static source digest: `fb6f64cdf4822011bb1a6d9146687eb864535ff855af20d461495f448655bb4c`.
 
 ## Verdict
@@ -19,8 +19,8 @@ only the authored surfaces.
 | Strict presentation types | Passed |
 | Static inventory tests | 9 passed, 0 failed |
 | Static build | 80 modules |
-| Full browser suite | 61777 assertions, 1881 appearances; 0 failures, 0 errors, 0 page errors, 0 forbidden requests |
-| Forced-color checks | 148 assertions, 0 failures, 4 cases |
+| Full browser suite | not supplied |
+| Forced-color checks | not supplied |
 | Focused print checks | not supplied |
 | Additional calendar callers | `web/tests/calendar-callers.test.ts` covers f_getdatefromcalendar, aging/list F4 fields and inpatient/service DataWindow F4 fields inside the frontend suite above |
 
@@ -40,7 +40,7 @@ only the authored surfaces.
 | Windows without a Modern layout | 2 |
 | DataWindows with a Modern surface (reviewed + generated) | 6373 (72.92%); 302 reviewed (48 global with nested lookups, 266 contextual) and 6071 generated only, overlaps counted once |
 | DataWindows without a Modern surface | 2367 |
-| - compatibility fallbacks (Classic rendering retained, not Modern field layouts) | 6 |
+| - compatibility fallbacks (Classic rendering retained, not Modern field layouts) | 0 |
 | On-screen DataWindows (excluding print/report layouts, which are exempt from parity) with a Modern surface | 3194 of 3194 (100.00%); 5546 print/report candidates exempt |
 | Authored names absent from the static inventory | 0 windows, 0 DataWindows |
 | Modern print template families | 3 |
@@ -87,24 +87,24 @@ components, not accepted business workflows.
 | All four screen/print combinations | partial | Two invoice preview definitions support Classic/Modern print; all remaining document families do not. |
 | Printed documents preserve data and machine-readable payloads; every template tested empty/single/multipage/long/grouped | partial | Synthetic print fixtures cover values, groups, totals, page numbers, dimensions and empty reports for the preview engine; no official template catalog is approved. |
 | Machine-consumed exports remain compatible | partial | CSV/text/xlsx/HTML/XML tests pass; every document family is not re-verified against its exports. |
-| Fresh preferences start Modern; existing Classic honored; user/database isolation | verified | Unit and browser preference cases cover defaults, isolation, deferred mode, family inheritance and storage failure. |
-| Mode change leaves edits intact and applies next sign-in | verified | Synthetic preference and workspace lifecycle checks pass; real authenticated sign-in is not exercised. |
-| Tab activation does not rerun Open; dirty close follows CloseQuery | verified | Lifecycle and browser tests cover retained windows, close guards and modal returns. |
+| Fresh preferences start Modern; existing Classic honored; user/database isolation | partial | No browser result was supplied for this source tree; earlier browser evidence predates the generated layouts. Unit and browser preference cases cover defaults, isolation, deferred mode, family inheritance and storage failure. |
+| Mode change leaves edits intact and applies next sign-in | partial | No browser result was supplied for this source tree; earlier browser evidence predates the generated layouts. Synthetic preference and workspace lifecycle checks pass; real authenticated sign-in is not exercised. |
+| Tab activation does not rerun Open; dirty close follows CloseQuery | partial | No browser result was supplied for this source tree; earlier browser evidence predates the generated layouts. Lifecycle and browser tests cover retained windows, close guards and modal returns. |
 | Pending operations cannot be double-submitted; unknown writes shown as uncertain | partial | Cashier/category/payment fixtures cover duplicate submission and uncertain commits; full application write paths are not covered. |
 | Theme/density/text changes retain edits, focus, validation and barcode input | partial | Synthetic appearance cases pass; barcode hardware and packaged WebView2 are not verified. |
-| Repeated open/close releases listeners and temporary views | verified | Lifecycle and browser cleanup checks pass for the tested surfaces. |
+| Repeated open/close releases listeners and temporary views | partial | No browser result was supplied for this source tree; earlier browser evidence predates the generated layouts. Lifecycle and browser cleanup checks pass for the tested surfaces. |
 | WCAG 2.2 AA through automated checks and manual Windows screen-reader/keyboard assessment | blocked | Automated contrast/focus/forced-color checks pass; manual Windows screen-reader assessment and a complete criterion audit are not performed. |
-| Normal text 4.5:1; large text/non-text 3:1; state not color alone | verified | Measured minimum text contrast 5.95871405026296:1 across the measured appearance cases. |
+| Normal text 4.5:1; large text/non-text 3:1; state not color alone | partial | No browser result was supplied for this source tree; earlier browser evidence predates the generated layouts. Measured by the browser suite; see the current result artifact. |
 | Keys, names, relationships, live feedback, focus containment/restoration, drag alternatives | partial | Synthetic browser checks cover the mapped surfaces; complete application coverage and native assistive technology are open. |
-| Pointer targets 24x24 or documented exception | verified | Authored controls and appearance checks cover the mapped surfaces. |
+| Pointer targets 24x24 or documented exception | partial | No browser result was supplied for this source tree; earlier browser evidence predates the generated layouts. Authored controls and appearance checks cover the mapped surfaces. |
 | No keyboard trap; grid editing and accelerator map tested | partial | Mapped grid, dialog and tab cases pass; the complete historical accelerator map and every screen are not audited. |
 | 1366x768 and 1920x1080 at 100/125/150/200% Windows scaling | partial | Browser 1366/1920/320/683 checks pass; physical Windows scaling is not measured. |
-| 200% text and reflow at 320 CSS px equivalent | verified | Browser appearance cases cover 200% text at narrow effective widths for the mapped surfaces. |
-| Light/dark, forced colors, reduced motion, validation/selection/disabled/focus/loading | partial | Browser light/dark and 148 forced-color assertions pass; native Windows high contrast and every loading/disabled state remain open. |
+| 200% text and reflow at 320 CSS px equivalent | partial | No browser result was supplied for this source tree; earlier browser evidence predates the generated layouts. Browser appearance cases cover 200% text at narrow effective widths for the mapped surfaces. |
+| Light/dark, forced colors, reduced motion, validation/selection/disabled/focus/loading | partial | Browser light/dark and forced-color checks are reported by the browser result artifact (not supplied); native Windows high contrast and every loading/disabled state remain open. |
 | p95 interaction feedback and tab-switch targets on the agreed Windows machine | blocked | No packaged Windows performance measurement on the reference machine. |
-| 30,000-item lookup and 100,000-row report/grid fixtures | partial | Fixtures ran: lookup-30000-choices-open 101 ms; grid-100000-rows-attach-and-first-paint 91 ms; lookup-30000-choices-open 101 ms (local timings, not reference-machine p95). |
+| 30,000-item lookup and 100,000-row report/grid fixtures | partial | The 30,000-choice lookup and 100,000-row grid fixtures are written but have not been executed for this source tree; no timing was supplied. |
 | Barcode sequence, rapid keyboard, active-cell preservation | partial | Synthetic keyboard/barcode and active-cell checks pass; scanner hardware is not verified. |
-| No new browser exceptions, unhandled rejections or silent failures | verified | Current full browser run: 0 failures, 0 errors, 0 page errors, 0 forbidden requests. |
+| No new browser exceptions, unhandled rejections or silent failures | partial | See the current browser result artifact. |
 | Packaged Windows/WebView2 native theme, scaling, focus, shortcuts, print dialog, printers | blocked | Not performed on a packaged Windows/WebView2 build. |
 | Local Node tests, type validation, static build | verified | 930 frontend tests passed, 0 failed; strict presentation types passed; 9 inventory tests passed, 0 failed; 80-module static build. |
 | Blocking UI acceptance job / typed checks / deterministic fixtures | partial | A blocking CI presentation job and deterministic fixtures exist. Remote CI (the ci and sql workflows) is authoritative for the revision that contains this report and is not recorded in this file; last run supplied when generated: none. |
@@ -120,7 +120,7 @@ components, not accepted business workflows.
 - No authenticated PostgreSQL end-to-end acceptance of the Modern presentation; the presentation job runs synthetic fixtures.
 - No manual Windows screen-reader/keyboard WCAG 2.2 AA assessment.
 - No physical printer, scanner, barcode-scanner or label-paper acceptance; label dimensions are unknown.
-- No reference-machine p95 measurements.
+- The 30,000-item and 100,000-row fixtures have not been executed for this tree, and there are no reference-machine p95 measurements.
 
 ## Conclusion
 

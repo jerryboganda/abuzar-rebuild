@@ -333,16 +333,49 @@ export function frameDescribed(item: HTMLElement): HTMLElement[] {
  */
 function arrangeSourceWindow(view: WinView, content: HTMLElement, items: ReadonlyMap<string, HTMLElement>,
   frames: ReadonlyMap<string, HTMLElement>, surface: WindowSurface): void {
-  const read = (name: string): GridBox | null => {
+  const raw = (name: string): GridBox | null => {
     const control = view.w.children?.get(name)
     if (!control?.props) return null
+    // A control a script hides is not painted and must not stretch the content box of the visible layout.
+    const visible = control.props.get('visible')
+    if (visible === false || visible === 'false' || visible === '0' || visible === 'no') return null
     const at = (key: string) => { const value = control.props!.get(key); return value === undefined || value === null || value === '' ? 0 : Number(value) }
-    const box = { left: at('x'), top: at('y'), right: at('x') + Number(control.props.get('width')), bottom: at('y') + Math.max(1, Number(control.props.get('height'))) }
-    return [box.left, box.top, box.right, box.bottom].every(Number.isFinite) ? { key: name, ...box } : null
+    const width = at('width'), height = at('height')
+    // A control without a recovered height (a list or a frame sized at run time) takes its box from its members.
+    if (!(width > 0) || !(height > 0)) return null
+    return { key: name, left: at('x'), top: at('y'), right: at('x') + width, bottom: at('y') + height }
+  }
+  const membersOf = (frame: string): string[] => {
+    const result: string[] = []
+    const walk = (name: string) => {
+      for (const member of surface.members?.[name] ?? []) { result.push(member); walk(member) }
+    }
+    walk(frame)
+    return result
+  }
+  const frameBox = (name: string): GridBox | null => {
+    const own = raw(name)
+    const members = membersOf(name).map(raw).filter((box): box is GridBox => !!box)
+    if (!own && !members.length) return null
+    // A groupbox always encloses its recorded members.  A script may resize the frame at run time (the
+    // criteria dialogs shrink their main frame); the painted area still covers every member.
+    const all = own ? [own, ...members] : members
+    const pad = own ? 0 : 8
+    return {
+      key: name,
+      left: Math.min(...all.map((box) => box.left)) - pad,
+      top: Math.min(...all.map((box) => box.top)) - (own ? 0 : 24),
+      right: Math.max(...all.map((box) => box.right)) + pad,
+      bottom: Math.max(...all.map((box) => box.bottom)) + pad,
+    }
   }
   const placed = new Map<HTMLElement, GridBox>()
-  for (const [name, element] of [...items, ...frames]) {
-    const box = read(name)
+  for (const [name, element] of frames) {
+    const box = frameBox(name)
+    if (box) placed.set(element, box)
+  }
+  for (const [name, element] of items) {
+    const box = raw(name)
     if (box) placed.set(element, box)
   }
   if (!placed.size) return
@@ -373,7 +406,7 @@ function arrangeSourceWindow(view: WinView, content: HTMLElement, items: Readonl
   const labelOf = (element: HTMLElement, editor: GridBox, name: string | undefined) => {
     const label = element.querySelector<HTMLElement>(':scope > label')
     if (!label) return
-    const labelBox = name ? read(name) : null
+    const labelBox = name ? raw(name) : null
     label.style.position = 'absolute'
     label.style.margin = '0'
     if (labelBox) {

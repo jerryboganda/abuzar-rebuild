@@ -162,7 +162,7 @@ export class DwChoiceEditor {
       this.element.setAttribute('aria-description', 'Choose a value. Shift+F4 opens choice details. Escape cancels. Tab accepts and moves on.')
     }
     this.element.addEventListener('change', () => {
-      if (this.popup) return
+      if (this.popup || this.loading || this.failed) return
       if (this.element instanceof HTMLInputElement) this.element.value = this.element.checked ? '1' : '0'
       const choice = this.selected()
       if (choice) this.value = choice.value
@@ -185,6 +185,16 @@ export class DwChoiceEditor {
       } else if (event.key === 'Enter' && this.failed) {
         event.preventDefault()
         this.loadingWork = this.load(true)
+      } else if (event.key === ' ' && host.checkbox && (this.loading || this.failed)) {
+        // Space on a focused checkbox while its choices load: the native toggle would commit before the
+        // choices exist. Queue it exactly as a click during loading, and let the load apply it once.
+        event.preventDefault()
+        event.stopPropagation()
+        if (this.loading && !this.failed) {
+          if (this.host.queueToggle) this.host.queueToggle()
+          else this.pendingToggles = (this.pendingToggles + 1) % 2
+        }
+        this.host.status(this.failed ? 'Press Enter to retry loading the checkbox.' : 'Wait for the checkbox to load.')
       } else if (event.key === 'Tab' || event.key === 'Enter') {
         event.preventDefault()
         const direction = event.shiftKey && event.key === 'Tab' ? -1 : 1

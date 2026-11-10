@@ -601,6 +601,17 @@ Windows 11, shells are Git Bash and PowerShell.  Node 26 runs `.ts` files direct
 * Git hygiene: never `git add -A`; add explicit paths; end doc/data-only commit messages with `[skip ci]`; check `node --check` / selftests *before* the commit command (a broken file was pushed once because the check was chained with `;`).
 * When the user's input is needed, ask in a popup with recommended options, keep status lines short, never stall silently.
 
+### Approved parity exceptions
+
+The structural-parity rule (AGENTS.md, UI standard) has exactly these user-approved exceptions.  Any new one needs the user's explicit approval recorded here; `web/tests/simplified-layouts.test.ts` fails if the list in code and this section drift apart.
+
+* **2026-11-11, Pack Purchase (`w_purchase`, normal purchase)**: simplified Modern layout from the approved UI/UX mockup.  Implemented in `web/src/ui/simplified-layouts.ts`, applied by `ModernDwView` after each paint.  No field is removed and no DataWindow object, event or calculation changes; only the painted DOM does.
+  * `d_normalpurchaseheader`: supplier, bill #, dates, godown, tax category, NTN, balance, GRN and remarks stay visible; every other visible field moves, in source order, into a "More bill options" disclosure.
+  * `d_normalpurchasedetail`: 13 primary columns (No., quick search, code, item name, batch, expiry, packs, bonus, price, disc %, GST value, total incl. tax, margin) are shown; the other visible columns are hidden behind a "Show all columns" toggle.
+  * `d_purchasefooter`: unchanged structure; the grand total (`total`) is emphasised.
+  * When the current column moves to a secondary field (script `SetColumn`, Tab), the secondary fields are shown so focus never lands on a hidden editor.
+  * Not covered: Opening Purchase and Loose Purchase use other DataWindows and keep the parity layout.  The Re-Calculate button stays (the original totals logic depends on it).  Not browser-verified yet: belongs to the consolidated final browser pass.
+
 ## 4. State at handoff (all measured by tools; see `docs/ci-results.json`)
 
 * CI run 41716174427 (commit da153f3, later runs 41719169707, 41722595632, 41725588959 also green): windows opened headless **2046 / 2062**; DataWindow retrieves against PostgreSQL **8618 / 8668**; embedded statements **1847 / 1862**; procedures **511 / 638**; DataWindow expression evaluation 8748 / 8748; Chromium sample 51 of 52 windows opened.

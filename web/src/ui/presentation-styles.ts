@@ -110,10 +110,10 @@ export const PRESENTATION_CSS = `
 .modern-window[data-density=comfortable] .window-option {min-height:42px;}
 /* Reflowed controls only: a container kept as its original element (a tab control, an embedded DataWindow) keeps its own size and its
    children keep their Classic positions and colours inside it. */
-.modern-window .ctl:not(.window-embedded):not(.window-embedded *) {position:static!important;inset:auto!important;width:100%!important;height:auto!important;font:inherit!important;color:var(--p-text)!important;}
+.modern-window .ctl:not(.window-embedded):not(.window-embedded *):not(.window-source-layout *) {position:static!important;inset:auto!important;width:100%!important;height:auto!important;font:inherit!important;color:var(--p-text)!important;}
 /* A DataWindow host stays the containing block of its view: a view that falls back to Classic rendering (no surface for a dataobject a
    script assigns, print preview) is positioned inside its box, never over the dialog. */
-.modern-window .ctl.window-data:not(.window-embedded):not(.window-embedded *) {position:relative!important;}
+.modern-window .ctl.window-data:not(.window-embedded):not(.window-embedded *):not(.window-source-layout *) {position:relative!important;}
 /* Artwork (a picture, a colour key, a progress bar) keeps its source size, never wider than its cell. */
 .modern-window .ctl.window-artwork:not(.window-embedded):not(.window-embedded *) {width:min(var(--artwork-width,100%),100%)!important;height:var(--artwork-height,auto)!important;overflow:hidden;}
 /* A command button placed among the content (a "...." picker beside its option) is a Modern button at its natural width. */
@@ -148,9 +148,18 @@ export const PRESENTATION_CSS = `
 .modern-data-window.pbwin {width:min(58em,100%)!important;}
 .modern-data-window.window-untitled>.tbar {position:static;justify-content:flex-end;}
 .modern-data-window.window-untitled>.client {padding-top:12px;}
-.modern-window .window-data {position:relative!important;min-width:0;border:1px solid var(--p-line);border-radius:4px;overflow:hidden;}
+.modern-window .window-data {min-width:0;border:1px solid var(--p-line);border-radius:4px;overflow:hidden;}
+.modern-window .window-data:not(.window-source-layout *) {position:relative!important;}
+/* Source-proportional placement positions the field/list/option wrapper and the groupbox; the original control
+   inside it fills that box instead of keeping its absolute source coordinates. */
+.modern-window .window-source-layout .window-field>.ctl,
+.modern-window .window-source-layout .window-field>label .ctl,
+.modern-window .window-source-layout .window-list>.ctl,
+.modern-window .window-source-layout .window-option .ctl {
+  position:static!important;inset:auto!important;width:100%!important;height:100%!important;
+}
 .modern-window .window-data>.modern-surface {position:relative;inset:auto;min-height:6em;}
-.modern-window .window-data:has(>.dw:not(.modern-surface)) {height:20em!important;}
+.modern-window .window-data:has(>.dw:not(.modern-surface)):not(.window-source-layout *) {height:20em!important;}
 .modern-window .window-data>.dw:not(.modern-surface) {font:var(--font);color:#000;color-scheme:light;}
 .modern-entry-window.pbwin {inset:0!important;width:100%!important;height:100%!important;min-width:0;min-height:0;border:0;background:var(--p-surface);}
 .modern-entry-window>.tbar {height:auto;min-height:32px;flex:none;background:var(--p-surface);color:var(--p-text);padding:4px 12px;}
@@ -417,4 +426,14 @@ export const PRESENTATION_CSS = `
   .presentation-settings button[type=submit]:not(:disabled),
   .presentation-lookup .lookup-select:not(:disabled) {border:2px solid Highlight;}
 }
+/* Approved simplified layouts (simplified-layouts.ts): secondary fields wait behind a disclosure or a column toggle. */
+.modern-surface .simplified-grid table.surface-grid:not(.simplified-all) .simplified-secondary {display:none;}
+.modern-surface .simplified-toggle {align-self:flex-start;margin:4px 0 6px;min-height:30px;padding:4px 12px;border:1px solid var(--p-line);border-radius:999px;background:var(--p-surface);color:var(--p-accent);font:inherit;font-weight:600;cursor:pointer;}
+.modern-surface .simplified-toggle:hover {background:var(--p-selected);}
+.modern-surface .simplified-toggle:focus-visible,.modern-surface .simplified-more > summary:focus-visible {outline:2px solid var(--p-accent);outline-offset:2px;}
+.modern-surface .simplified-more {grid-column:1/-1;flex-basis:100%;margin-top:8px;padding-top:8px;border-top:1px dashed var(--p-line);}
+.modern-surface .simplified-more > summary {cursor:pointer;min-height:30px;display:flex;align-items:center;color:var(--p-accent);font-weight:600;}
+.modern-surface .simplified-more-fields {display:grid;grid-template-columns:repeat(auto-fill,minmax(min(14em,100%),1fr));gap:8px 16px;margin-top:8px;}
+.modern-surface .simplified-emphasis {padding:6px 10px;border-radius:6px;background:var(--p-selected);font-weight:650;}
+.modern-surface .simplified-emphasis .surface-value {font-size:1.25em;}
 `

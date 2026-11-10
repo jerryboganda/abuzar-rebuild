@@ -95,12 +95,11 @@ function runtimeAssignedDataWindows(name: string, library: string): ReadonlySet<
   return found
 }
 
-/** Dialogs whose overlapping source rows the Modern renderer cannot reproduce; they keep the labelled Classic layout. */
-const STAGGERED_DIALOGS: ReadonlySet<string> = new Set(['w_arg_cust_sdate_ldate_v13', 'w_arg_customers_sdate_ldate_v7'])
+/** Dialogs whose overlapping source rows use source-proportional absolute placement instead of a CSS grid. */
+const SOURCE_LAYOUT_DIALOGS: ReadonlySet<string> = new Set(['w_arg_cust_sdate_ldate_v13', 'w_arg_customers_sdate_ldate_v7'])
 
 export async function deriveModal(name: string, library: string, rt: Runtime, resolveSurface: Resolve, definitions: Map<string, DwDef>,
   ancestors: readonly (readonly ControlBox[])[] = []): Promise<ModalDerivation> {
-  if (STAGGERED_DIALOGS.has(name)) return { reason: 'staggered rows the Modern grid does not reproduce (structure gate)' }
   let window: PBObject
   try { window = await rt.instantiate(name) } catch (error) { return { reason: `instantiate: ${(error as Error).message.slice(0, 80)}` } }
   try {
@@ -230,6 +229,7 @@ export async function deriveModal(name: string, library: string, rt: Runtime, re
     const position = new Map(boxes.map((box) => [box.name, box]))
     const surface: WindowSurface = {
       name, library, fields, actions,
+      ...(SOURCE_LAYOUT_DIALOGS.has(name) ? { sourceLayout: true as const } : {}),
       ...(frame ? { frame: frame.name } : {}), ...(frames.length ? { frames: frames.map((f) => f.name) } : {}),
       ...(lists.length ? { lists } : {}), ...(captions.length ? { captions } : {}), ...(options.length ? { options } : {}),
       ...(calendars.length ? { calendars } : {}), ...(embedded.length ? { embedded } : {}), ...(data.length ? { data } : {}), ...(auxiliary.length ? { auxiliary } : {}),

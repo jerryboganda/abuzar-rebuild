@@ -86,9 +86,13 @@ test('painted background headings are mapped as report header values (d_view_ite
 })
 
 test('dialog captions pair with the control beside them, not across another control (date and format criteria)', async () => {
-  // w_arg_cust_sdate_ldate_v13 had the format drop-down captioned "End Date:"; it keeps Classic (staggered rows, browser
-  // structure gate), and the same caption trap is pinned on w_arg_cust_dates_caption_disc_terms.
-  assert.equal(modal('w_arg_cust_sdate_ldate_v13'), undefined)
+  // w_arg_cust_sdate_ldate_v13 had the format drop-down captioned "End Date:"; the format control is accessible-only
+  // ("Format"), and the same caption trap is pinned on w_arg_cust_dates_caption_disc_terms.
+  const staggered = modal('w_arg_cust_sdate_ldate_v13')
+  assert.equal(staggered.sourceLayout, true)
+  assert.equal(staggered.fields.find((item) => item.control === 'ddlb_format')?.label, undefined)
+  assert.equal(staggered.fields.find((item) => item.control === 'ddlb_format')?.name, 'Format')
+  assert.equal(staggered.fields.find((item) => item.control === 'em_enddate')?.label, 'st_2')
   const terms = modal('w_arg_cust_dates_caption_disc_terms')
   assert.deepEqual(terms.fields.find((item) => item.control === 'em_enddate'), { control: 'em_enddate', label: 'st_2' })
   assert.equal(terms.fields.find((item) => item.control === 'ddlb_format')?.label, 'st_9')
@@ -191,7 +195,7 @@ test('overlapping source rows use source-proportional placement', () => {
     assert.ok(!DERIVED_COMPATIBILITY_DATA_SURFACES.some((surface) => surface.name === name), name)
   }
   for (const name of ['w_arg_cust_sdate_ldate_v13', 'w_arg_customers_sdate_ldate_v7']) {
-    assert.equal(modal(name), undefined, name)
+    assert.equal(modal(name)?.sourceLayout, true, name)
   }
 })
 

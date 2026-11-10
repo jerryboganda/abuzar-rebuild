@@ -1,6 +1,8 @@
 import { DwView } from './dwview.ts'
 import { dataSurfaceIssues } from './data-surfaces.ts'
 import { dataSurfaceByName } from './surface-registry.ts'
+import { applySimplifiedLayout, simplifiedLayout } from './simplified-layouts.ts'
+import type { SimplifiedState } from './simplified-layouts.ts'
 import type { DataSurface, DataSurfaceField } from './data-surfaces.ts'
 import type { NDwBase } from '../runtime/native/dwctrl.ts'
 import type { DwModel, DwRow } from '../dw/model.ts'
@@ -28,6 +30,7 @@ const WINDOW_ROWS = 60
 /** Semantic layouts over the existing DataWindow model, events, formatter and editor. */
 export class ModernDwView extends DwView {
   private surface: DataSurface | null = null
+  private simplified: SimplifiedState = { open: false }
   private contextSurface: DataSurface | null = null
   private contextLabels: ReadonlyMap<string, HTMLElement> = new Map()
   private identity = `data-surface-${++nextSurface}`
@@ -299,6 +302,7 @@ export class ModernDwView extends DwView {
       for (const [name, field] of this.bindings) {
         const th = document.createElement('th')
         th.scope = 'col'
+        th.dataset.field = name
         const label = document.createElement('span')
         label.id = `${this.identity}-${name}-heading`
         label.textContent = field.label
@@ -359,6 +363,8 @@ export class ModernDwView extends DwView {
       if (totals) body.append(totals)
     }
     body.classList.toggle('surface-body-with-footer', !!body.querySelector('.surface-band-footer'))
+    const simplified = simplifiedLayout(surface.name)
+    if (simplified) applySimplifiedLayout(simplified, body, this.simplified, model.colNames[model.col - 1]?.toLowerCase())
     if (this.changes.signal.aborted || this.stale) return
     if (revision !== this.revision || paintRevision !== this.paintRevision || this.ctl.model !== model || editor !== this.editor) {
       this.schedule()
