@@ -94,7 +94,7 @@ try {
         if (/remarks$/.test(name)) return 'Synthetic sample for template review - not a real invoice'
         if (/^posted$/.test(name)) return 'Y'
         if (/(invcode|purinvcode)$/.test(name)) return 100245
-        if (/date$|^expiry$/.test(name)) return new Date(2026, 10, 10 + (name === 'expiry' ? 400 : 0))
+        if (/date$|^expiry$/.test(name)) return name === 'expiry' ? '2027-12-31 00:00:00' : '2026-11-10 09:30:00'
         if (/qty$/.test(name)) return row % 5 + 1
         if (/(saleprice|purprice|^rate$|_rate$|avgprice)$/.test(name)) return 12.5 * ((row % 7) + 1)
         if (/discperc$/.test(name)) return row % 4 === 0 ? 5 : 0
@@ -118,6 +118,10 @@ try {
         const pages = await buildPages(control, presentation === 'modern' ? { presentation } : {})
         out[presentation] = {
           pages: pages.length,
+          rows: model.rowCount(),
+          detailObjects: pages.map((p) => p.querySelectorAll('.row [data-obj], .band.row [data-obj]').length),
+          allObjects: pages.map((p) => p.querySelectorAll('[data-obj]').length),
+          bandClasses: [...new Set(pages.flatMap((p) => [...p.querySelectorAll('.band')].map((b) => b.className)))].slice(0, 12),
           html: `<!doctype html><html><head><meta charset="utf-8"><style>${printDocumentStyle(css, pageSetup(model), presentation)}</style></head><body>${pages.map((p) => p.outerHTML).join('')}</body></html>`,
           text: pages.map((p) => p.textContent.replace(/\s+/g, ' ').trim()).join('\n').slice(0, 4000),
         }
@@ -134,7 +138,8 @@ try {
       const file = `${sample.template}-${presentation}.pdf`
       await printPage.pdf({ path: resolve(output, file), preferCSSPageSize: true, printBackground: true })
       await writeFile(resolve(output, `${sample.template}-${presentation}.txt`), doc.text + '\n')
-      console.log(`${file}: ${doc.pages} page(s)`)
+      console.log(`${file}: ${doc.pages} page(s); rows=${doc.rows}; objects per page ${JSON.stringify(doc.allObjects)}; in detail rows ${JSON.stringify(doc.detailObjects)}; bands ${JSON.stringify(doc.bandClasses)}`)
+      await printPage.screenshot({ path: resolve(output, `${sample.template}-${presentation}.png`), fullPage: true })
       await printPage.close()
     }
     if (documents.classic.pages !== documents.modern.pages) failures.push(`${sample.template}: page count differs (classic ${documents.classic.pages}, modern ${documents.modern.pages})`)
