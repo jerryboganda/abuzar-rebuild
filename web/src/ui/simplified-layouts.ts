@@ -13,22 +13,38 @@ export interface SimplifiedLayout {
   emphasis?: string
   /** Caption of the disclosure (form) or the column toggle (grid). */
   moreLabel: string
+  /** Card heading and hint shown above the surface (the approved mockup's section titles). */
+  heading?: string
+  hint?: string
+  /** Visual order of the visible fields (forms); fields not listed follow in source order. */
+  order?: readonly string[]
+  /** Fields that take two columns of the form grid. */
+  wide?: readonly string[]
+  /** Totals of the grid's footer band that stay visible while secondary columns are hidden. */
+  primaryTotals?: readonly string[]
+  /** The surface is the bill summary panel beside the form and the items. */
+  summary?: boolean
 }
 
 export const SIMPLIFIED_LAYOUTS: readonly SimplifiedLayout[] = [
   {
     // Pack Purchase (w_purchase, normal purchase): supplier and bill first, rare bill options behind "More bill options".
     surface: 'd_normalpurchaseheader', kind: 'form', moreLabel: 'More bill options',
+    heading: 'Supplier & bill', hint: 'Who sold it, and their bill number',
+    order: ['suppcode', 'suppinvcode', 'date', 'gcode', 'taxcategorycode', 'grn', 'remarks', 'code', 'suppinvdate', 'ntn', 'suppbalance'],
+    wide: ['suppcode'],
     primary: ['code', 'date', 'gcode', 'taxcategorycode', 'suppcode', 'ntn', 'suppbalance', 'suppinvcode', 'suppinvdate', 'grn', 'remarks'],
   },
   {
     // Pack Purchase item lines: what a clerk keys from the supplier's bill, plus the results they check.
-    surface: 'd_normalpurchasedetail', kind: 'grid', moreLabel: 'columns',
+    surface: 'd_normalpurchasedetail', kind: 'grid', moreLabel: 'columns', heading: 'Items', hint: 'Type a name, code or barcode in the item column',
+    primaryTotals: ['c_sumpackqty', 'c_sumbonusqty', 'c_sumgstval', 'c_total_finalitemval'],
     primary: ['c_serialno', 'quicksearch', 'fullcode', 'itemname', 'batch', 'expiry', 'packqty', 'bonusqty', 'purprice', 'discperc',
       'c_gstval', 'c_finalitemval', 'c_margin'],
   },
   {
-    surface: 'd_purchasefooter', kind: 'form', moreLabel: '', emphasis: 'total',
+    surface: 'd_purchasefooter', kind: 'form', moreLabel: '', emphasis: 'total', heading: 'Bill summary', summary: true,
+    order: ['itemtotalval', 'discperc', 'flatdisc', 'misccharges', 'invgstperc1', 'advancetaxamt', 'stock', 'totalstock', 'totalexp', 'total'],
     primary: ['stock', 'discperc', 'flatdisc', 'misccharges', 'invgstperc1', 'advancetaxamt', 'totalstock', 'totalexp', 'itemtotalval', 'total'],
   },
 ]
@@ -51,6 +67,24 @@ export function applySimplifiedLayout(layout: SimplifiedLayout, body: HTMLElemen
   state.column = current
   if (moved && current && !primary.has(current)) state.open = true
   body.classList.add('simplified-surface', `simplified-${layout.kind}`)
+  if (layout.summary) body.classList.add('simplified-summary')
+  if (layout.heading) {
+    const head = document.createElement('div')
+    head.className = 'simplified-head'
+    const title = document.createElement('h2')
+    title.textContent = layout.heading
+    head.append(title)
+    if (layout.hint) {
+      const hint = document.createElement('span')
+      hint.textContent = layout.hint
+      head.append(hint)
+    }
+    body.prepend(head)
+  }
+  // Captions read as in the approved mockup: no trailing colon (the text comes from the DataWindow and is otherwise unchanged).
+  for (const label of body.querySelectorAll<HTMLElement>('.surface-label, th > span:first-child')) {
+    if (label.childElementCount === 0 && /:\s*$/.test(label.textContent ?? '')) label.textContent = label.textContent!.replace(/\s*:\s*$/, '')
+  }
   if (layout.emphasis) body.querySelector<HTMLElement>(`.surface-field[data-field="${layout.emphasis}"]`)?.classList.add('simplified-emphasis')
   if (layout.kind === 'grid') {
     const table = body.querySelector<HTMLTableElement>('table.surface-grid')
@@ -65,6 +99,11 @@ export function applySimplifiedLayout(layout: SimplifiedLayout, body: HTMLElemen
     for (const cell of table.querySelectorAll<HTMLElement>('tbody td.surface-field[data-field]')) {
       if (!primary.has(cell.dataset.field!)) cell.classList.add('simplified-secondary')
     }
+    const totals = new Set(layout.primaryTotals ?? [])
+    for (const value of body.querySelectorAll<HTMLElement>('.surface-band-footer [data-obj]')) {
+      if (totals.size && !totals.has(value.dataset.obj!)) value.closest('dl > div')?.classList.add('simplified-secondary')
+    }
+    body.classList.toggle('simplified-all', state.open)
     table.classList.toggle('simplified-all', state.open)
     const toggle = document.createElement('button')
     toggle.type = 'button'
@@ -75,13 +114,21 @@ export function applySimplifiedLayout(layout: SimplifiedLayout, body: HTMLElemen
     toggle.addEventListener('click', () => {
       state.open = !state.open
       table.classList.toggle('simplified-all', state.open)
+      body.classList.toggle('simplified-all', state.open)
       toggle.textContent = caption()
       toggle.setAttribute('aria-expanded', String(state.open))
     })
     body.insertBefore(toggle, table)
     return
   }
+  const wide = new Set(layout.wide ?? [])
   for (const row of body.querySelectorAll<HTMLElement>('.surface-row')) {
+    row.classList.add('simplified-row')
+    for (const field of row.querySelectorAll<HTMLElement>('.surface-field[data-field]')) {
+      const index = layout.order?.indexOf(field.dataset.field!) ?? -1
+      field.style.order = String(index < 0 ? 100 : index)
+      field.classList.toggle('simplified-wide', wide.has(field.dataset.field!))
+    }
     const secondary = [...row.querySelectorAll<HTMLElement>('.surface-field[data-field]')].filter((field) => !primary.has(field.dataset.field!))
     if (!secondary.length) continue
     const more = document.createElement('details')

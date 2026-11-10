@@ -388,6 +388,8 @@ export class ModernDwView extends DwView {
     const revealField = surface.kind === 'form' && !!focusName && focus !== null && this.focusInView(focus)
     const invalid = this.editor?.getAttribute('aria-invalid') === 'true'
     if (!invalid) this.status.textContent = this.lookupNotice || this.choiceEdit?.options?.gridIssue || summary
+    // The plain row count can be hidden by a layout; notices and errors always stay visible.
+    this.status.classList.toggle('surface-status-summary', this.status.textContent === summary)
     this.editor = null
     this.root.replaceChildren(this.status, body)
     this.root.scrollTop = jumped ? (this.plan?.prefix[start] ?? start) * this.rowHeight : scroll

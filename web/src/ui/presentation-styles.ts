@@ -557,4 +557,59 @@ export const PRESENTATION_CSS = `
 .presentation-ui .menu-drop .sep {height:1px;margin:4px 6px;background:var(--p-hair);}
 .presentation-ui .menu-drop .it .sub {top:-7px;left:100%;margin-left:0;}
 .presentation-ui .menu-drop .it u {text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px;}
+/* Pack Purchase as in the approved mockup: cards with headings, a 4-column bill form, items, and the bill summary panel on the right. */
+.modern-entry-window .entry-detail:has(.simplified-summary) {display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,320px);grid-auto-rows:auto;gap:16px;align-items:start;padding:16px;}
+.modern-entry-window .entry-detail:has(.simplified-summary) > .entry-control {position:relative!important;inset:auto!important;width:auto!important;min-width:0;}
+.modern-entry-window .entry-detail:has(.simplified-summary) > .entry-control:not(:has(.simplified-summary)) {grid-column:1;}
+.modern-entry-window .entry-detail:has(.simplified-summary) > .entry-control:has(.simplified-summary) {grid-column:2;grid-row:1 / span 2;position:sticky!important;top:0;}
+@media (max-width:1000px){.modern-entry-window .entry-detail:has(.simplified-summary){grid-template-columns:minmax(0,1fr)}.modern-entry-window .entry-detail:has(.simplified-summary) > .entry-control:has(.simplified-summary){grid-column:1;grid-row:auto;position:relative!important}}
+.modern-entry-window .entry-detail:has(.simplified-summary) > .entry-control > .modern-surface {height:auto!important;max-height:none;border:1px solid var(--p-hair);border-radius:10px;background:var(--p-surface);}
+.modern-surface:has(> .simplified-surface) > .surface-status.surface-status-summary {display:none;}
+.modern-surface .simplified-head {display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:-2px 0 12px;padding:0 0 10px;border-bottom:1px solid var(--p-hair);}
+.modern-surface .simplified-head h2 {margin:0;font-size:1em;font-weight:600;color:var(--p-text);}
+.modern-surface .simplified-head span {color:var(--p-muted);font-size:.86em;}
+/* required marks: a red asterisk after the caption, the word stays for screen readers */
+.modern-surface .simplified-surface .surface-required {font-size:0;line-height:0;}
+.modern-surface .simplified-surface .surface-required::after {content:"*";font-size:calc(13px * var(--p-scale));line-height:1;color:var(--p-danger);margin-left:3px;}
+/* bill form: 4 equal columns in the mockup's order */
+.modern-surface .simplified-form:not(.simplified-summary) .simplified-row {display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;grid-template-rows:none!important;gap:12px 16px;align-items:start;}
+.modern-surface .simplified-form:not(.simplified-summary) .simplified-row > * {grid-area:auto!important;}
+.modern-surface .simplified-form:not(.simplified-summary) .simplified-row > .simplified-wide {grid-column:span 2!important;}
+.modern-surface .simplified-form:not(.simplified-summary) .simplified-row > .simplified-more {grid-column:1 / -1!important;order:200;}
+.modern-surface .simplified-form .simplified-row > .surface-field {display:flex;flex-direction:column;gap:4px;}
+.modern-surface .simplified-form .simplified-row .surface-label {font-size:.86em;font-weight:500;color:var(--p-muted);}
+@media (max-width:760px){.modern-surface .simplified-form:not(.simplified-summary) .simplified-row{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+/* items: totals band follows the column toggle */
+.modern-surface .simplified-grid:not(.simplified-all) .surface-band-footer .simplified-secondary {display:none;}
+/* bill summary panel: one label / value row per line, grand total as the dark band */
+.modern-surface .simplified-summary .simplified-row {display:flex!important;flex-direction:column;gap:2px;}
+.modern-surface .simplified-summary .simplified-row > * {grid-area:auto!important;}
+.modern-surface .simplified-summary .simplified-row > .surface-field {flex-direction:row;align-items:center;justify-content:space-between;gap:12px;padding:3px 0;}
+.modern-surface .simplified-summary .simplified-row > .surface-field .surface-label {flex:1;font-size:.93em;}
+.modern-surface .simplified-summary .simplified-row > .surface-field .surface-value {width:9.5em;max-width:55%;min-width:0;text-align:right;}
+.modern-surface .simplified-summary .simplified-row > .surface-field[data-field="stock"] {margin-top:8px;padding-top:11px;border-top:1px solid var(--p-hair);}
+.modern-surface .simplified-summary .simplified-row > .surface-caption,.modern-surface .simplified-summary .simplified-row > .grid-cell:not(.surface-field) {order:150;font-size:.86em;color:var(--p-muted);}
+.modern-surface .simplified-summary .simplified-row > .simplified-emphasis {order:300!important;margin:12px -16px -16px;padding:14px 16px;border-radius:0 0 10px 10px;background:var(--p-text);}
+.modern-surface .simplified-summary .simplified-emphasis .surface-label {color:var(--p-surface);text-transform:uppercase;letter-spacing:.06em;font-size:.78em;opacity:.8;}
+.modern-surface .simplified-summary .simplified-emphasis .surface-value {background:transparent!important;border:0!important;box-shadow:none!important;color:var(--p-surface)!important;font:600 1.6em ui-monospace,Consolas,monospace!important;width:auto;max-width:none;padding:0;}
+.modern-surface .simplified-summary .simplified-emphasis .surface-required {display:none;}
+/* Pack Purchase, second pass: caption and asterisk on one line, panels grow with their content, equal summary inputs. */
+.modern-surface .simplified-form .simplified-row > .surface-field {display:grid!important;grid-template-columns:max-content minmax(0,1fr);align-items:center;column-gap:0;row-gap:5px;}
+.modern-surface .simplified-form .simplified-row > .surface-field > :not(.surface-label):not(.surface-required) {grid-column:1 / -1;}
+.modern-surface .simplified-form .simplified-row > .surface-field > .surface-required {justify-self:start;}
+.modern-entry-window .entry-detail:has(.simplified-summary) > .entry-control {height:auto!important;}
+.modern-entry-window .entry-detail:has(.simplified-summary) > .entry-control > .modern-surface {overflow:visible!important;padding:14px 16px 16px;}
+.modern-surface .simplified-summary .simplified-row > .surface-field {grid-template-columns:max-content auto minmax(0,1fr)!important;}
+.modern-surface .simplified-summary .simplified-row > .surface-field > .surface-label {grid-column:1;}
+.modern-surface .simplified-summary .simplified-row > .surface-field > .surface-required {grid-column:2;}
+.modern-surface .simplified-summary .simplified-row > .surface-field > :not(.surface-label):not(.surface-required) {grid-column:3!important;justify-self:end;width:9.5em!important;max-width:100%;text-align:right;}
+.modern-surface .simplified-summary .simplified-row > .simplified-emphasis {display:grid!important;}
+.modern-surface .simplified-summary .simplified-row > .simplified-emphasis > :not(.surface-label):not(.surface-required) {width:auto!important;}
+.modern-surface .simplified-summary .simplified-row > .surface-field {align-self:stretch!important;}
+/* the items grid keeps a fixed height: it draws only the rows in view and scrolls inside */
+.modern-entry-window .entry-detail:has(.simplified-summary) > .entry-control:has(.simplified-grid) {height:clamp(300px,52vh,620px)!important;}
+.modern-entry-window .entry-detail:has(.simplified-summary) > .entry-control:has(.simplified-grid) > .modern-surface {height:100%!important;overflow:auto!important;}
+.modern-surface .simplified-grid th > span {display:inline;}
+.modern-surface .simplified-grid th > .surface-required::after {margin-left:2px;}
+.modern-entry-window .entry-detail:has(.simplified-summary) > .entry-control {border:0!important;box-shadow:none!important;background:none!important;}
 `

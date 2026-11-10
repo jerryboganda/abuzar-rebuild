@@ -37,8 +37,8 @@ export const TOOLBAR_GROUPS: readonly { key: string; label: string; stocks: read
   { key: 'items', label: 'Items', stocks: ['update!', 'retrieve!', 'undo!'] },
   { key: 'browse', label: '', stocks: ['vcrfirst!', 'vcrprior!', 'vcrnext!', 'vcrlast!'] },
 ]
-/** Buttons that keep a visible caption next to the icon. */
-const LABELLED = new Set(['selectscript!', 'save!', 'update!', 'find!', 'print!', 'dbadmin!'])
+/** Buttons that keep a visible caption next to the icon, with the approved mockup's short captions (the full text stays the name). */
+const LABELLED = new Map([['selectscript!', 'New'], ['save!', 'Save'], ['update!', 'Add item'], ['find!', 'List'], ['print!', 'Print'], ['dbadmin!', 'Post']])
 
 export function toolbarGroup(stock: string): string {
   const key = stock.toLowerCase()
@@ -110,7 +110,7 @@ export function groupToolbar(tool: HTMLElement, title = ''): void {
     if (LABELLED.has(stock) && !button.querySelector('.mh-label')) {
       const label = document.createElement('span')
       label.className = 'mh-label'
-      label.textContent = text
+      label.textContent = LABELLED.get(stock)!
       button.append(label)
     }
     button.classList.toggle('mh-primary', stock === 'dbadmin!')
