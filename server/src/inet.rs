@@ -53,7 +53,7 @@ pub fn parse_url(url: &str) -> Result<(String, u16, String, String), String> {
         Some(p) if p.eq_ignore_ascii_case("http://") => &url[7..],
         _ => return Err("only http:// addresses are supported".into()),
     };
-    let end = rest.find(|c: char| c == '/' || c == '?' || c == '#').unwrap_or(rest.len());
+    let end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
     let (authority, tail) = rest.split_at(end);
     if authority.is_empty() || authority.contains('@') {
         return Err("invalid address".into());
