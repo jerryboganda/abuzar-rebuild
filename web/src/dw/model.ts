@@ -1,6 +1,7 @@
 // DataWindow data model: buffers, row status, retrieve / update through the database session, find / filter / sort, groups.
 import type { Runtime } from '../runtime/interp.ts'
-import { coerce, cmp, daysFromCivil, dateOrder, Dec, DATE_ZERO, equals, lstrcmp, PBDate, PBDateTime, PBTime, toNum } from '../runtime/values.ts'
+import { coerce, cmp, daysFromCivil, dateOrder, Dec, DATE_ZERO, equals, lstrCompareKeys, lstrKey, PBDate, PBDateTime, PBTime, toNum } from '../runtime/values.ts'
+import type { LstrKey } from '../runtime/values.ts'
 import { fromWire, toWire } from '../runtime/wire.ts'
 import type { Db, QueryResult } from '../runtime/wire.ts'
 import { argList, colKind, num, splitExpr } from './def.ts'
@@ -697,6 +698,12 @@ export class DwModel implements EvalHost {
     void savedP
     // stable sort as dwTableSortCmp of the original (pbdwe125.dll): strings by Windows lstrcmpW, and a null value sorts
     // first in ascending and descending keys alike (the null result is not inverted)
+    const stringKeys = new Map<string, LstrKey>()
+    const stringKey = (s: string): LstrKey => {
+      let key = stringKeys.get(s)
+      if (!key) stringKeys.set(s, key = lstrKey(s))
+      return key
+    }
     keyed.sort((a, b) => {
       for (let j = 0; j < keys.length; j++) {
         const x = a.k[j]
@@ -705,7 +712,7 @@ export class DwModel implements EvalHost {
           if (x === null && y === null) continue
           return x === null ? -1 : 1
         }
-        let c = typeof x === 'string' && typeof y === 'string' ? lstrcmp(x, y) : cmp(x, y)
+        let c = typeof x === 'string' && typeof y === 'string' ? x === y ? 0 : lstrCompareKeys(stringKey(x), stringKey(y)) : cmp(x, y)
         if (keys[j].desc) c = -c
         if (c !== 0) return c
       }

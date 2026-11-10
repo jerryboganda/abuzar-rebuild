@@ -228,6 +228,28 @@ export async function checkSelectorVariants(fixture, check, settle) {
         check(f.model.getItem(1, column) === 'N' &&
           f.events.filter((event) => event.event === 'itemchanged').length === before + 2,
         'A second click toggles once rather than undoing itself')
+        // a click that reaches the native checkbox while its editor is still loading is applied once it is ready
+        const fastCanEdit = f.view.canEdit
+        f.view.canEdit = async function (...args) {
+          await new Promise((resolve) => setTimeout(resolve, 60))
+          return fastCanEdit.apply(this, args)
+        }
+        try {
+          f.model.col = f.model.colIndex(column) + 1
+          await f.view.focusCurrent()
+          const early = f.view.editor
+          const loadingAtClick = !!f.view.choiceEdit?.loading
+          if (early instanceof HTMLInputElement) early.click()
+          await new Promise((resolve) => setTimeout(resolve, 250)); await settle()
+          check(early instanceof HTMLInputElement && loadingAtClick && f.model.getItem(1, column) === 'Y' &&
+            f.events.filter((event) => event.event === 'itemchanged').length === before + 3,
+          `A checkbox click during loading is applied exactly once (loading at click: ${loadingAtClick}, value ${f.model.getItem(1, column)})`)
+        } finally {
+          f.view.canEdit = fastCanEdit
+        }
+        key(f.view.editor ?? f.cell(column), 'Escape'); await settle()
+        f.cell(column).click(); await settle()
+        check(f.model.getItem(1, column) === 'N', 'The checkbox returns to off for the following checks')
         f.model.setItem(1, column, null); f.control.changed(); await settle()
         const mixed = await f.edit(column)
         check(mixed.indeterminate && f.model.getItem(1, column) === null, 'Unrecognized checkbox keys are not silently converted to off')

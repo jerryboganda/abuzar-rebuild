@@ -56,6 +56,8 @@ export class DwChoiceEditor {
   private failed = false
   private browsing = false
   private loadingWork: Promise<void> = Promise.resolve()
+  /** checkbox toggles requested while the editor was loading (0 or 1) */
+  private pendingToggles = 0
   private accepting: { accepted: Promise<boolean>; navigation: Promise<boolean> } | null = null
   private host: ChoiceEditorHost
   private draftChoice: DwChoice | null = null
@@ -86,6 +88,9 @@ export class DwChoiceEditor {
         event.stopPropagation()
         if (this.loading || this.failed) {
           event.preventDefault()
+          // A click or Space that arrives while the checkbox is still loading is applied once it is ready, as the
+          // original's checkbox never drops a keystroke (a second one before then cancels the first).
+          if (this.loading && !this.failed) this.pendingToggles = (this.pendingToggles + 1) % 2
           this.host.status(this.failed ? 'Press Enter to retry loading the checkbox.' : 'Wait for the checkbox to load.')
         }
       })
@@ -439,6 +444,10 @@ export class DwChoiceEditor {
       if (this.host.editable && this.element instanceof HTMLInputElement) this.element.readOnly = this.failed
       this.syncBrowse()
       if (this.host.showList && !this.failed && this.active() && this.ownsFocus()) this.popup?.show()
+      const toggle = this.pendingToggles === 1 && !this.failed && this.active()
+      this.pendingToggles = 0
+      // toggle() waits for this load to finish, so it is started, not awaited
+      if (toggle) void this.toggle().catch((error) => this.host.error(error))
     }
   }
 

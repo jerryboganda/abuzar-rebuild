@@ -386,7 +386,10 @@ export function localeDateOrder(): 'mdy' | 'dmy' {
 const LSTR_ORDER = ' !"#$%&()*,./:;?@[\\]^_`{|}~+<=>0123456789abcdefghijklmnopqrstuvwxyz'
 const LSTR_WEIGHT = new Map([...LSTR_ORDER].map((c, i) => [c, i] as const))
 
-function lstrKey(s: string): { prim: number[]; upper: number[]; special: [number, number][] } {
+export interface LstrKey { prim: number[]; upper: number[]; special: [number, number][] }
+
+/** the parts lstrcmpW compares, built once per value (Sort() keeps one per row) */
+export function lstrKey(s: string): LstrKey {
   const prim: number[] = [], upper: number[] = [], special: [number, number][] = []
   for (let i = 0; i < s.length; i++) {
     const c = s[i]
@@ -412,7 +415,10 @@ function cmpNumbers(a: number[], b: number[]): number {
  * case, and hyphens / apostrophes count last (an earlier one sorts higher). Equal to lstrcmpW on 20,000 random ASCII pairs.
  */
 export function lstrcmp(a: string, b: string): number {
-  const x = lstrKey(a), y = lstrKey(b)
+  return a === b ? 0 : lstrCompareKeys(lstrKey(a), lstrKey(b))
+}
+
+export function lstrCompareKeys(x: LstrKey, y: LstrKey): number {
   const c = cmpNumbers(x.prim, y.prim) || cmpNumbers(x.upper, y.upper)
   if (c) return c
   for (let i = 0; i < x.special.length && i < y.special.length; i++) {
@@ -431,8 +437,9 @@ export function dwStrCmp(a: string, b: string): number {
 export function dwCmp(a: unknown, b: unknown): number {
   return typeof a === 'string' && typeof b === 'string' ? dwStrCmp(a, b) : cmp(a, b)
 }
+/** lstrcmpW reports equal only for identical text, so equality is a plain comparison without the trailing blanks */
 export function dwEquals(a: unknown, b: unknown): boolean {
-  return typeof a === 'string' && typeof b === 'string' ? dwStrCmp(a, b) === 0 : equals(a, b)
+  return typeof a === 'string' && typeof b === 'string' ? a === b || a.replace(/ +$/, '') === b.replace(/ +$/, '') : equals(a, b)
 }
 
 export function cmp(a: unknown, b: unknown): number {
