@@ -86,9 +86,13 @@ Each PC needs the browser only; nothing else to install. Add the token page to t
   `C:\Waseela\server\trader-server.exe` (built by the release workflow, signed `CN=Waseela ERP`) and the static web files in `C:\Waseela\web`
   (built from the tag with `build-static.ts`; 3,023 files). Swapped in about ten seconds with the server stopped and nobody connected;
   afterwards `/api/health` is `db:true`, the token is enforced (401 without it), item names, sale counts, the `STR` function and the new
-  `/api/inet` endpoint answer correctly. Rollback copies: `C:\Waseela\server\trader-server.exe.build11` and the folder `C:\Waseela\web.build11`
-  (stop the server, copy the exe back, swap the folders, start the task). Not checked on this PC: a login and the screens (that needs the
-  owner's staff login), printers and the FBR component.
+  `/api/inet` endpoint answer correctly. Copies of the previous files: `C:\Waseela\server\trader-server.exe.build11` and the folder
+  `C:\Waseela\web.build11`. **The build-11 web folder is not a usable fallback**: it holds 42 of the 80 modules the app needs
+  (`dom-ui.js` imports `message-buttons.js`, which it lacks), so its page stays blank; build 11 was only ever checked for HTTP 200. The real fallback
+  while the rebuild is being accepted is the old PowerBuilder application on SQL Server, which was not touched.
+  Login on a scratch copy of the data takes about 9 seconds on this PC (about 66 sequential queries; the item list of 27,818 rows, 5-6 MB of JSON, is loaded
+  twice at start-up); the owner reported it much longer on the first real login. Not checked here: the screens beyond the login
+  (needs the owner's staff login), printers and the FBR component.
 * The old PowerBuilder application and its SQL Server instance keep running untouched; do not decommission
   them until the snapshot decision is made and a period of parallel running is accepted.
 * The rebuilt application has no licence checks (owner decision 2026-11-02), server-side rights are not
