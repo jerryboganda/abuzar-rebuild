@@ -82,7 +82,13 @@ Each PC needs the browser only; nothing else to install. Add the token page to t
   for about two minutes with no user connected. Afterwards all 332 large text columns order exactly as on the classic and the
   data comparison above is unchanged. Rollback: stop the server, `pg_restore` the dump into a new database (3 foreign keys with orphan rows report errors,
   see `OPERATIONS.md`), rename it to `waseela`, start the server.
-  The deployed server (`C:\Waseela\server`) and web files are still build 11 of 2026-11-06; the database upgrade is compatible with them.
+* **Build 12 deployed (2026-11-11).** Tag `v0.12.0` (commit `aaa1c2b7`; its application code is the commit CI verified green, `3e0f4962`):
+  `C:\Waseela\server\trader-server.exe` (built by the release workflow, signed `CN=Waseela ERP`) and the static web files in `C:\Waseela\web`
+  (built from the tag with `build-static.ts`; 3,023 files). Swapped in about ten seconds with the server stopped and nobody connected;
+  afterwards `/api/health` is `db:true`, the token is enforced (401 without it), item names, sale counts, the `STR` function and the new
+  `/api/inet` endpoint answer correctly. Rollback copies: `C:\Waseela\server\trader-server.exe.build11` and the folder `C:\Waseela\web.build11`
+  (stop the server, copy the exe back, swap the folders, start the task). Not checked on this PC: a login and the screens (that needs the
+  owner's staff login), printers and the FBR component.
 * The old PowerBuilder application and its SQL Server instance keep running untouched; do not decommission
   them until the snapshot decision is made and a period of parallel running is accepted.
 * The rebuilt application has no licence checks (owner decision 2026-11-02), server-side rights are not
