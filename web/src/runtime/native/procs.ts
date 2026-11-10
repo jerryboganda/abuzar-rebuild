@@ -4,6 +4,7 @@ import type { PBObject } from '../object.ts'
 import { Ref } from '../interp.ts'
 import { fromWire, toWire } from '../wire.ts'
 import { NTransaction } from './transaction.ts'
+import { fiscalizeProcedure } from './fiscal.ts'
 
 export interface ProcSig {
   call: string
@@ -42,6 +43,9 @@ export class ProcCaller {
     // RPC declarations alias the PowerScript name to the procedure: getitemstocktotal -> sp_getitemstocktotal
     const sig = this.signature(name)
     if (!(t instanceof NTransaction)) return null
+    // SP_FiscalizeSaleInvoice / SP_FiscalizeSRInvoice call the FBR service over HTTP (sp_OACreate), which PostgreSQL cannot
+    const fiscal = /^(?:sp_)?fiscalize(sale|sr)invoice$/.exec(name.toLowerCase())
+    if (fiscal) return fiscalizeProcedure(t, this.sigs, fiscal[1] === 'sale', args)
     if (!sig) {
       t.rt.noteMissing('rpc:' + name)
       t.setError(-1, `procedure ${name} has no PostgreSQL translation`)

@@ -12,6 +12,7 @@
 pub mod auth;
 pub mod fiscal;
 pub mod fs;
+pub mod inet;
 pub mod sqlsub;
 
 use std::collections::HashMap;
@@ -345,6 +346,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/print/raw", post(fs::print_raw))
         .route("/api/backup", post(fs::backup))
         .route("/api/fiscal", post(fiscal::fiscal))
+        .route("/api/inet", post(inet::inet))
         .route("/api/commit", post(commit))
         .route("/api/rollback", post(rollback))
         .route("/api/close", post(close))

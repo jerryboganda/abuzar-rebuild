@@ -1,13 +1,17 @@
 // Native behaviour of the recovered `n_winsock` user object.
 //
-// The original client talks to a local fiscal service over raw TCP and sends
-// `S<invoice code>`.  A browser cannot open raw TCP, so the hop goes through the
-// server's `/api/fiscal` relay.  When the service (or an older server without
-// the relay) is absent, this reproduces the desktop `Connection refused` path
-// and the sale continues.
+// In the main application a plain n_winsock is only the fiscal client (f_fiscalizesaleinvoice, f_fiscalizesrinvoice,
+// f_get_googleqrcode_for_fiscalinvno): it connects to the FiscalizationApp (preferences FiscalizationMachine /
+// FiscalizationAppPort), sends `S<code>` / `R<code>` / `Q<code>` and waits for the answer.  The vendor's FiscalizationApp
+// works on SQL Server only, so the rebuild answers these connections itself (fiscal.ts, the listener reproduced on
+// PostgreSQL) - it must never reach the vendor listener, which would fiscalize the SQL Server invoice of the same number.
+// Descendants (n_smtp) talk to other services: their hop goes through the server's `/api/fiscal` TCP relay, because a
+// browser cannot open raw TCP; without it they get the desktop `Connection refused` path.
 import { PBObject } from '../object.ts'
 import type { Runtime } from '../interp.ts'
+import { Ref } from '../interp.ts'
 import { authHeaders } from '../apiauth.ts'
+import { fiscalListener } from './fiscal.ts'
 
 function hostName(): string {
   try {
@@ -28,6 +32,10 @@ export class NWinSock extends PBObject {
   private response = ''
   constructor(rt: Runtime, className: string) {
     super(rt, className, 'n_winsock')
+  }
+  /** the fiscal client's own socket: answered by the rebuild's fiscal listener */
+  private get fiscal(): boolean {
+    return this.className === 'n_winsock'
   }
   override getNative(name: string): unknown {
     if (name === 'of_startup') return this.of_startup.bind(this)
@@ -80,6 +88,8 @@ export class NWinSock extends PBObject {
     const h = String(host ?? '').trim()
     const p = Number(port) || 0
     this.pending = h && p ? { host: h, port: p } : null
+    this.response = ''
+    if (this.fiscal && this.pending) return 1
     const r = await this.relay('')
     if (!r.ok) {
       this.props.set('is_lasterror', r.error || 'Connection refused')
@@ -93,6 +103,10 @@ export class NWinSock extends PBObject {
     return 0
   }
   async of_send(_socket: unknown, data: unknown): Promise<boolean> {
+    if (this.fiscal && this.pending) {
+      this.response = (await fiscalListener(this.rt, String(data ?? ''))) ?? ''
+      return true
+    }
     const r = await this.relay(String(data ?? ''))
     if (!r.ok) {
       this.props.set('is_lasterror', r.error || 'Connection refused')
@@ -101,8 +115,10 @@ export class NWinSock extends PBObject {
     this.response = String(r.response ?? '')
     return true
   }
-  of_recv(_socket: unknown, _data: unknown): boolean {
-    return this.response.length > 0
+  async of_recv(_socket: unknown, data: unknown): Promise<boolean> {
+    if (!this.response.length) return false
+    if (data instanceof Ref) await data.set(this.response)
+    return true
   }
   of_getlasterror(): string {
     return String(this.props.get('is_lasterror') ?? 'Connection refused')

@@ -55,7 +55,7 @@ fn is_local(ip: IpAddr) -> bool {
 }
 
 /// the address to connect to: the first one of the host that is local, none when any of them is public
-async fn local_target(host: &str, port: u16) -> Result<SocketAddr, String> {
+pub(crate) async fn local_target(host: &str, port: u16) -> Result<SocketAddr, String> {
     let addrs: Vec<SocketAddr> = match timeout(Duration::from_secs(5), lookup_host((host, port))).await {
         Ok(Ok(it)) => it.collect(),
         Ok(Err(e)) => return Err(format!("Connection refused: {e}")),
