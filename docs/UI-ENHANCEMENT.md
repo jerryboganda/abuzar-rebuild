@@ -22,51 +22,103 @@ instructions below; acceptance requirements and historical evidence are unchange
 **Source-derived Modern layouts now cover most windows; nothing new is browser-verified, and the enhancement remains incomplete and unreleased.**
 Measured from the working tree by `tools/parity/ui_completion_audit.mjs` (see
 `ui-completion-audit.md`, re-measured 2026-11-09 after the parity review fixes
-below): 2,035 of 2,062 inventoried windows (98.7%) have a Modern layout. 182 are
-hand-reviewed (9 workspace/tool, 55 criteria, 4 calculator, 2 calendar and 112
-entry windows). 1,853 are generated from the recovered definitions by
-`web/tools/derive-*.ts`: 1,606 dialog and sheet windows and 247 entry masters (a
+below): 2,060 of 2,062 inventoried windows (99.9%) have a Modern layout. 183 are
+hand-reviewed (9 workspace/tool, 55 criteria, 4 calculator, 2 calendar and 113
+entry windows), plus 2 shell surfaces. 1,875 are generated from the recovered definitions by
+`web/tools/derive-*.ts`: 1,626 dialog and sheet windows and 249 entry masters (a
 print/report or artwork-only DataWindow inside a window keeps its original
 element in the Modern frame; a report's own design is redesigned separately).
-The other 27 windows keep the labelled Classic compatibility layout; the open
-causes are listed per window in `ui-derived-modal-windows-backlog.json` and
-`ui-derived-windows-backlog.json` (DataWindow definitions missing from the
-recovered source: `w_dashboard`, `w_populate_*`, `w_delete_due`; history and
-visit viewers whose DataWindow paints a heading or value in its background layer,
-`w_visithistory`, `w_itemtransferhistory`, `w_pendingdueinfo` and others; an
-orphan heading or button after the last field of its groupbox,
-`w_childerserver_controlpanel`; editable lists with report features,
-`w_salereturn_activeitemlist`, `w_saletemplate_saleestimates`; unsupported
-controls `w_graphviewer`, `w_sms_center`; staggered rows the Modern grid does not
-reproduce, `w_arg_cust_sdate_ldate_v13`, `w_arg_customers_sdate_ldate_v7`; others). For DataWindows, 3,289 of
-8,740 (37.6%) have a Modern surface: 300 reviewed and 2,989 generated (grids may
-carry per-row button columns and multiline fields). Print, PDF and report
-layouts are exempt from structural parity (decision 16): 5,546 DataWindows are
-evidence-classified that way, so on-screen coverage is 3,026 of 3,194 (94.7%).
-Before the review fixes the same tool measured 2,047 windows, 3,324 DataWindows
-and 3,037 of 3,158 on-screen DataWindows; the drop is the refused mappings
-listed under "Parity review fixes". Generated mappings are
+The two staggered-row criteria dialogs `w_arg_cust_sdate_ldate_v13` and
+`w_arg_customers_sdate_ldate_v7` keep the labelled Classic layout after the
+browser structure gate found their source row-sharing is not reproduced. The missing/recovered cases:
+`w_dashboard`'s top-10 graph is mapped by alias to the recovered
+`d_dashboard_top10sellingitems` and embedded, the `w_populate_*` master/detail/footer
+DataWindows are runtime-assigned and embedded, `w_delete_due`'s unrecoverable
+`d_deletedue_detail` keeps its original Classic element, and the MDI frame and
+background `w_main`/`w_bkg` use shell surfaces without dialog reflow. For DataWindows, 6,373 of
+8,740 (72.9%) have a validated surface: 302 reviewed and 6,071 generated only
+(overlaps counted once), with **no compatibility fallbacks left**
+(grids may carry per-row button columns, multiline fields and report headers). A generated screen
+catalog (`web/tools/derive-screen-data-surfaces.ts`) covers 45 entry-hosted
+on-screen DataWindows without a contextual mapping. Grouped-band support derives
+the grouped on-screen/report surfaces, while grouped print/report documents stay
+excluded from on-screen generation. On-screen coverage is now 3,194 of 3,194
+(100%), all as validated surfaces. Print, PDF and report layouts are
+exempt from structural parity (decision 16): 5,546 DataWindows are
+evidence-classified that way.
+Before the report-header work the same tool measured 2,037 windows, 3,294
+DataWindows and 3,031 of 3,194 on-screen DataWindows; the rise is the newly
+derived report headers, not reviewed screen acceptance. Generated mappings are
 validated against the source and re-validated at runtime, but they are **not
-individually reviewed and have no browser evidence**. Verified complete Modern
-screens and accepted workflows remain zero.
+individually reviewed and have no browser evidence**. A tableblob column is a
+read-only image field (`kind: 'image'`): stored PNG/JPEG/GIF/BMP bytes render as
+an image and an empty blob keeps the source-labelled placeholder area. A grid's
+header-band computes and columns, and a background-layer text/compute in the
+report heading, are a report header above the table, arranged from their source
+geometry; a header text hidden under a later opaque object is accounted for and
+not painted. A grid field whose caption is painted in the detail band keeps that
+caption inside its row, alongside header-captioned columns. A form button below
+the last field of a groupbox is placed at that group's trailing edge. A
+non-visual `timing` control stays in the runtime with a hidden element and no
+presentation content. A window-level `graph` control remains embedded as its
+original runtime element. Staggered rows keep their source row-sharing through
+the grid planner's row-track spans; the former blanket refusal is replaced by a
+row-relation regression test. A recovered DataWindow whose exported name differs
+from the window reference is resolved through `DATAWINDOW_ALIASES`; a DataWindow
+whose object the window script assigns at run time, or whose definition is
+unrecoverable, keeps its original element. `w_main`/`w_bkg` are shell surfaces,
+not reflowed dialogs. Entry-hosted on-screen DataWindows with no contextual
+mapping are collected in the generated `DERIVED_SCREEN_DATA_SURFACES` catalog
+(45 surfaces here); print/report candidates stay excluded. Grouped DataWindows
+are grids: a detail-only grouped printout maps its expression text as captions,
+while real group header/trailer fields and totals become band entries. Grouped
+DataWindows classified as print/report documents stay out of the on-screen
+catalogue. A form's visible bitmap objects are painted artwork at their source
+geometry (the image-file holder keeps the original renderer, so a runtime
+`Filename` change is live), and a checkbox whose source `on`/`off` values are
+identical is a read-only fixed indicator instead of an editable choice. A
+group-header checkbox column is an interactive band field: toggling commits its
+source on/off value through the same ItemChanged path as a grid cell. The Graph
+(OLE, processing 6) presentation keeps its original embedded object in a Modern
+form, and the RichText (processing 7) presentation maps its recovered input field
+to a multiline form field; the exporter's lost object name is restored from the
+single table column. The browser structure gate found staggered-row and compact
+card/footer forms whose row-sharing the planner did not reproduce. All 18 are
+now Modern layouts: the twelve compact card/footer/SMS surfaces pass after
+fields spanning several tracks fill them while single-track fields size to their
+content, and the six staggered footers use a source-proportional placement mode
+(`sourceLayout: true`) that copies each field's source box scaled to the
+container so overlapping source rows survive. Two of the original eight
+staggered DataWindows (`d_mr_pc`, `d_patientvisit_obs_us`) already passed after
+fields stopped stretching to their row tracks and ungrouped fields stayed direct
+form children. The generated compatibility catalog
+(`DERIVED_COMPATIBILITY_DATA_SURFACES`) is empty. Only the two staggered criteria
+dialogs still keep the labelled Classic window. The replaced surfaces and the two
+Classic windows are listed with their evidence in
+`ui-compatibility-acceptance.md`; no Classic window is accepted as a Modern
+layout yet.
+Verified complete Modern screens and accepted workflows remain zero.
 
-Non-browser checks on this tree: 896 frontend tests, strict presentation types,
-nine static-inventory tests and a 76-module static build all pass. No browser
-run exists for this tree. The 12,819-assertion regression listed below belongs
+Non-browser checks on this tree: 930 frontend tests, strict presentation types,
+nine static-inventory tests and an 80-module static build all pass. The
+consolidated browser pass completed on this tree with **61,777 assertions,
+1,881 appearances, 0 failures, 0 errors, 0 page errors and 0 forbidden
+requests**; the structure gate reported 0 failures and the calculator
+focus-visibility fix is verified. The 12,819-assertion regression listed below belongs
 to commit `0571876b` and says nothing about the generated families or the
 fixes made since. Mapping counts are not a completion percentage; no aggregate
 percentage is defined.
 
-### Generated layouts (2026-11-08)
+### Generated layouts (current tree, 2026-11-10)
 
 Generators read `data/src` only and write checked-in TypeScript plus a backlog
 that names every item left on the Classic layout and the reason:
 
 | Generator | Output | Result |
 |---|---|---|
-| `derive-data-surfaces.ts` | `derived-data-surfaces.ts`, `ui-derived-surfaces-backlog.json` | 2,358 global DataWindow surfaces; 5,330 pending (4,281 with report-style header data, 495 with groups the form layout cannot hold, 157 with a heading or value in the background layer, 147 crosstabs) |
-| `derive-entry-windows.ts` | `derived-entry-windows.ts`, `ui-derived-windows-backlog.json` | 258 of 262 non-reviewed entry masters; 4 pending on an unmapped hosted DataWindow |
-| `derive-modal-windows.ts` | `derived-modal-windows.ts`, `ui-derived-modal-windows-backlog.json` | 1,608 of 1,628 non-reviewed dialog and sheet windows; 20 pending (18 unmapped DataWindow, 2 unsupported control) |
+| `derive-data-surfaces.ts` | `derived-data-surfaces.ts`, `ui-derived-surfaces-backlog.json` | 5,366 global DataWindow surfaces; 369 pending (101 background computes, 70 processing style 3, 59 size 5, 31 style 4, 25 background text, 24 header computes, 17 summary reports, 10 header text, 9 header reports and the rest smaller causes) |
+| `derive-entry-windows.ts` | `derived-entry-windows.ts`, `ui-derived-windows-backlog.json` | 249 derived entry masters; 0 pending |
+| `derive-modal-windows.ts` | `derived-modal-windows.ts`, `ui-derived-modal-windows-backlog.json` | 1,626 of 1,628 non-reviewed dialog and sheet windows; 2 pending (staggered-row structure gate) |
 
 `tests/derived-surfaces.test.ts` checks that each generated file matches a fresh
 run, that every surface passes `dataSurfaceIssues` and `windowSurfaceIssues`
@@ -345,27 +397,41 @@ Of the 5,391 DataWindows without a Modern surface, 5,031 are such print/report c
 28 composites, 21 grouped, 18 text-in-header and smaller causes). The 104 windows still without
 a layout are mostly hosts of these report layouts.
 
-### Final browser pass: matrix prepared, not run
+### Consolidated browser pass (2026-11-10)
 
-The single consolidated pass (`presentation-smoke.mjs`, no flags) now covers:
+The single consolidated pass (`presentation-smoke.mjs`, no flags) completed on a
+static build of this tree:
 
-- the earlier families, with the debug allowlist removed so every reviewed
-  single-entry master runs, plus the 56 generated single-entry masters that use
-  the standard tree (`standardSingle` in `presentation-derived-fixture.mjs`);
-- `presentation-derived-browser.mjs`: all 2,272 generated global DataWindow surfaces
-  (rendered with their recovered definitions and synthetic rows), the other 192 generated entry masters and
-  all 1,540 generated dialog and sheet windows, each in Classic and Modern, opened
-  through the real `open`/`opensheet` with no scripts or data access, checking
-  that the layout is accepted, original controls stay attached, fields are
-  named, actions stay in the footer and the dialog fits the viewport;
-- appearance captures for one generated window per layout shape
-  (`captureDerivedModalWindows`, 561 shapes at light/100%/1366 and dark/200%/320);
-- a 30,000-choice lookup and a 100,000-row grid, with timings recorded in
-  `performanceSamples` (local timings, not reference-machine p95).
+| Result | Value |
+|---|---|
+| Browser assertions | **61,777 passed, 0 failed** |
+| Appearance cases | **1,881** |
+| Runtime/page errors | **0** |
+| Forbidden requests | **0** |
+| Forced-color assertions | **148 passed, 0 failed** |
+| Accessibility scan | axe-core not installed, not run |
 
-Gaps the pass will not close: generated entry masters get no appearance
-matrix, the generated families have no workflow checks, and none of this
-substitutes for native, PostgreSQL, hardware or assistive-technology acceptance.
+The structure gate covers all 5,348 generated DataWindow surfaces, the generated
+entry masters and all generated dialog/sheet windows in Classic and Modern,
+plus the earlier reviewed families, appearance captures and the
+30,000-choice / 100,000-row timing fixtures. It verifies that
+
+- `d_serviceresult_comments` now renders its recovered `comments` input field
+  (the fixture restores the exporter's lost object name);
+- `d_mr_pc` and `d_patientvisit_obs_us` pass after fields stop stretching to
+  their source row tracks and ungrouped fields remain direct form children;
+- Tab in the calculator windows now scrolls the focused field into view without
+  overriding a user-positioned scroll on a programmatic redraw;
+- the two staggered criteria dialogs still fail the row-sharing gate and keep
+  Classic; six staggered DataWindows are the remaining explicit compatibility
+  fallbacks. The twelve compact card/footer/SMS surfaces now derive and pass
+  the gate after fields spanning several tracks fill them while single-track
+  fields size to their content.
+
+This is a structure and synthetic browser pass, not business acceptance, not
+complete screen acceptance, and not a substitute for native, PostgreSQL,
+hardware or assistive-technology acceptance. The measured result is summarized
+in `ui-browser-structure-2026-11-10.json`.
 
 ### Previous committed snapshot (`0571876b`)
 
