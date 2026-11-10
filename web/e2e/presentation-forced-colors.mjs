@@ -45,19 +45,33 @@ export async function checkForcedColors(page, output) {
       const canvas = new OffscreenCanvas(bitmap.width, bitmap.height), context = canvas.getContext('2d')
       context.drawImage(bitmap, 0, 0)
       const { data } = context.getImageData(0, 0, canvas.width, canvas.height)
-      let total = 0, fill = 0, ink = 0
+      // The painted background is the most frequent colour behind the text: the system Highlight may be translucent
+      // (rgba(5, 0, 73, 0.8) in this Chromium), so it is composited and never equals the system colour itself. A forced-colors
+      // text backplate would paint that area in Canvas instead.
+      let total = 0, ink = 0
+      const counts = new Map()
       for (let y = Math.max(0, Math.ceil(bounds.y)); y < Math.min(canvas.height, bounds.y + bounds.height); y++) {
         for (let x = Math.max(0, Math.ceil(bounds.x)); x < Math.min(canvas.width, bounds.x + bounds.width); x++) {
           const at = (y * canvas.width + x) * 4
           total++
-          if (background.every((value, index) => data[at + index] === value)) fill++
+          const key = `${data[at]},${data[at + 1]},${data[at + 2]}`
+          counts.set(key, (counts.get(key) ?? 0) + 1)
           if (foreground.every((value, index) => data[at + index] === value)) ink++
         }
       }
       bitmap.close()
-      return { total, fill, ink }
-    }, { bytes: [...image], bounds, background: rgb(background), foreground: rgb(foreground) })
+      const [dominant, fill] = [...counts].sort((a, b) => b[1] - a[1])[0] ?? ['', 0]
+      const channels = dominant.split(',').map(Number)
+      const luminance = (rgb) => rgb.map((value) => value / 255).map((value) => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4)
+        .reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0)
+      const a = luminance(channels), b = luminance(foreground)
+      return { total, fill, ink, dominant, backplate: backplate.every((value, index) => value === channels[index]),
+        contrast: (Math.max(a, b) + .05) / (Math.min(a, b) + .05) }
+    }, { bytes: [...image], bounds, backplate: rgb(background), foreground: rgb(foreground) })
   }
+  // legible glyphs on the selection colour: a dominant background that is not the Canvas backplate, glyphs in the system text
+  // colour, and contrast between them
+  const legible = (paint) => paint.fill > paint.total * .15 && paint.ink > paint.total * .01 && !paint.backplate && paint.contrast >= 4.5
   try {
     for (const scheme of ['light', 'dark']) for (const [width, scale] of [[1366, 100], [320, 200]]) {
       const theme = scheme === 'light' ? 'dark' : 'light'
@@ -100,8 +114,8 @@ export async function checkForcedColors(page, output) {
         `${label}: selected-cell focus contrasts with its system highlight`)
       check(await page.evaluate(() => window.presentationSurfacePreview.model.getItem(2, 'name') === 'Synthetic name 2'),
         `${label}: focus and palette changes do not edit the selected record`)
-      const paint = await paintedText(`${grid} .row.sel [data-obj=name]`, system.Highlight, system.HighlightText)
-      check(paint.fill > paint.total * .15 && paint.ink > paint.total * .01,
+      const paint = await paintedText(`${grid} .row.sel [data-obj=name]`, system.Canvas, system.HighlightText)
+      check(legible(paint),
         `${label}: selected text paints legible glyphs rather than a solid text backplate`)
       await page.screenshot({ path: resolve(output, `forced-colors-grid-${scheme}-${width}.png`) })
 
@@ -181,9 +195,8 @@ export async function checkForcedColors(page, output) {
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
       }, { theme, width, scale })
       const suffix = await colors(`${grid} .surface-suffix`)
-      const suffixPaint = await paintedText(`${grid} .surface-suffix`, system.Highlight, system.HighlightText)
-      check(suffix.color === system.HighlightText &&
-        suffixPaint.fill > suffixPaint.total * .15 && suffixPaint.ink > suffixPaint.total * .01,
+      const suffixPaint = await paintedText(`${grid} .surface-suffix`, system.Canvas, system.HighlightText)
+      check(suffix.color === system.HighlightText && legible(suffixPaint),
       `${label}: selected field suffix retains legible system-colored glyphs without a text backplate`)
       check(await page.locator(`${grid} .surface-suffix`).evaluate(element => {
         const bounds = element.getBoundingClientRect()
@@ -300,8 +313,8 @@ export async function checkForcedColors(page, output) {
       await page.keyboard.press('ArrowDown')
       check(await page.locator(`${lookup} tr[aria-selected=true]`).getAttribute('data-choice') === '1',
         `${label}: system colors do not change keyboard row selection`)
-      const lookupPaint = await paintedText(`${lookup} tr[aria-selected=true] td:first-child > span`, system.Highlight, system.HighlightText)
-      check(lookupPaint.fill > lookupPaint.total * .15 && lookupPaint.ink > lookupPaint.total * .01,
+      const lookupPaint = await paintedText(`${lookup} tr[aria-selected=true] td:first-child > span`, system.Canvas, system.HighlightText)
+      check(legible(lookupPaint),
         `${label}: selected lookup text paints legible glyphs rather than a solid backplate`)
       await page.screenshot({ path: resolve(output, `forced-colors-lookup-${scheme}-${width}.png`) })
       await page.keyboard.press('Enter')
