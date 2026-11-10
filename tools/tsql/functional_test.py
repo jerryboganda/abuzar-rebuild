@@ -183,6 +183,17 @@ def main():
     for n, ln, d, want in str_cases:
         got = q1('SELECT dbo.tsql_str(%s::numeric, %s, %s)', n, ln, d)[0]
         check('STR(%s, %d, %d) = %r as on SQL Server' % (n, ln, d, want), got == want, got)
+    # CONVERT(varchar, datetime, style) measured on SQL Server 2022: blank-padded day and hour, 126 without .000
+    convert_cases = [
+        ('2024-01-09 15:05:07.123', 0, 'Jan  9 2024  3:05PM'), ('2024-01-09 15:05:07.123', 9, 'Jan  9 2024  3:05:07:123PM'),
+        ('2024-11-23 00:00:00', 100, 'Nov 23 2024 12:00AM'), ('2024-11-23 00:00:00', 109, 'Nov 23 2024 12:00:00:000AM'),
+        ('2024-11-23 00:00:00', 126, '2024-11-23T00:00:00'), ('2024-02-29 12:30:00.997', 0, 'Feb 29 2024 12:30PM'),
+        ('2024-02-29 12:30:00.997', 126, '2024-02-29T12:30:00.997'), ('2024-12-01 09:00:59.003', 0, 'Dec  1 2024  9:00AM'),
+        ('2024-12-01 09:00:59.003', 9, 'Dec  1 2024  9:00:59:003AM'),
+    ]
+    for ts, style, want in convert_cases:
+        got = q1('SELECT dbo.tsql_convert_dt(%s::timestamp, %s)', ts, style)[0]
+        check('CONVERT(varchar, %s, %d) = %r as on SQL Server' % (ts, style, want), got == want, got)
     check('dbo.tsql_datediff month', q1("SELECT dbo.tsql_datediff('month', timestamp '2024-01-31', timestamp '2024-03-01')")[0] == 2)
     check('dbo.tsql_charindex with start', q1("SELECT dbo.tsql_charindex('b', 'abcabc', 3)")[0] == 5)
     check('dbo.tsql_dyn normalises DELETE x', q1("SELECT dbo.tsql_dyn('DELETE zz_item WHERE 1=0')")[0] == 'DELETE FROM zz_item WHERE 1=0')

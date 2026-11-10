@@ -93,6 +93,8 @@ CONVERT_FMT = {
     23: 'YYYY-MM-DD', 24: 'HH24:MI:SS', 126: 'YYYY-MM-DD"T"HH24:MI:SS.MS', 127: 'YYYY-MM-DD"T"HH24:MI:SS.MS',
 }
 DATE_ONLY_STYLES = {1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 23, 101, 102, 103, 104, 105, 106, 107, 110, 111, 112}
+# styles whose SQL Server text to_char cannot produce (dbo.tsql_convert_dt): 'Jan  9 2024  3:05PM', 126 without .000
+BLANK_PADDED_STYLES = {0, 100, 9, 109, 126, 127}
 
 AGG = {'sum', 'count', 'avg', 'min', 'max', 'stdev', 'stdevp', 'var', 'varp', 'count_big', 'checksum_agg'}
 
@@ -534,7 +536,11 @@ class ExprMixin:
                 fmt = CONVERT_FMT.get(sv if sv is not None else 0)
                 if fmt is None:
                     raise Untranslatable('CONVERT style %r' % (sv,))
-                r = "to_char(%s, '%s')" % (s, fmt)
+                if (sv if sv is not None else 0) in BLANK_PADDED_STYLES:
+                    # to_char pads with zeros: SQL Server pads day and hour with a blank, 126 drops .000
+                    r = 'dbo.tsql_convert_dt((%s)::timestamp, %d)' % (s, sv if sv is not None else 0)
+                else:
+                    r = "to_char(%s, '%s')" % (s, fmt)
             elif c in NUMERIC:
                 if sv in (1, 2) and c == 'N':
                     r = "to_char(%s, 'FM999,999,999,999,990.%s')" % (s, '00' if sv == 1 else '0000') if sv == 1 else "(%s)::text" % s

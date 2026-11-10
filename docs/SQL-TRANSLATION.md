@@ -72,6 +72,10 @@ A stored procedure becomes `dbo.<name>(<params>, OUT return_value integer [, OUT
   to the room left (`STR(1234.565,6,2)` = `1234.6`, at most 16), a negative value keeps its sign at zero (`-0`, `-0.00`), and a length outside
   1..8000 or a negative decimal count gives NULL. The earlier version rounded the numeric value and printed asterisks instead of shrinking the
   decimals, which changed amounts in the FBR fiscal invoice JSON and in reports. `tools/tsql/functional_test.py` checks the measured cases.
+* `CONVERT(varchar, datetime, 0 | 100 | 9 | 109 | 126 | 127)` and `CAST(datetime AS varchar)` use `dbo.tsql_convert_dt`: SQL Server pads the day
+  and the hour with a blank (`Jan  9 2024  3:05PM`), which `to_char` cannot, and style 126 drops `.000` (measured 2026-11-10). It changed the
+  supplier-ledger invoice dates and the A/P / A/R opening-balance captions. `data/sql/statements.json` was patched in place for these 12
+  expressions: regenerating it with `stmts.py` alone loses the host-variable typing of the committed catalog (do not regenerate it that way).
 
 ## Statement level rules
 

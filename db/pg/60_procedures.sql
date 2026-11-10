@@ -4284,7 +4284,7 @@ BEGIN
   v_serverdatetime := serverdatetime;
   v_str_usercode := (v_usercode)::text;
   v_str_discperc := (v_discperc)::text;
-  v_str_serverdatetime := left(to_char(v_serverdatetime, 'Mon DD YYYY HH12:MIAM'), 20);
+  v_str_serverdatetime := left(dbo.tsql_convert_dt((v_serverdatetime)::timestamp, 100), 20);
   v_str_code := (v_code)::text;
   IF ((((v_discpercno < 1)) OR ((v_discpercno > 5)))) THEN
     return_value := -1;
@@ -4368,7 +4368,7 @@ BEGIN
   v_serverdatetime := serverdatetime;
   v_str_usercode := (v_usercode)::text;
   v_str_discperc := (v_discperc)::text;
-  v_str_serverdatetime := left(to_char(v_serverdatetime, 'Mon DD YYYY HH12:MIAM'), 20);
+  v_str_serverdatetime := left(dbo.tsql_convert_dt((v_serverdatetime)::timestamp, 100), 20);
   IF ((((v_discpercno < 1)) OR ((v_discpercno > 5)))) THEN
     return_value := -1;
     RETURN;
@@ -24859,7 +24859,7 @@ BEGIN
     templatecode := v_templatecode;
     RETURN;
   END IF;
-  INSERT INTO dbo.saletemplateheader (saletemplatecode, date, modified, name, headerno) SELECT v_templatecode, localtimestamp(3) AS date, localtimestamp(3) AS modified, (((((('FROM ' || ltrim(rtrim(left(to_char(v_startdate, 'Mon DD YYYY HH12:MIAM'), 100)))) || ' TO ') || ltrim(rtrim(left(to_char(v_enddate, 'Mon DD YYYY HH12:MIAM'), 100)))) || ' (') || ltrim(rtrim(dbo.tsql_str((v_templatecode)::numeric)))) || ')') AS name, 1 AS headerno;
+  INSERT INTO dbo.saletemplateheader (saletemplatecode, date, modified, name, headerno) SELECT v_templatecode, localtimestamp(3) AS date, localtimestamp(3) AS modified, (((((('FROM ' || ltrim(rtrim(left(dbo.tsql_convert_dt((v_startdate)::timestamp, 0), 100)))) || ' TO ') || ltrim(rtrim(left(dbo.tsql_convert_dt((v_enddate)::timestamp, 0), 100)))) || ' (') || ltrim(rtrim(dbo.tsql_str((v_templatecode)::numeric)))) || ')') AS name, 1 AS headerno;
   IF (0 <> 0) THEN
     RAISE EXCEPTION 'Problem in generating sale template header';
     return_value := -1;
@@ -24867,7 +24867,7 @@ BEGIN
     RETURN;
   END IF;
   v_errcode := 0;
-  v_sqldetail := (((((((((((('INSERT INTO DBO.SaleTemplateDetail (SaleTemplateCode, Icode, LooseQty, PackQty, SalePrice, DiscPerc, ItemFlatDisc, UnitSalesTax, GSTPerc, PackUnits, Remarks, BonusQty, SaleInvCode, SaleDate, CustCode, SaleCatCode, Marked) SELECT Template=' || ltrim(rtrim(dbo.tsql_str((v_templatecode)::numeric)))) || ' , D.ICode, LooseQty=SUM(D.LooseQty), PackQty=0, D.SalePrice, D.DiscPerc, D.ItemFlatDisc, D.UnitSalesTax, D.GstPerc, D.PackUnits, Remarks=S.Remarks, BonusQty = SUM(D.BonusQty), SaleInvCode=S.SaleInvCode, SaleDate=S.Date, CustCode=S.CustCode, S.SaleCatCode, Marked=''Y'' FROM ') || v_tablequalifier) || '.SaleLedger S, ') || v_tablequalifier) || '.SaleDetail D, ') || v_tablequalifier) || '.Item I WHERE S.SaleInvCode = D.SaleInvCode AND S.Date BETWEEN ''') || ltrim(rtrim(left(to_char(v_startdate, 'Mon DD YYYY HH12:MIAM'), 100)))) || ''' AND ''') || ltrim(rtrim(left(to_char(v_enddate, 'Mon DD YYYY HH12:MIAM'), 100)))) || ''' AND D.ICode = I.ICode GROUP BY I.Name, S.SaleInvCode, S.Date, S.CustCode, S.SaleCatCode, S.Remarks, D.ICode, D.SalePrice, D.DiscPerc, D.ItemFlatDisc, D.UnitSalesTax, D.GstPerc, D.PackUnits ORDER BY S.SaleInvCode, D.ICode');
+  v_sqldetail := (((((((((((('INSERT INTO DBO.SaleTemplateDetail (SaleTemplateCode, Icode, LooseQty, PackQty, SalePrice, DiscPerc, ItemFlatDisc, UnitSalesTax, GSTPerc, PackUnits, Remarks, BonusQty, SaleInvCode, SaleDate, CustCode, SaleCatCode, Marked) SELECT Template=' || ltrim(rtrim(dbo.tsql_str((v_templatecode)::numeric)))) || ' , D.ICode, LooseQty=SUM(D.LooseQty), PackQty=0, D.SalePrice, D.DiscPerc, D.ItemFlatDisc, D.UnitSalesTax, D.GstPerc, D.PackUnits, Remarks=S.Remarks, BonusQty = SUM(D.BonusQty), SaleInvCode=S.SaleInvCode, SaleDate=S.Date, CustCode=S.CustCode, S.SaleCatCode, Marked=''Y'' FROM ') || v_tablequalifier) || '.SaleLedger S, ') || v_tablequalifier) || '.SaleDetail D, ') || v_tablequalifier) || '.Item I WHERE S.SaleInvCode = D.SaleInvCode AND S.Date BETWEEN ''') || ltrim(rtrim(left(dbo.tsql_convert_dt((v_startdate)::timestamp, 0), 100)))) || ''' AND ''') || ltrim(rtrim(left(dbo.tsql_convert_dt((v_enddate)::timestamp, 0), 100)))) || ''' AND D.ICode = I.ICode GROUP BY I.Name, S.SaleInvCode, S.Date, S.CustCode, S.SaleCatCode, S.Remarks, D.ICode, D.SalePrice, D.DiscPerc, D.ItemFlatDisc, D.UnitSalesTax, D.GstPerc, D.PackUnits ORDER BY S.SaleInvCode, D.ICode');
   _dq1 := v_sqldetail;
   IF _dq1 IS NOT NULL THEN
     EXECUTE dbo.tsql_dyn(_dq1);
@@ -28274,7 +28274,7 @@ BEGIN
         msg := v_msg;
         RETURN;
       ELSE
-        v_msg := ('Time-in On = ' || ltrim(rtrim(left(to_char(v_dt, 'Mon DD YYYY HH12:MIAM'), 100))));
+        v_msg := ('Time-in On = ' || ltrim(rtrim(left(dbo.tsql_convert_dt((v_dt)::timestamp, 0), 100))));
         _rc := 1;
       END IF;
     ELSE
@@ -28294,7 +28294,7 @@ BEGIN
           msg := v_msg;
           RETURN;
         ELSE
-          v_msg := ((('Time-in On = ' || ltrim(rtrim(left(to_char(v_dt2, 'Mon DD YYYY HH12:MIAM'), 100)))) || ', Time-out On = ') || ltrim(rtrim(left(to_char(v_dt, 'Mon DD YYYY HH12:MIAM'), 100))));
+          v_msg := ((('Time-in On = ' || ltrim(rtrim(left(dbo.tsql_convert_dt((v_dt2)::timestamp, 0), 100)))) || ', Time-out On = ') || ltrim(rtrim(left(dbo.tsql_convert_dt((v_dt)::timestamp, 0), 100))));
           _rc := 1;
         END IF;
       END IF;
@@ -38805,7 +38805,7 @@ BEGIN
             logid := v_logid;
             RETURN;
           END IF;
-          UPDATE dbo.sdtemp2 SET id2 = v_insercount, batch = 'Due', expiry = left(to_char((localtimestamp(3) + (1) * interval '1 year'), 'Mon DD YYYY HH12:MIAM'), 12), looseqty = v_dueqty, bonusqty = 0, due = 'D', satisfieddate = NULL, saleutn = v_maxutn, balancestock = coalesce(v_totalstock, 0), gstperc = v_gstperc, unitsalestax = v_unitsalestax, packunits = v_packunits, saleprice = v_saleprice WHERE ((rowid = v_id) AND (id2 = 0));
+          UPDATE dbo.sdtemp2 SET id2 = v_insercount, batch = 'Due', expiry = left(dbo.tsql_convert_dt(((localtimestamp(3) + (1) * interval '1 year'))::timestamp, 0), 12), looseqty = v_dueqty, bonusqty = 0, due = 'D', satisfieddate = NULL, saleutn = v_maxutn, balancestock = coalesce(v_totalstock, 0), gstperc = v_gstperc, unitsalestax = v_unitsalestax, packunits = v_packunits, saleprice = v_saleprice WHERE ((rowid = v_id) AND (id2 = 0));
           GET DIAGNOSTICS _rc = ROW_COUNT;
         END IF;
         IF (v_retcode <> 0) THEN

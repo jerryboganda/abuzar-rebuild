@@ -77,6 +77,20 @@ BEGIN
   RETURN lpad(s, len);
 END
 $body$;
+-- ==== compat tsql_convert_dt ====
+CREATE OR REPLACE FUNCTION dbo.tsql_convert_dt(ts timestamp, style integer) RETURNS text
+  LANGUAGE sql IMMUTABLE AS $body$
+-- CONVERT(varchar, datetime, 0 | 100 | 9 | 109 | 126 | 127) and CAST(datetime AS varchar) as SQL Server prints them:
+-- day and hour padded with a blank ('Jan  9 2024  3:05PM', 'Dec  1 2024  9:00:59:003AM'), 126 without the
+-- milliseconds when they are 0 ('2024-11-23T00:00:00')  (measured on SQL Server 2022)
+  SELECT CASE
+    WHEN ts IS NULL THEN NULL
+    WHEN style IN (9, 109) THEN to_char(ts, 'Mon ') || lpad(to_char(ts, 'FMDD'), 2) || to_char(ts, ' YYYY ')
+      || lpad(to_char(ts, 'FMHH12'), 2) || to_char(ts, ':MI:SS:MSAM')
+    WHEN style IN (126, 127) THEN to_char(ts, 'YYYY-MM-DD"T"HH24:MI:SS') || CASE WHEN to_char(ts, 'MS') = '000' THEN '' ELSE to_char(ts, '.MS') END
+    ELSE to_char(ts, 'Mon ') || lpad(to_char(ts, 'FMDD'), 2) || to_char(ts, ' YYYY ') || lpad(to_char(ts, 'FMHH12'), 2) || to_char(ts, ':MIAM')
+  END
+$body$;
 -- ==== compat tsql_datediff ====
 CREATE OR REPLACE FUNCTION dbo.tsql_datediff(part text, a timestamp, b timestamp) RETURNS integer
   LANGUAGE plpgsql IMMUTABLE AS $body$
