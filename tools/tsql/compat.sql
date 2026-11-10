@@ -36,7 +36,9 @@ BEGIN
   END LOOP;
   IF k > 0 THEN
     -- m / 2^k = m * 5^k / 10^k: the digits of m * 5^k with the point k places from the right
-    t := lpad((m * f)::text, k + 1, '0');
+    t := (m * f)::text;
+    -- lpad would also cut a longer string: pad only a value below 1
+    IF length(t) <= k THEN t := lpad(t, k + 1, '0'); END IF;
     v := (left(t, length(t) - k) || '.' || right(t, k))::numeric;
   ELSE
     v := m * f;
