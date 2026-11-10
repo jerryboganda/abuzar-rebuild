@@ -66,6 +66,12 @@ A stored procedure becomes `dbo.<name>(<params>, OUT return_value integer [, OUT
 * helper functions for constructs without a direct equivalent live in the first block of `40_functions.sql`:
   `dbo.tsql_str` (STR), `tsql_datediff`, `tsql_charindex`, `tsql_patindex`, `tsql_isnumeric`, `tsql_isdate`, `tsql_lastident` (@@IDENTITY / SCOPE_IDENTITY),
   `tsql_datepart_week`, `tsql_trg_flag`.
+* `STR` is reproduced from measurements on SQL Server 2022 (2026-11-10, constants only, 34,000 rounding ties plus 66 edge cases, all equal):
+  SQL Server converts the argument to float and rounds the float's 17-significant-digit decimal (`%.17g`, `tsql_float17`) half away from zero,
+  so `STR(2.675,12,2)` is `2.67` but `STR(1.45,10,1)` is `1.5`; an integer part that does not fit gives `len` asterisks, the decimals shrink
+  to the room left (`STR(1234.565,6,2)` = `1234.6`, at most 16), a negative value keeps its sign at zero (`-0`, `-0.00`), and a length outside
+  1..8000 or a negative decimal count gives NULL. The earlier version rounded the numeric value and printed asterisks instead of shrinking the
+  decimals, which changed amounts in the FBR fiscal invoice JSON and in reports. `tools/tsql/functional_test.py` checks the measured cases.
 
 ## Statement level rules
 

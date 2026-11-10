@@ -1,10 +1,76 @@
+-- ==== compat tsql_float17 ====
+CREATE OR REPLACE FUNCTION dbo.tsql_float17(x float8) RETURNS numeric
+  LANGUAGE plpgsql IMMUTABLE STRICT AS $body$
+-- The decimal SQL Server formats a float from: the exact binary value rounded to 17 significant digits (%.17g).
+-- STR rounds this value, so STR(2.675, 12, 2) is 2.67 while STR(1.45, 10, 1) is 1.5 (measured on SQL Server 2022).
+DECLARE
+  a float8 := abs(x);
+  s float8;
+  e integer;
+  k integer;
+  r integer;
+  m numeric;
+  b numeric;
+  f numeric := 1;
+  t text;
+  v numeric;
+  p integer;
+BEGIN
+  IF a = 0 OR a = 'Infinity'::float8 OR x <> x THEN RETURN 0; END IF;
+  e := floor(ln(a) / ln(2::float8))::integer;
+  WHILE power(2::float8, e) > a LOOP e := e - 1; END LOOP;
+  WHILE power(2::float8, e + 1) <= a LOOP e := e + 1; END LOOP;
+  -- a = m * 2^-k with an integer mantissa m < 2^53; scaling by powers of two is exact
+  k := 52 - e;
+  s := a;
+  r := k;
+  WHILE r > 1000 LOOP s := s * power(2::float8, 1000); r := r - 1000; END LOOP;
+  WHILE r < -1000 LOOP s := s * power(2::float8, -1000); r := r + 1000; END LOOP;
+  m := (s * power(2::float8, r))::bigint;
+  b := CASE WHEN k > 0 THEN 5 ELSE 2 END;
+  r := abs(k);
+  WHILE r > 0 LOOP
+    IF r % 2 = 1 THEN f := f * b; END IF;
+    b := b * b;
+    r := r / 2;
+  END LOOP;
+  IF k > 0 THEN
+    -- m / 2^k = m * 5^k / 10^k: the digits of m * 5^k with the point k places from the right
+    t := lpad((m * f)::text, k + 1, '0');
+    v := (left(t, length(t) - k) || '.' || right(t, k))::numeric;
+  ELSE
+    v := m * f;
+  END IF;
+  IF v >= 1 THEN
+    p := length(trunc(v)::text) - 1;
+  ELSE
+    p := -(length(substring(v::text from '\.(0*)')) + 1);
+  END IF;
+  v := round(v, 16 - p);
+  RETURN CASE WHEN x < 0 THEN -v ELSE v END;
+END
+$body$;
 -- ==== compat tsql_str ====
 CREATE OR REPLACE FUNCTION dbo.tsql_str(n numeric, len integer DEFAULT 10, d integer DEFAULT 0) RETURNS text
   LANGUAGE plpgsql IMMUTABLE AS $body$
-DECLARE s text;
+-- SQL Server STR(float, length, decimal): rounds the 17-digit decimal of the float half away from zero; a too long integer part
+-- gives length asterisks, the decimals shrink to the room left (at most 16), a negative value keeps its sign at zero (-0, -0.00)
+-- and a length outside 1..8000 or a negative decimal count gives NULL (measured on SQL Server 2022).
+DECLARE
+  v numeric;
+  neg boolean;
+  intlen integer;
+  dd integer;
+  s text;
 BEGIN
-  IF n IS NULL THEN RETURN NULL; END IF;
-  s := round(n, GREATEST(d, 0))::text;
+  IF n IS NULL OR len IS NULL OR d IS NULL OR len < 1 OR len > 8000 OR d < 0 THEN RETURN NULL; END IF;
+  v := dbo.tsql_float17(n::float8);
+  neg := v < 0;
+  intlen := length(trunc(abs(v))::text) + CASE WHEN neg THEN 1 ELSE 0 END;
+  IF intlen > len THEN RETURN repeat('*', len); END IF;
+  dd := least(d, 16, greatest(len - intlen - 1, 0));
+  s := round(abs(v), dd)::text;
+  IF neg THEN s := '-' || s; END IF;
   IF length(s) > len THEN RETURN repeat('*', len); END IF;
   RETURN lpad(s, len);
 END

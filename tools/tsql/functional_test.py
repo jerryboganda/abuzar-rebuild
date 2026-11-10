@@ -164,6 +164,25 @@ def main():
     rows = conn.execute("SELECT code FROM dbo.udf_stringtotabl(%s, %s) ORDER BY code", ('3,1,2,2', ',')).fetchall()
     check('udf_StringToTabl splits and de-duplicates', [x[0] for x in rows] == [1, 2, 3], rows)
     check('dbo.tsql_str', q1("SELECT dbo.tsql_str(12.5, 8, 2)")[0] == '   12.50')
+    # STR results measured on SQL Server 2022 (constants only): float rounding, shrinking decimals, signed zero, limits
+    str_cases = [
+        ('2.675', 12, 2, '        2.67'), ('1.005', 12, 2, '        1.00'), ('0.125', 12, 2, '        0.13'),
+        ('1234.565', 12, 2, '     1234.57'), ('1234.565', 6, 2, '1234.6'), ('1234.565', 5, 2, ' 1235'),
+        ('-2.675', 12, 2, '       -2.67'), ('10.0049999', 10, 4, '   10.0050'), ('123456.785', 6, 2, '123457'),
+        ('123456.785', 5, 2, '*****'), ('99999.995', 12, 2, '    99999.99'), ('99999.995', 6, 2, '100000'),
+        ('-0.4', 10, 0, '        -0'), ('-0.001', 12, 2, '       -0.00'), ('1.00005', 10, 4, '    1.0001'),
+        ('12345678.9', 10, 4, '12345678.9'), ('9.96', 3, 1, '***'), ('9.96', 4, 1, '10.0'), ('99.5', 2, 0, '**'),
+        ('-9.96', 4, 1, '****'), ('0.5', 10, 0, '         1'), ('-0.5', 10, 0, '        -1'), ('2.5', 10, 0, '         3'),
+        ('1e16', 20, 0, '   10000000000000000'), ('12.3456', 20, 18, ' 12.3455999999999990'),
+        ('0.1', 20, 17, '  0.1000000000000000'), ('-1234.565', 6, 2, ' -1235'), ('0.9996', 4, 3, '1.00'),
+        ('999.96', 5, 2, '*****'), ('-123.4', 3, 0, '***'), ('1.45', 10, 1, '       1.5'), ('0.285', 10, 2, '      0.28'),
+        ('1.115', 10, 2, '      1.12'), ('0.105', 20, 2, '                0.11'), ('-0.04', 4, 1, '-0.0'),
+        ('123456789012345678', 20, 0, '  123456789012345680'), ('0.000001234', 20, 16, '  0.0000012340000000'),
+        ('1.5', 0, 0, None), ('1.5', 10, -1, None), ('1.5', 8001, 0, None),
+    ]
+    for n, ln, d, want in str_cases:
+        got = q1('SELECT dbo.tsql_str(%s::numeric, %s, %s)', n, ln, d)[0]
+        check('STR(%s, %d, %d) = %r as on SQL Server' % (n, ln, d, want), got == want, got)
     check('dbo.tsql_datediff month', q1("SELECT dbo.tsql_datediff('month', timestamp '2024-01-31', timestamp '2024-03-01')")[0] == 2)
     check('dbo.tsql_charindex with start', q1("SELECT dbo.tsql_charindex('b', 'abcabc', 3)")[0] == 5)
     check('dbo.tsql_dyn normalises DELETE x', q1("SELECT dbo.tsql_dyn('DELETE zz_item WHERE 1=0')")[0] == 'DELETE FROM zz_item WHERE 1=0')
