@@ -109,6 +109,10 @@ export class PresentationUi extends DomUi {
   }
 
   override menuRendered(bar: HTMLElement): void {
+    // Modern: the open-window tabs sit under the frame's menu bar and command bar, above the windows.
+    const tabs = this.shell?.querySelector<HTMLElement>('.presentation-tabs')
+    const mdi = bar.parentElement?.querySelector<HTMLElement>(':scope > .mdi-client')
+    if (tabs && mdi && tabs.nextElementSibling !== mdi) mdi.before(tabs)
     if (!this.shell && !bar.querySelector('.appearance-trigger')) {
       const button = document.createElement('button')
       button.className = 'appearance-trigger'
@@ -242,6 +246,8 @@ export class PresentationUi extends DomUi {
       if (view) view.el.hidden = !active
     }
     this.header?.refresh()
+    const heading = this.mdi?.el.querySelector<HTMLElement>('.mh-toolbar .mh-title')
+    if (heading) heading.textContent = this.selected ? String(this.selected.props.get('title') || this.selected.name) : ''
     const notice = this.shell?.querySelector('.presentation-compatibility')
     if (notice) notice.textContent = this.selected && this.views.get(this.selected)?.el.classList.contains('modern-entry-window')
       ? 'Modern entry layout preview / Production workflow acceptance is pending'
@@ -380,7 +386,7 @@ export class PresentationUi extends DomUi {
   }
 
   override toolbarRendered(tool: HTMLElement): void {
-    if (this.shell) groupToolbar(tool)
+    if (this.shell) groupToolbar(tool, this.selected ? String(this.selected.props.get('title') || this.selected.name) : '')
   }
 
   /** The Modern context bar: every action runs the live menu item or window (approved parity exception, docs/HANDOFF.md). */
@@ -421,7 +427,8 @@ export class PresentationUi extends DomUi {
       busy: () => this.executing || this.hasModal() || this.settings.open,
     })
     const apply = (hidden: boolean) => this.shell?.classList.toggle('mh-commands-hidden', hidden)
-    try { apply(localStorage.getItem(COLLAPSED) === '1') } catch { /* storage unavailable: panel stays shown */ }
+    // Hidden by default, as in the approved header design; the header button shows it.
+    try { apply(localStorage.getItem(COLLAPSED) !== '0') } catch { apply(true) }
     header.onToggleCommands(() => {
       const hidden = !this.shell?.classList.contains('mh-commands-hidden')
       apply(hidden)

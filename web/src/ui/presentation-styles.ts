@@ -1,21 +1,21 @@
 export const PRESENTATION_CSS = `
 .presentation-ui,.presentation-settings,.modern-surface,.modern-window,.modern-entry-window,.mh-palette {
   --p-surface:#fff;--p-canvas:#f3f5f8;--p-rail:#edf1f6;--p-text:#192432;
-  --p-muted:#4c5d70;--p-line:#7d8c9d;--p-accent:#095ac6;--p-on-accent:#fff;
-  --p-selected:#e3edfc;--p-danger:#b51c2b;--p-scale:1;
-  --p-chrome:#13232a;--p-chrome-text:#e7f0f1;--p-chrome-muted:#a3b6bb;--p-chrome-line:#2c4249;--p-chrome-hover:#1d3138;--p-sunk:#eef1f4;
-  color-scheme:light;color:var(--p-text);font:calc(14px * var(--p-scale))/1.5 "Segoe UI",Tahoma,Arial,sans-serif;
+  --p-muted:#4c5d70;--p-line:#7d8c9d;--p-accent:#0f6b6f;--p-on-accent:#fff;
+  --p-selected:#e1f0ef;--p-danger:#b51c2b;--p-scale:1;
+  --p-chrome:#13232a;--p-chrome-text:#e7f0f1;--p-chrome-muted:#a3b6bb;--p-chrome-line:#2c4249;--p-chrome-hover:#1d3138;--p-sunk:#eef1f4;--p-hair:#dde2e8;
+  color-scheme:light;color:var(--p-text);font:calc(14px * var(--p-scale))/1.5 "IBM Plex Sans","Segoe UI",Tahoma,Arial,sans-serif;
 }
 .presentation-ui[data-theme=dark],.presentation-settings[data-theme=dark],.modern-surface[data-theme=dark],.modern-window[data-theme=dark],.modern-entry-window[data-theme=dark],.mh-palette[data-theme=dark] {
-  color-scheme:dark;--p-surface:#202630;--p-canvas:#171d25;--p-rail:#1b222c;--p-text:#edf2f9;
-  --p-muted:#b3c0d0;--p-line:#7a8a9e;--p-accent:#9cc9ff;--p-on-accent:#10243b;
-  --p-selected:#293d59;--p-danger:#ffb5bd;
-  --p-chrome:#0a1013;--p-chrome-text:#e6ecf1;--p-chrome-muted:#8fa2a7;--p-chrome-line:#22323a;--p-chrome-hover:#152027;--p-sunk:#1a222c;
+  color-scheme:dark;--p-surface:#161d23;--p-canvas:#0f1418;--p-rail:#1c252c;--p-text:#e6ecf1;
+  --p-muted:#a9b5c1;--p-line:#7a8a9e;--p-accent:#4fb8b2;--p-on-accent:#06201f;
+  --p-selected:#163331;--p-danger:#ffb5bd;
+  --p-chrome:#0a1013;--p-chrome-text:#e6ecf1;--p-chrome-muted:#8fa2a7;--p-chrome-line:#22323a;--p-chrome-hover:#152027;--p-sunk:#1c252c;--p-hair:#27323b;
 }
 .presentation-ui {position:absolute;inset:0;display:grid;grid-template-columns:220px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);background:var(--p-surface);}
 .presentation-header {grid-column:1/-1;display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:10px 18px;border-bottom:1px solid var(--p-line);}
 .presentation-header strong {font-weight:650;}
-.presentation-header span {color:var(--p-muted);flex:1;font-size:.86em;}
+.presentation-header:not(.mh-context) span {color:var(--p-muted);flex:1;font-size:.86em;}
 .presentation-sidebar {background:var(--p-rail);padding:14px;min-width:0;overflow:auto;display:flex;flex-direction:column;gap:10px;}
 .presentation-sidebar label {display:block;font-weight:600;}
 .presentation-sidebar input {width:100%;margin-top:6px;min-width:0;}
@@ -481,7 +481,7 @@ export const PRESENTATION_CSS = `
 /* the frame's own title bar repeats the context bar */
 .presentation-ui .pbwin:has(> div > .mdi-client) > .tbar {display:none;}
 /* menu bar */
-.presentation-ui .menubar {height:auto;flex:none;align-items:center;gap:2px;padding:2px 12px;background:var(--p-surface);color:var(--p-text);border-bottom:1px solid var(--p-line);box-shadow:none;font:calc(14px * var(--p-scale))/1.4 "Segoe UI",Tahoma,Arial,sans-serif;}
+.presentation-ui .menubar {height:auto;flex:none;align-items:center;gap:2px;padding:2px 12px;background:var(--p-surface);color:var(--p-text);border-bottom:1px solid var(--p-line);box-shadow:none;font:calc(14px * var(--p-scale))/1.4 "IBM Plex Sans","Segoe UI",Tahoma,Arial,sans-serif;}
 .presentation-ui .menubar .mi {padding:6px 11px;line-height:1.4;border-radius:6px;color:var(--p-muted);font-weight:500;cursor:pointer;}
 .presentation-ui .menubar .mi:hover,.presentation-ui .menubar .mi.open {background:var(--p-sunk);color:var(--p-text);}
 .presentation-ui .menu-drop {background:var(--p-surface);color:var(--p-text);border:1px solid var(--p-line);border-radius:10px;box-shadow:0 12px 32px #0002;padding:6px;}
@@ -491,7 +491,7 @@ export const PRESENTATION_CSS = `
 .mh-toolbar .mh-group {display:flex;align-items:center;gap:2px;padding:2px;border-radius:9px;background:var(--p-sunk);}
 .mh-toolbar .mh-group-label {font-size:.7em;text-transform:uppercase;letter-spacing:.07em;color:var(--p-muted);font-weight:600;padding:0 4px 0 6px;}
 .mh-toolbar .mh-spacer {flex:1;}
-.presentation-ui .mh-toolbar .tb {width:auto;height:auto;min-height:32px;min-width:32px;gap:6px;padding:5px 9px;border:0;border-radius:7px;color:var(--p-text);font:500 calc(14px * var(--p-scale)) "Segoe UI",Tahoma,Arial,sans-serif;}
+.presentation-ui .mh-toolbar .tb {width:auto;height:auto;min-height:32px;min-width:32px;gap:6px;padding:5px 9px;border:0;border-radius:7px;color:var(--p-text);font:500 calc(14px * var(--p-scale)) "IBM Plex Sans","Segoe UI",Tahoma,Arial,sans-serif;}
 .presentation-ui .mh-toolbar .tb:hover:not(:disabled) {background:var(--p-surface);border:0;box-shadow:0 1px 2px #0002;}
 .presentation-ui .mh-toolbar .tb:disabled {opacity:.38;}
 .presentation-ui .mh-toolbar .tb.mh-danger:hover:not(:disabled) {color:var(--p-danger);}
@@ -502,7 +502,7 @@ export const PRESENTATION_CSS = `
 /* open-window tabs */
 .presentation-ui .presentation-tabs {background:var(--p-canvas);border-bottom:1px solid var(--p-line);}
 /* search palette */
-.mh-palette {width:min(640px,calc(100vw - 32px));margin:12vh auto auto;padding:0;border:1px solid var(--p-line);border-radius:12px;background:var(--p-surface);color:var(--p-text);box-shadow:0 24px 64px #0005;font:calc(14px * var(--p-scale))/1.45 "Segoe UI",Tahoma,Arial,sans-serif;}
+.mh-palette {width:min(640px,calc(100vw - 32px));margin:12vh auto auto;padding:0;border:1px solid var(--p-line);border-radius:12px;background:var(--p-surface);color:var(--p-text);box-shadow:0 24px 64px #0005;font:calc(14px * var(--p-scale))/1.45 "IBM Plex Sans","Segoe UI",Tahoma,Arial,sans-serif;}
 .mh-palette::backdrop {background:#0a121780;}
 .mh-palette .mh-q {display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--p-line);}
 .mh-palette input {flex:1;min-width:0;border:0;background:none;color:inherit;font:inherit;font-size:1.1em;outline:none;}
@@ -516,4 +516,29 @@ export const PRESENTATION_CSS = `
 .mh-palette .mh-text small {color:var(--p-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .mh-palette .mh-empty {padding:28px 12px;text-align:center;color:var(--p-muted);}
 .mh-palette .mh-palette-foot {display:flex;gap:14px;flex-wrap:wrap;margin:0;padding:8px 14px;border-top:1px solid var(--p-line);font-size:.85em;color:var(--p-muted);}
+/* Modern header, second pass: match the approved mockup (layout order, tabs, empty bars, workspace ground). */
+.presentation-ui .presentation-compatibility {display:none;}
+.presentation-ui .presentation-work {background:var(--p-canvas);}
+.presentation-ui .mdi-client {background:var(--p-canvas);}
+.presentation-ui .pbwin:has(> div > .mdi-client) {background:var(--p-canvas);}
+.presentation-ui .menubar {border-bottom:1px solid var(--p-hair);}
+.presentation-ui .menubar .mi {text-decoration:none;}
+.presentation-ui .menubar .mi u {text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px;}
+.presentation-ui .toolbar::before {display:none;}
+.presentation-ui .toolbar:not(:has(button)) {display:none!important;}
+.presentation-ui .toolbar.mh-toolbar {border-bottom:1px solid var(--p-hair);align-items:center;}
+.mh-toolbar .mh-title {font-size:1.2em;font-weight:600;letter-spacing:-.01em;white-space:nowrap;color:var(--p-text);margin-right:6px;}
+.mh-toolbar .mh-title:empty {display:none;}
+/* open-window tabs, under the command bar */
+.presentation-ui .presentation-tabs {display:flex;gap:4px;min-height:0;padding:8px 12px 0;background:var(--p-canvas);border-bottom:1px solid var(--p-hair);overflow-x:auto;flex:none;}
+.presentation-ui .presentation-tabs:empty {display:none;}
+.presentation-ui .presentation-tab {margin-bottom:-1px;}
+.presentation-ui .presentation-tab>[role=tab] {min-height:34px;padding:6px 6px 6px 14px;border:1px solid transparent;border-right:0;border-bottom:0;border-radius:8px 0 0 0;background:none;color:var(--p-muted);box-shadow:none;}
+.presentation-ui .presentation-tab>button:last-child {min-height:34px;min-width:30px;padding:4px 8px;border:1px solid transparent;border-left:0;border-bottom:0;border-radius:0 8px 0 0;background:none;color:var(--p-muted);}
+.presentation-ui .presentation-tab>[role=tab]:hover,.presentation-ui .presentation-tab>button:last-child:hover {color:var(--p-text);background:var(--p-sunk);}
+.presentation-ui .presentation-tab:has(>[aria-selected=true])>button {background:var(--p-surface);border-color:var(--p-hair);color:var(--p-text);}
+.presentation-ui .presentation-tab>[aria-selected=true] {font-weight:500;box-shadow:none;}
+/* context bar spans: the old header rule no longer applies, keep chips compact */
+.mh-context .mh-chip span,.mh-context .mh-search span {color:inherit;}
+.mh-context .mh-clock {cursor:default;}
 `

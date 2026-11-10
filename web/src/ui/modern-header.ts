@@ -78,7 +78,7 @@ const GLYPH = {
 }
 
 /** Rebuilds the frame toolbar's buttons into labelled groups.  The buttons themselves (and their click handlers) are kept. */
-export function groupToolbar(tool: HTMLElement): void {
+export function groupToolbar(tool: HTMLElement, title = ''): void {
   const buttons = [...tool.querySelectorAll<HTMLButtonElement>('button.tb')]
   if (!buttons.length) return
   tool.classList.add('mh-toolbar')
@@ -120,7 +120,10 @@ export function groupToolbar(tool: HTMLElement): void {
   const order = ['record', 'items', 'browse', 'output', 'exit']
   const spacer = document.createElement('span')
   spacer.className = 'mh-spacer'
-  tool.replaceChildren(...order.flatMap((key) => key === 'output' ? [spacer, ...(groups.has(key) ? [groups.get(key)!] : [])] : groups.has(key) ? [groups.get(key)!] : []))
+  const heading = document.createElement('span')
+  heading.className = 'mh-title'
+  heading.textContent = title
+  tool.replaceChildren(heading, ...order.flatMap((key) => key === 'output' ? [spacer, ...(groups.has(key) ? [groups.get(key)!] : [])] : groups.has(key) ? [groups.get(key)!] : []))
 }
 
 interface PaletteResult { kind: 'window' | 'command' | 'setting'; title: string; detail: string; disabled?: boolean; run(): void }
@@ -151,7 +154,7 @@ export class ModernHeader {
         <button type="button" data-theme-choice="dark" aria-label="Dark mode" title="Dark mode">${svg(GLYPH.moon, 14)}</button>
       </div>
       <button type="button" class="mh-icon mh-commands" aria-label="Show or hide all commands" title="All commands">${svg(GLYPH.panel, 16)}</button>
-      <button type="button" class="mh-icon mh-appearance presentation-action" aria-label="Appearance" title="Appearance">${svg(GLYPH.gear, 16)}</button>
+      <button type="button" class="mh-icon mh-appearance" aria-label="Appearance" title="Appearance">${svg(GLYPH.gear, 16)}</button>
       <button type="button" class="mh-user" aria-haspopup="menu"><span class="mh-avatar" aria-hidden="true"></span><span class="mh-user-name"></span>${svg(GLYPH.down, 14)}</button>`
     this.element = header
     const signal = this.abort.signal
@@ -184,8 +187,9 @@ export class ModernHeader {
   refresh(): void {
     const title = parseFrameTitle(this.host.frameTitle())
     const q = <T extends HTMLElement>(selector: string) => this.element.querySelector<T>(selector)!
-    q('.mh-company').textContent = title.company || 'Trader'
-    q('.mh-sub').textContent = title.user ? `Signed in as ${title.user}` : ''
+    const [name, ...rest] = (title.company || 'Trader').split(' ')
+    q('.mh-company').textContent = name
+    q('.mh-sub').textContent = rest.join(' ')
     q('.mh-where').textContent = this.host.windowTitle()
     const period = q<HTMLButtonElement>('.mh-period')
     period.hidden = !title.period
