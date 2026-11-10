@@ -1,7 +1,7 @@
 // Evaluator for DataWindow expressions (computed fields, visible/color/protect/format expressions, find/filter criteria).
 import { parseDwExpr } from '../pbscript/parser.ts'
 import type { Expr } from '../pbscript/ast.ts'
-import { add, cmp, Dec, div, equals, mul, PBArray, PBDate, PBDateTime, PBRuntimeError, sub, toNum, toStr } from '../runtime/values.ts'
+import { add, Dec, div, dwCmp, dwEquals, mul, PBArray, PBDate, PBDateTime, PBRuntimeError, sub, toNum, toStr } from '../runtime/values.ts'
 import type { Runtime } from '../runtime/interp.ts'
 
 /** what the evaluator needs from a DataWindow model */
@@ -125,10 +125,10 @@ export async function evalDw(e: Expr, ctx: EvalCtx): Promise<unknown> {
         let hit = false
         if (w.is) {
           const rv = await evalDw(w.is.e, ctx)
-          const c = cmp(v, rv)
+          const c = dwCmp(v, rv)
           switch (w.is.op.toLowerCase()) {
-            case '=': case 'is': hit = equals(v, rv); break
-            case '<>': case 'is not': hit = !equals(v, rv); break
+            case '=': case 'is': hit = dwEquals(v, rv); break
+            case '<>': case 'is not': hit = !dwEquals(v, rv); break
             case '<': hit = c < 0; break
             case '>': hit = c > 0; break
             case '<=': hit = c <= 0; break
@@ -138,10 +138,10 @@ export async function evalDw(e: Expr, ctx: EvalCtx): Promise<unknown> {
           for (let i = 0; i < w.v.length; i++) {
             const lo = await evalDw(w.v[i], ctx)
             const hi = await evalDw(w.to[i] ?? w.to[w.to.length - 1], ctx)
-            if (equals(v, lo) || (cmp(v, lo) >= 0 && cmp(v, hi) <= 0)) { hit = true; break }
+            if (dwEquals(v, lo) || (dwCmp(v, lo) >= 0 && dwCmp(v, hi) <= 0)) { hit = true; break }
           }
         } else {
-          for (const c of w.v) if (equals(v, await evalDw(c, ctx))) { hit = true; break }
+          for (const c of w.v) if (dwEquals(v, await evalDw(c, ctx))) { hit = true; break }
         }
         if (hit) return evalDw(w.r, ctx)
       }
@@ -174,7 +174,7 @@ async function evalBin(e: Extract<Expr, { k: 'bin' }>, ctx: EvalCtx): Promise<un
   const l = await evalDw(e.l, ctx)
   if (e.op === 'in' || e.op === 'not in') {
     const list = (await evalDw(e.r, ctx)) as PBArray
-    const found = list.a.some((x) => equals(l, x))
+    const found = list.a.some((x) => dwEquals(l, x))
     return e.op === 'in' ? found : !found
   }
   const r = await evalDw(e.r, ctx)
@@ -195,12 +195,12 @@ async function evalBin(e: Extract<Expr, { k: 'bin' }>, ctx: EvalCtx): Promise<un
       return l === null || r === null ? null : toNum(l) % toNum(r)
   }
   if (l === null || r === null) return null
-  const c = cmp(l, r)
+  const c = dwCmp(l, r)
   switch (e.op) {
     case '=':
-      return equals(l, r)
+      return dwEquals(l, r)
     case '<>':
-      return !equals(l, r)
+      return !dwEquals(l, r)
     case '<':
       return c < 0
     case '>':
@@ -318,11 +318,11 @@ export function reduceAgg(name: string, nums: unknown[]): unknown {
       break
     case 'min':
     case 'crosstabmin':
-      res = nums.length ? nums.reduce((a, v) => (cmp(v, a) < 0 ? v : a)) : null
+      res = nums.length ? nums.reduce((a, v) => (dwCmp(v, a) < 0 ? v : a)) : null
       break
     case 'max':
     case 'crosstabmax':
-      res = nums.length ? nums.reduce((a, v) => (cmp(v, a) > 0 ? v : a)) : null
+      res = nums.length ? nums.reduce((a, v) => (dwCmp(v, a) > 0 ? v : a)) : null
       break
     case 'first':
       res = nums.length ? nums[0] : null
