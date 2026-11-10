@@ -199,6 +199,14 @@ def main():
     got = q1("SELECT string_agg(ch, '' ORDER BY (ch || 'x')::citext COLLATE dbo.sqlserver_ci, ascii(ch)) "
              "FROM (SELECT chr(c) AS ch FROM generate_series(32, 126) AS c) AS s")[0]
     check('printable ASCII sorts as on SQL Server (blank, punctuation, digits, letters)', got == ascii_order, got)
+    # control characters sort below the blank, DEL after the punctuation (measured: SQL Server 2022, codes 1-127 one by one)
+    control_order = list(range(1, 48)) + list(range(58, 65)) + list(range(91, 97)) + list(range(123, 127)) + [127] + list(range(48, 58))
+    got = q1("SELECT string_agg(c::text, ',' ORDER BY (chr(c) || 'x')::citext COLLATE dbo.sqlserver_ci, c) "
+             "FROM generate_series(1, 127) AS c WHERE NOT (c BETWEEN 65 AND 90 OR c BETWEEN 97 AND 122)")[0]
+    check('control characters and DEL sort as on SQL Server', got == ','.join(map(str, control_order)), got)
+    check('a value with DEL sorts after its prefix and after the punctuation', q1(
+        "SELECT ('x' || chr(127))::citext COLLATE dbo.sqlserver_ci > 'x~'::citext COLLATE dbo.sqlserver_ci "
+        "AND ('x' || chr(127))::citext COLLATE dbo.sqlserver_ci < 'x0'::citext COLLATE dbo.sqlserver_ci")[0] is True)
     name_order = [' X', '-X', '1-A', '10', '9', 'A&B', 'A+B', 'A/B', 'A_B', 'A~', 'A1', 'A9', 'AB', 'CO OP', 'CO-OP', 'COOP',
                   'ECOLE', 'ÉCOLE', 'EDGE', "O'NEIL", 'ONEIL', 'PANADOL', 'panadol', 'PANADOL 10S', 'PANADOL CF',
                   'PANADOL EXTRA', 'PANADOL(500MG)', 'Panadol-cf', 'PANADOL-EXTRA', 'PANADOL.SYP', 'PANADOL10S', 'PANADOLEXTRA',

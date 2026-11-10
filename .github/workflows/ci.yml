@@ -204,6 +204,10 @@ jobs:
         run: |
           if grep -q ERROR db/pg/80_audit.sql.err; then cat db/pg/80_audit.sql.err; exit 1; fi
           test "$(psql -At -c "select count(*) from pg_trigger where tgname = 'audit_trail'")" = 10
+      - name: Every text column of the full schema sorts like SQL Server (a table created after 12_collation.sql keeps the default)
+        run: |
+          n="$(psql -At -c "select count(*) from pg_attribute a join pg_class c on c.oid = a.attrelid and c.relkind in ('r','p') where c.relnamespace = 'dbo'::regnamespace and a.attnum > 0 and not a.attisdropped and a.atttypid = 'citext'::regtype and a.attcollation <> (select oid from pg_collation where collname = 'sqlserver_ci' and collnamespace = 'dbo'::regnamespace)")"
+          test "$n" = 0 || { echo "::error::$n citext columns use another collation"; psql -c "select c.relname, a.attname from pg_attribute a join pg_class c on c.oid = a.attrelid and c.relkind in ('r','p') where c.relnamespace = 'dbo'::regnamespace and a.attnum > 0 and not a.attisdropped and a.atttypid = 'citext'::regtype and a.attcollation <> (select oid from pg_collation where collname = 'sqlserver_ci' and collnamespace = 'dbo'::regnamespace)"; exit 1; }
       - name: Build the data tables the UI uses
         run: |
           mkdir -p web/public/data
