@@ -121,7 +121,8 @@ export const PRESENTATION_CSS = `
 .modern-window .window-actions button.ctl.default:not(:disabled):not(.window-embedded *) {color:var(--p-on-accent)!important;}
 .modern-calendar-window.pbwin {width:min(27em,100%)!important;}
 .modern-calendar-window>.client {padding-inline:8px;}
-@media (max-width:400px) {.presentation-modern-dialog[open]:has(>.modern-calendar-window) {padding-inline:4px;}}
+@media (max-width:400px) {.presentation-modern-dialog[open]:has(>.modern-calendar-window) {padding-inline:4px;}
+  .modern-calendar-window>.client {padding-inline:2px;} .modern-window.modern-calendar-window .pb-calendar {padding-inline:0;}}
 .modern-window .pb-calendar {width:100%!important;min-width:0;padding:4px;background:var(--p-surface)!important;border-color:var(--p-line);}
 .modern-window .pb-calendar button,.modern-window .pb-calendar td,.modern-window .pb-calendar th {min-height:36px;font:inherit;}
 .modern-window .pb-calendar td,.modern-window .pb-calendar th {height:2em;padding:3px 0;}
