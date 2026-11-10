@@ -5,7 +5,7 @@ import { Runtime } from '../src/runtime/interp.ts'
 import { registerSysFuncs } from '../src/runtime/sysfuncs.ts'
 import { DwModel } from '../src/dw/model.ts'
 import type { DwDef } from '../src/dw/def.ts'
-import { cmp, dwStrCmp, lstrcmp } from '../src/runtime/values.ts'
+import { cmp, dwStrCmp, equals, lstrcmp } from '../src/runtime/values.ts'
 
 // measured 2026-11-10 on the reference PC: Windows lstrcmpW, and Evaluate() of the original DataWindow engine (pbdwe125.dll)
 const vectors = JSON.parse(readFileSync(new URL('./fixtures/string-order-vectors.json', import.meta.url), 'utf8')) as {
@@ -22,8 +22,13 @@ test('DataWindow expressions compare strings like the original engine, trailing 
   assert.equal(dwStrCmp('PANADOL ', 'PANADOL'), 0)
   assert.equal(dwStrCmp('a', 'B'), -1)
   assert.equal(dwStrCmp('CO-OP', 'COOP'), 1)
-  // PowerScript keeps its own case-sensitive comparison
-  assert.equal(cmp('a', 'B'), 1)
+  // PowerScript orders with lstrcmpW too (PBVM125.dll string comparison handlers) but keeps exact equality
+  assert.equal(cmp('a', 'B'), -1)
+  assert.equal(cmp('CO-OP', 'COOP'), 1)
+  assert.equal(cmp('PANADOL ', 'PANADOL'), 1)
+  assert.equal(equals('abc', 'ABC'), false)
+  assert.equal(equals('PANADOL ', 'PANADOL'), false)
+  for (const [a, b, want] of vectors.lstrcmpW) assert.equal(cmp(a, b), want, `PowerScript ${JSON.stringify(a)} vs ${JSON.stringify(b)}`)
 })
 
 const def: DwDef = {

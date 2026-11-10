@@ -4,7 +4,7 @@
 // value columns are replicated once per crosstab column (a text starting with `@` shows the column value), everything to the
 // right of the zone moves by the added width.
 import type { Runtime } from '../runtime/interp.ts'
-import { cmp, toStr } from '../runtime/values.ts'
+import { binaryCmp, cmp, toStr } from '../runtime/values.ts'
 import type { DwColumn, DwDef, DwObject } from './def.ts'
 import { num } from './def.ts'
 import { compileDw, evalDw, reduceAgg } from './expr.ts'
@@ -74,7 +74,7 @@ function sourceHost(rt: Runtime, names: Map<string, number>, rows: unknown[][]):
   }
 }
 
-const cmpNullFirst = (a: unknown, b: unknown): number => (a === null ? (b === null ? 0 : -1) : b === null ? 1 : cmp(a, b))
+const cmpNullFirst = (a: unknown, b: unknown): number => (a === null ? (b === null ? 0 : -1) : b === null ? 1 : typeof a === 'string' && typeof b === 'string' ? binaryCmp(a, b) : cmp(a, b))
 const keyOf = (vals: unknown[]): string => JSON.stringify(vals.map((v) => (v === null || v === undefined ? null : toStr(v))))
 
 /** replace identifiers outside string literals */

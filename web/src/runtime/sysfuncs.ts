@@ -3,7 +3,7 @@ import type { Runtime, SysFunc } from './interp.ts'
 import { Ref } from './interp.ts'
 import { PBObject } from './object.ts'
 import {
-  Dec, PBDate, PBDateTime, PBTime, PBArray, PBRuntimeError, civilFromDays, coerce, daysFromCivil, dateOrder, shortDateMask, formatDate, formatDateTime, formatNumber, formatTime, isNull, toNum, toStr, MONTHS, DAYS, cmp,
+  Dec, PBDate, PBDateTime, PBTime, PBArray, PBRuntimeError, civilFromDays, coerce, daysFromCivil, dateOrder, shortDateMask, formatDate, formatDateTime, formatNumber, formatTime, isNull, toNum, toStr, MONTHS, DAYS, binaryCmp,
 } from './values.ts'
 
 type Fn = (rt: Runtime, a: unknown[]) => unknown | Promise<unknown>
@@ -190,8 +190,8 @@ export function registerSysFuncs(rt: Runtime): void {
   def(rt, 'reverse', (_r, a) => (isNull(a[0]) ? null : [...s(a[0])].reverse().join('')))
   def(rt, 'wordcap', (_r, a) => (isNull(a[0]) ? null : s(a[0]).toLowerCase().replace(/(^|[^a-z0-9'])([a-z])/g, (_m, p, c) => p + c.toUpperCase())))
   def(rt, 'match', (_r, a) => (nul(a) ? null : new RegExp(s(a[1])).test(s(a[0]))))
-  def(rt, 'compare', (_r, a) => Math.sign(cmp(s(a[0]), s(a[1]))))
-  def(rt, 'stringcompare', (_r, a) => Math.sign(cmp(s(a[0]), s(a[1]))))
+  def(rt, 'compare', (_r, a) => Math.sign(binaryCmp(s(a[0]), s(a[1]))))
+  def(rt, 'stringcompare', (_r, a) => Math.sign(binaryCmp(s(a[0]), s(a[1]))))
 
   // ------------------------------------------------------------------ numbers
   const roundTo = (v: unknown, places: number): unknown => {

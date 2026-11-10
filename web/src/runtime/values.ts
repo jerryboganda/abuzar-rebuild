@@ -414,6 +414,11 @@ function cmpNumbers(a: number[], b: number[]): number {
  * letters compare without case first (`a` < `B`), punctuation < symbols < digits < letters, then lower case before upper
  * case, and hyphens / apostrophes count last (an earlier one sorts higher). Equal to lstrcmpW on 20,000 random ASCII pairs.
  */
+/** code-unit order (wcscmp): the crosstab column order of the original engine */
+export function binaryCmp(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0
+}
+
 export function lstrcmp(a: string, b: string): number {
   return a === b ? 0 : lstrCompareKeys(lstrKey(a), lstrKey(b))
 }
@@ -454,8 +459,9 @@ export function cmp(a: unknown, b: unknown): number {
   }
   if (typeof a === 'number' && typeof b === 'number') return a < b ? -1 : a > b ? 1 : 0
   if (typeof a === 'string' && typeof b === 'string') {
-    // PowerScript string comparison is case sensitive
-    return a < b ? -1 : a > b ? 1 : 0
+    // PowerScript compares strings with lstrcmpW (SM_EQ/LT/GT_STRING handlers of PBVM125.dll): equality is exact and
+    // case sensitive, the order is the Windows word sort ('a' < 'B', 'CO-OP' after 'COOP')
+    return lstrcmp(a, b)
   }
   if (a instanceof PBDate && b instanceof PBDate) return Math.sign(a.n - b.n)
   if (a instanceof PBTime && b instanceof PBTime) return Math.sign(a.ms - b.ms)
