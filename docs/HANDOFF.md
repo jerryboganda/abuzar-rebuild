@@ -611,6 +611,11 @@ The structural-parity rule (AGENTS.md, UI standard) has exactly these user-appro
   * `d_purchasefooter`: unchanged structure; the grand total (`total`) is emphasised.
   * When the current column moves to a secondary field (script `SetColumn`, Tab), the secondary fields are shown so focus never lands on a hidden editor.
   * Not covered: Opening Purchase and Loose Purchase use other DataWindows and keep the parity layout.  The Re-Calculate button stays (the original totals logic depends on it).  Not browser-verified yet: belongs to the consolidated final browser pass.
+* **2026-11-11, Modern workspace header** (all windows, Modern interface only; Classic is unchanged): from the approved header mockup.  Implemented in `web/src/ui/modern-header.ts`, wired in `presentation-ui.ts`, styles in `presentation-styles.ts`.
+  * Context bar replaces the Modern preview header and the frame's own title bar: company, period start and user are read from the frame title the application script builds (shown unchanged when it does not match), a live clock, a light / Windows / dark theme switch (saved in the Appearance preferences), the Appearance button, a button that hides or shows the All commands panel, and a user menu that runs the live Change User, Change Password, Preferences and Exit menu items.
+  * Ctrl+K search palette over the live menu of the active window (disabled items greyed and never run), the open windows and the theme settings.  A menu item that owns Ctrl+K keeps it.
+  * The frame toolbar keeps every button and its menu item; buttons are regrouped (Record, Items, browse arrows, output, exit) by stock picture, get line icons and, for New / Save / New Item / List / Print / Post, captions.  Post (`DBAdmin!`) is the primary button.  The menu bar is restyled only.
+  * Not built from the mockup: item and invoice search (needs database queries), the record position between the arrows, and unsaved-change dots on tabs.  Not browser-verified yet.
 
 ## 4. State at handoff (all measured by tools; see `docs/ci-results.json`)
 
