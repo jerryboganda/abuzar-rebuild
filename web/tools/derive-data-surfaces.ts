@@ -152,14 +152,20 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
   let header: NonNullable<DataSurface['header']> | undefined
   if (headerObjects.length) {
     header = []
+    // the exporter lost the name of some header captions (d_jv "Voucher No."): those are paired by object and keep their text
+    const takenUnnamed = new Set<DwObject>()
     for (const object of headerObjects) {
+      if (!object.name) continue
       // A header label is a narrow text immediately left of its value; a report title spanning the header is not its caption.
-      const label = [...texts, ...backgroundTexts].find((text) => !taken.has(text.name) && text.band === object.band &&
+      const label = [...texts, ...backgroundTexts].find((text) => (text.name ? !taken.has(text.name) : !takenUnnamed.has(text)) &&
+        text.band === object.band &&
         hidden(text) === hidden(object) && captionBeside(text, object) &&
         right(text) >= num(object, 'x') - 120 && num(text, 'width') <= Math.max(600, num(object, 'width') * 2))
-      if (label) taken.add(label.name)
+      if (label?.name) taken.add(label.name)
+      else if (label) takenUnnamed.add(label)
       header.push({
-        object: object.name.toLowerCase(), ...(label ? { labelObject: label.name.toLowerCase() } : {}),
+        object: object.name.toLowerCase(),
+        ...(label ? label.name ? { labelObject: label.name.toLowerCase() } : { label: String(label.text ?? '') } : {}),
         ...(object.band === 'background' ? { band: 'background' as const } : {}),
         ...(object.alignment === '1' ? { numeric: true } : {}),
       })
@@ -278,7 +284,9 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
       object['checkbox.on'] === object['checkbox.off'] ? object['checkbox.on'] : undefined
     if (style.kind === 'unsupported' && fixedCheckbox === undefined) return { reason: `choice: ${style.reason}` }
     if (label) {
-      field.labelObject = label.name.toLowerCase()
+      // an unnamed source caption (the exporter lost its name) keeps its text
+      if (label.name) field.labelObject = label.name.toLowerCase()
+      else field.label = String(label.text ?? '')
       if (kind === 'grid') field.labelBand = label.band === 'header' ? 'header' : 'detail'
     }
     else if (hidden(object)) {
@@ -378,10 +386,12 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
   const artworkNames = new Set(paintedArtwork.map((object) => object.name))
   if (paintedArtwork.length) surface.artwork = paintedArtwork.sort((a, b) => num(a, 'y') - num(b, 'y') || num(a, 'x') - num(b, 'x')).map((object) => object.name.toLowerCase())
   const art = [...new Set([...live.filter((object) => ART.has(object.type) && !artworkNames.has(object.name) && !(object.type === 'line' && separatorLines.has(object.name))), ...clipped, ...covered])]
-  if (art.length) surface.decorations = art.map((object) => object.name.toLowerCase())
+  // an object the exporter left unnamed cannot be addressed by a surface; the Classic painter still draws it
+  if (art.some((object) => object.name)) surface.decorations = art.filter((object) => object.name).map((object) => object.name.toLowerCase())
   if (lines.length) {
     const separators: { object: string; before?: string }[] = []
     for (const line of [...lines].sort((a, b) => num(a, 'y1') - num(b, 'y1'))) {
+      if (!line.name) continue
       const before = order.find((field) => centreY(field) > num(line, 'y1'))
       separators.push({ object: line.name.toLowerCase(), ...(before ? { before: before.name.toLowerCase() } : {}) })
     }
