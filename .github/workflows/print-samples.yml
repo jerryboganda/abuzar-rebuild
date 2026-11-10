@@ -1,0 +1,43 @@
+name: print-samples
+# Sample PDFs of the Modern print templates (Classic and Modern side by side) for the owner's approval.  The rows are synthetic.
+# Run it by hand ("Run workflow") or push the branch `ci/print-samples`; the PDFs are in the run's artifact `print-samples`.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['ci/print-samples']
+
+permissions:
+  contents: read
+
+jobs:
+  samples:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install the browser fixture tools
+        run: npm ci --prefix web --ignore-scripts --no-audit --no-fund
+      - name: Generate the production data the fixture reads
+        run: |
+          mkdir -p web/public/data
+          python3 tools/build_sql_tables.py data/sql web/public/data/sql.json
+          node web/tools/build-classes.ts data/src/objects data/src/scripts web/public/data/classes data/src/menu_trees
+          mkdir -p web/public/data/dw && cp data/src/dw/* web/public/data/dw/ && cp data/src/names/names.json web/public/data/
+      - name: Build the static fixture
+        run: node web/tools/build-static.ts web/dist
+      - name: Install Chromium
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+      - name: Print the sample documents to PDF
+        run: node web/e2e/print-samples.mjs web/dist shots/print-samples | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Keep the PDFs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: print-samples
+          path: shots/print-samples
+          if-no-files-found: warn
+          retention-days: 30

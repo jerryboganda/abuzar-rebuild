@@ -18,8 +18,15 @@
    final schema.  `40_` - `70_` contain 603 fully translated procedures, 35 partial ones and a few stubs (SQL Server administration, linked-server transfer).
    Verified 2026-11-05 on PostgreSQL 17.11: all scripts apply with zero errors (56 `seed skipped` notices, expected), leaving 763 tables and the first administrator `ADMIN`.
    `00_init.sql` needs PostgreSQL with ICU (the standard Windows and Linux builds): names sort in the original's order through the
-   collation `dbo.sqlserver_ci`, which `12_collation.sql` gives to every text column. A database created before 2026-11-10 gets it by
-   dropping the views, running `00_init.sql` and `12_collation.sql`, then `50_views.sql` again (or by loading the data into a fresh database).
+   collation `dbo.sqlserver_ci` (control characters, blank, punctuation in code order, DEL, digits, letters), which `12_collation.sql` gives to every
+   text column. A database deployed before 2026-11-10 is upgraded in place by `db/upgrade/2026-11-10-sqlserver-order.sql`: stop the server, back up
+   (`pg_dump -Fc`), then `cd db/pg` and `psql -d waseela -v ON_ERROR_STOP=1 -f ../upgrade/2026-11-10-sqlserver-order.sql` as the database owner. It runs in one
+   transaction (a failure leaves the database as it was), drops and recreates the views, keeps every trigger, and takes about 35 seconds for the 2 GB
+   production database. Rehearsed on a restored copy of the production backup: all 332 large text columns (up to 2 million rows) then order exactly as on
+   the live SQL Server, and the 751-table row-count and sum comparison is unchanged.
+   Restoring a `waseela` backup with `pg_restore` reports 3 errors: the foreign keys `customer.stateprovincecode`, `supplier.stateprovincecode` and
+   `purledger.taxcategorycode` cannot be re-created because the data inherited from the original holds codes without a parent row (the original did not enforce them).
+   Re-add them `NOT VALID` if the constraints are wanted.
 2. Tell the program where the database is: first line of `trader.conf` next to `trader-desktop.exe`
    (`postgres://user:password@host:5432/trader`) or the `DATABASE_URL` variable.  If neither is set, the app tries
    `postgres://postgres@127.0.0.1:5432/trader`.

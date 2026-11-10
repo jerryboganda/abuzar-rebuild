@@ -69,11 +69,20 @@ Each PC needs the browser only; nothing else to install. Add the token page to t
 
 ## Known limits / open decisions
 
-* **Data is a snapshot.** `waseela` matches the old system as of the migration (sale date 2025-01-01,
-  transaction date 2025-01-04 — the accounting period was apparently frozen when the clone was taken).
-  Anything entered in the old PowerBuilder application after that freeze is *not* in `waseela`.
-  Before go-live the owner must either accept the snapshot (old system retired at the freeze point)
-  or order a fresh re-migration of the delta. This is the one remaining decision before cutover.
+* **Data versus the live classic database (measured 2026-11-11).** Every common table (751) was compared with the live
+  SQL Server 2022 database `FazalDinPP19DataBaseV2` by row count and numeric sums: 9,636,312 rows, the newest sale is still
+  2025-01-01 in both, and `saleledger` 588,865 / `saledetail` 1,306,102 / `item` 28,966 are identical. The classic had gained
+  four `CustomerGroupCategory` rows (groups 2, 5, 11, 12 in category 1) since the migration; they were copied into `waseela`.
+  Two harmless differences remain by design: `_Utn` (the rebuild's own session counter is one ahead) and `SysTextCatalog.CatalogLength`
+  (the original's licence-catalog length counters, bumped by each classic start; the rebuild has no licence checks).
+  Anything entered in the classic after 2026-11-11 is not in `waseela`; repeat `deploy/parity/Compare-AllCounts.py` against
+  `waseela` before the final cutover to see the delta of the day.
+* **Sort order upgraded in place (2026-11-11).** `db/upgrade/2026-11-10-sqlserver-order.sql` was applied to `waseela` after a full
+  backup (`C:\Waseela\files\backups\waseela-pre-upgrade-2026-11-11.dump`, 286 MB, 7,053 entries): 29 seconds, one transaction, server stopped
+  for about two minutes with no user connected. Afterwards all 332 large text columns order exactly as on the classic and the
+  data comparison above is unchanged. Rollback: stop the server, `pg_restore` the dump into a new database (3 foreign keys with orphan rows report errors,
+  see `OPERATIONS.md`), rename it to `waseela`, start the server.
+  The deployed server (`C:\Waseela\server`) and web files are still build 11 of 2026-11-06; the database upgrade is compatible with them.
 * The old PowerBuilder application and its SQL Server instance keep running untouched; do not decommission
   them until the snapshot decision is made and a period of parallel running is accepted.
 * The rebuilt application has no licence checks (owner decision 2026-11-02), server-side rights are not
