@@ -42,9 +42,9 @@ jobs:
           echo "container $cid"
           docker exec "$cid" bash -c "apt-get update -qq && apt-get install -y -qq postgresql-17-plpgsql-check" > plpgsql_check_install.log 2>&1 || (tail -20 plpgsql_check_install.log; exit 1)
           tail -3 plpgsql_check_install.log
-      - name: Apply tables, foreign keys, indexes (db/pg/00..30)
+      - name: Apply tables, collation, foreign keys, indexes (db/pg/00..30)
         run: |
-          for f in db/pg/00_*.sql db/pg/10_*.sql db/pg/20_*.sql db/pg/30_*.sql; do
+          for f in db/pg/00_*.sql db/pg/10_*.sql db/pg/12_*.sql db/pg/20_*.sql db/pg/30_*.sql; do
             echo "== $f"
             PGOPTIONS="-c client_min_messages=warning" psql -q -f "$f" 2> "$f.err" || true
             if grep -q ERROR "$f.err"; then echo "--- errors in $f: $(grep -c ERROR "$f.err")"; head -20 "$f.err"; fi

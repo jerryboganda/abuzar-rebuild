@@ -17,6 +17,9 @@
    Errors from `90_seed.sql` are reported as warnings (`seed skipped: ...`): they are statements of the original upgrade scripts that no longer fit the
    final schema.  `40_` - `70_` contain 603 fully translated procedures, 35 partial ones and a few stubs (SQL Server administration, linked-server transfer).
    Verified 2026-11-05 on PostgreSQL 17.11: all scripts apply with zero errors (56 `seed skipped` notices, expected), leaving 763 tables and the first administrator `ADMIN`.
+   `00_init.sql` needs PostgreSQL with ICU (the standard Windows and Linux builds): names sort in the original's order through the
+   collation `dbo.sqlserver_ci`, which `12_collation.sql` gives to every text column. A database created before 2026-11-10 gets it by
+   dropping the views, running `00_init.sql` and `12_collation.sql`, then `50_views.sql` again (or by loading the data into a fresh database).
 2. Tell the program where the database is: first line of `trader.conf` next to `trader-desktop.exe`
    (`postgres://user:password@host:5432/trader`) or the `DATABASE_URL` variable.  If neither is set, the app tries
    `postgres://postgres@127.0.0.1:5432/trader`.

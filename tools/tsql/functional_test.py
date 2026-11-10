@@ -194,6 +194,23 @@ def main():
     for ts, style, want in convert_cases:
         got = q1('SELECT dbo.tsql_convert_dt(%s::timestamp, %s)', ts, style)[0]
         check('CONVERT(varchar, %s, %d) = %r as on SQL Server' % (ts, style, want), got == want, got)
+    # ORDER BY of character data under SQL_Latin1_General_CP1_CI_AS, measured on SQL Server 2022 (ties by binary order)
+    ascii_order = ' !"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~0123456789' + ''.join(c + c.lower() for c in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+    got = q1("SELECT string_agg(ch, '' ORDER BY (ch || 'x')::citext COLLATE dbo.sqlserver_ci, ascii(ch)) "
+             "FROM (SELECT chr(c) AS ch FROM generate_series(32, 126) AS c) AS s")[0]
+    check('printable ASCII sorts as on SQL Server (blank, punctuation, digits, letters)', got == ascii_order, got)
+    name_order = [' X', '-X', '1-A', '10', '9', 'A&B', 'A+B', 'A/B', 'A_B', 'A~', 'A1', 'A9', 'AB', 'CO OP', 'CO-OP', 'COOP',
+                  'ECOLE', 'ÉCOLE', 'EDGE', "O'NEIL", 'ONEIL', 'PANADOL', 'panadol', 'PANADOL 10S', 'PANADOL CF',
+                  'PANADOL EXTRA', 'PANADOL(500MG)', 'Panadol-cf', 'PANADOL-EXTRA', 'PANADOL.SYP', 'PANADOL10S', 'PANADOLEXTRA',
+                  'X', 'Zz', 'zZ']
+    rows = conn.execute('SELECT s FROM unnest(%s::text[]) AS s ORDER BY s::citext COLLATE dbo.sqlserver_ci, s COLLATE "C"',
+                        (sorted(name_order, reverse=True),)).fetchall()
+    got = [r[0] for r in rows]
+    check('item-like names sort as on SQL Server', got == name_order, got)
+    check('application citext columns use the SQL Server order',
+          q1("SELECT count(*) FROM pg_attribute a JOIN pg_class t ON t.oid = a.attrelid JOIN pg_namespace n ON n.oid = t.relnamespace "
+             "WHERE n.nspname = 'dbo' AND t.relkind = 'r' AND left(t.relname, 3) <> 'zz_' AND a.attnum > 0 AND a.atttypid = 'citext'::regtype "
+             "AND a.attcollation <> (SELECT oid FROM pg_collation WHERE collname = 'sqlserver_ci')")[0] == 0)
     check('dbo.tsql_datediff month', q1("SELECT dbo.tsql_datediff('month', timestamp '2024-01-31', timestamp '2024-03-01')")[0] == 2)
     check('dbo.tsql_charindex with start', q1("SELECT dbo.tsql_charindex('b', 'abcabc', 3)")[0] == 5)
     check('dbo.tsql_dyn normalises DELETE x', q1("SELECT dbo.tsql_dyn('DELETE zz_item WHERE 1=0')")[0] == 'DELETE FROM zz_item WHERE 1=0')

@@ -80,6 +80,11 @@ A stored procedure becomes `dbo.<name>(<params>, OUT return_value integer [, OUT
   and the duplicate-name checks of the entry windows found nothing. Every `<name | aliasname | username | login> = $n` predicate of the
   statement catalog compares `rtrim(...)::citext` on both sides (373 predicates; master-data tables). Other string comparisons keep
   PostgreSQL semantics (`GROUP BY`/`DISTINCT` still separate `'A'` and `'A '`).
+* Sort order: SQL Server's `SQL_Latin1_General_CP1_CI_AS` sorts character data as blank < ASCII punctuation in code order < digits <
+  letters (case-insensitive, accents after the base letter), measured on all printable ASCII and 35 item-like names. glibc locales ignore
+  punctuation at the first level and Windows locales ignore the hyphen, so `PANADOL-EXTRA` / `PANADOLEXTRA` / `CO-OP` lists came out in
+  another order. `00_init.sql` creates the ICU collation `dbo.sqlserver_ci` (root order, ASCII punctuation tailored into code order) and
+  `12_collation.sql` gives it to every `citext` column; `functional_test.py` checks both measured orders.
 * `tools/tsql/catalog_patches.py` applies both catalog rewrites to `data/sql/statements.json` in place and is idempotent; the sql workflow
   fails when the catalog lacks them. Regenerating the catalog with `stmts.py` alone loses the host-variable typing of the committed catalog
   (measured 2026-11-10: 4,792 statements changed, e.g. unbound host variables), so do not regenerate it that way; patch it.
