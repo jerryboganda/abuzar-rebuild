@@ -40,7 +40,7 @@ export async function checkForcedColors(page, output) {
       return { x: text.left - box.left, y: text.top - box.top, width: text.width, height: text.height }
     })
     const image = await page.locator(selector).screenshot()
-    return page.evaluate(async ({ bytes, bounds, background, foreground }) => {
+    return page.evaluate(async ({ bytes, bounds, backplate, foreground }) => {
       const bitmap = await createImageBitmap(new Blob([Uint8Array.from(bytes)], { type: 'image/png' }))
       const canvas = new OffscreenCanvas(bitmap.width, bitmap.height), context = canvas.getContext('2d')
       context.drawImage(bitmap, 0, 0)
