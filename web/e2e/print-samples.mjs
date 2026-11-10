@@ -78,6 +78,7 @@ try {
       const rt = new Runtime({ load: async () => undefined })
       registerSysFuncs(rt)
       const { DomUi } = await import('/src/ui/dom-ui.js')
+      const { PBDate, PBDateTime } = await import('/src/runtime/values.js')
       if (!document.querySelector('style')) new DomUi(rt, document.getElementById('desktop'))
       rt.dwCatalog = new DwCatalog(read)
       const def = await rt.dwCatalog.get(definition)
@@ -94,7 +95,7 @@ try {
         if (/remarks$/.test(name)) return 'Synthetic sample for template review - not a real invoice'
         if (/^posted$/.test(name)) return 'Y'
         if (/(invcode|purinvcode)$/.test(name)) return 100245
-        if (/date$|^expiry$/.test(name)) return name === 'expiry' ? '2027-12-31 00:00:00' : '2026-11-10 09:30:00'
+        if (/date$|^expiry$/.test(name)) return name === 'expiry' ? new PBDateTime(PBDate.ymd(2027, 12, 31).n, 0) : new PBDateTime(PBDate.ymd(2026, 11, 10).n, (9 * 60 + 30) * 60000)
         if (/qty$/.test(name)) return row % 5 + 1
         if (/(saleprice|purprice|^rate$|_rate$|avgprice)$/.test(name)) return 12.5 * ((row % 7) + 1)
         if (/discperc$/.test(name)) return row % 4 === 0 ? 5 : 0
