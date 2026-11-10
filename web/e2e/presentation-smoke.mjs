@@ -3504,7 +3504,7 @@ try {
               const style = getComputedStyle(at)
               if (/(auto|scroll|hidden)/.test(style.overflowY)) scrollers.push(`${at.tagName.toLowerCase()}.${String(at.className).split(' ')[0]} ${style.overflowY} ${at.scrollTop}/${at.scrollHeight - at.clientHeight}`)
             }
-            return { value: window.presentationCalculatorPreview.model.getItem(1, field), active: active ? `${active.tagName}.${active.className} [${active.closest('[data-obj]')?.dataset.obj ?? ''}]` : null,
+            return { value: String(window.presentationCalculatorPreview.model.getItem(1, field)), active: active ? `${active.tagName}.${active.className} [${active.closest('[data-obj]')?.dataset.obj ?? ''}]` : null,
               bounds: bounds?.toJSON(), viewport: [innerWidth, innerHeight], scrollers }
           }, field)
           throw new Error(`${name}/${width}/${scale}: the next field after Tab must be focused and visible: ${JSON.stringify(state)}`, { cause: error })
