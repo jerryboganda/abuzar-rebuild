@@ -40,6 +40,22 @@ The original backed up with SQL Server `BACKUP DATABASE` from inside the program
 `pg_dump -Fc` file of the company database to the folder chosen in the window (the server needs `pg_dump` in its PATH; restore with `pg_restore -d trader <file>`).  Scheduled backups: run
 `pg_dump -Fc trader > trader.dump` with the Windows task scheduler.  The start-up check for a SQL Server backup is switched off by `95_bootstrap.sql`.
 
+## FBR fiscalization
+The original fiscalized each posted sale and sale return through the FBR IMS component installed on the shop PC
+(`http://localhost:8524/api/IMSFiscal/...`), either from a stored procedure (FiscalizationMethod 1, `sp_OACreate`) or
+through the vendor's **FiscalizationApp** listener on port 9111 (method 2, used by this deployment). The rebuild does
+both itself on PostgreSQL (`web/src/runtime/native/fiscal.ts`, `server/src/inet.rs`), with the same JSON, preferences,
+answer parsing and `Fiscalized` / `FiscalizedOn` / `FiscalInvoiceNo` write:
+* keep the FBR IMS component running on the PC (`FBRInvoiceServiceURL`); the Trader server sends the request to it and
+  only reaches this computer or the local network;
+* **do not run the vendor FiscalizationApp** (logon task `Waseela Fiscalization Listener`) against a rebuild database: it
+  reads and writes SQL Server. The rebuild never contacts it (plain fiscal sockets are answered inside the rebuild), but
+  it stays the SQL Server installation's listener while the original is in use;
+* the FiscalizationApp's `Q<code>` request (QR image from Google Charts, QRCodePrintingMethodInSale = `H`) is not served;
+  the rebuild draws QR codes itself (method `Q`, this deployment's setting).
+If the IMS component is not running, posting continues and the invoice stays unfiscalized (with
+PrintUnFiscalizedInvoice = N no receipt is printed); fiscalize it later from the Sales menu, as with the original.
+
 ## Audit trail
 `dbo.audit_log` records every change of users, rights, preferences, accounts, customers, suppliers and items (old and new row as JSON, application user,
 time); passwords are never copied.  Query it with SQL, e.g. `select at, app_user, operation, table_name, new_row from dbo.audit_log order by audit_id desc`.
