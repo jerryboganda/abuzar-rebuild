@@ -240,10 +240,16 @@ export async function checkSelectorVariants(fixture, check, settle) {
           const early = f.view.editor
           const loadingAtClick = !!f.view.choiceEdit?.loading
           if (early instanceof HTMLInputElement) early.click()
-          await new Promise((resolve) => setTimeout(resolve, 250)); await settle()
+          // only the loading guard stays slow; the queued toggle then commits through the normal path
+          f.view.canEdit = fastCanEdit
+          for (let waited = 0; waited < 3000 && f.model.getItem(1, column) !== 'Y'; waited += 50) {
+            await new Promise((resolve) => setTimeout(resolve, 50))
+          }
+          await settle()
           check(early instanceof HTMLInputElement && loadingAtClick && f.model.getItem(1, column) === 'Y' &&
             f.events.filter((event) => event.event === 'itemchanged').length === before + 3,
-          `A checkbox click during loading is applied exactly once (loading at click: ${loadingAtClick}, value ${f.model.getItem(1, column)})`)
+          `A checkbox click during loading is applied exactly once (loading at click: ${loadingAtClick}, value ${f.model.getItem(1, column)}, ` +
+            `changes ${f.events.filter((event) => event.event === 'itemchanged').length - before - 2})`)
         } finally {
           f.view.canEdit = fastCanEdit
         }
