@@ -1057,6 +1057,9 @@ export class ModernDwView extends DwView {
     return button
   }
 
+  /** until when (performance.now()) an editor rebuilt by a repaint is still the field just opened, and is revealed */
+  private revealOpenedUntil = 0
+
   protected override edit(model: DwModel, object: DwObject, row: number, cell: HTMLElement, activate: boolean | number = false, focus = true): void {
     if (this.stale || this.changes.signal.aborted || this.ctl.model !== model) return
     if (!this.choiceDestination && !this.restoringEditor && this.committing) {
@@ -1078,12 +1081,21 @@ export class ModernDwView extends DwView {
     super.edit(model, object, row, cell, activate, focus)
     const editor = this.editor
     if (!editor || editor === before || this.editRow !== row || this.editObj !== object.name) return
-    // The editor is focused without the browser's scroll-into-view (no jump on repaint), and possibly after this returns: a
-    // field Tab or Enter opened below the visible part of a dialog or page is brought into view when it takes the focus.
-    editor.addEventListener('focusin', (event) => {
-      if (!this.restoringFocus && event.target instanceof HTMLElement) this.revealFocus(event.target)
-    })
-    if (focus && !this.restoringFocus && editor.contains(document.activeElement)) this.revealFocus(document.activeElement as HTMLElement)
+    // The editor is focused without the browser's scroll-into-view (no jump on repaint), possibly after this returns or while a
+    // repaint restores it, and its final size is known only after layout: for the next frames, a field Tab or Enter opened that
+    // holds the focus but is not fully visible (683x384 at 200%: the GST field half below the dialog) is brought into view.
+    // A repaint rebuilds a text editor (restoreEditor) and focuses it while restoring: shortly after a field was opened, the
+    // rebuilt editor is revealed the same way; later repaints never pull back a field the user scrolled away from.
+    if (focus) this.revealOpenedUntil = performance.now() + 750
+    if (focus || this.restoringEditor && performance.now() < this.revealOpenedUntil) {
+      const reveal = (frames: number) => requestAnimationFrame(() => {
+        if (this.editor !== editor || this.stale) return
+        const active = document.activeElement
+        if (active instanceof HTMLElement && editor.contains(active) && !this.focusInView(active)) this.revealFocus(active)
+        if (frames > 1) reveal(frames - 1)
+      })
+      reveal(8)
+    }
     this.boundModel = model
     this.boundRow = record
     this.lookupNotice = ''
