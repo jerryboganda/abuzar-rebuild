@@ -78,6 +78,36 @@ const ICONS: Record<string, string> = {
   'regenerate5!': '<path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/>',
   'sort!': '<path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/>',
 }
+/** A stock picture means what the mockup draws only when the item's own text agrees (the original reuses pictures: on report
+ * windows the Post picture is "Save Report Input(s)").  Otherwise the icon comes from the item's text, never the colour bitmap. */
+const MEANING: Record<string, RegExp> = { 'dbadmin!': /\bpost/i, 'selectscript!': /\bnew\b|\badd\b|\binsert/i, 'update!': /add|insert|row|item/i, 'find!': /list|find|search/i }
+const TEXT_ICONS: [RegExp, string][] = [
+  [/zoom ?in/i, '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M8 11h6M11 8v6"/>'],
+  [/zoom ?out/i, '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M8 11h6"/>'],
+  [/pdf/i, '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 15h8M8 18h5"/>'],
+  [/mail/i, '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>'],
+  [/excel|xls|sheet/i, '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>'],
+  [/save (report )?(input|filter)/i, '<path d="M6 3h12v18l-6-4-6 4z"/>'],
+  [/retrieve.*(saved|filter)/i, '<path d="M6 3h12v18l-6-4-6 4z"/><path d="M10 9h4"/>'],
+  [/filter/i, '<path d="M3 4h18l-7 9v6l-4 2v-8z"/>'],
+  [/ruler/i, '<path d="M3 17 17 3l4 4L7 21z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/>'],
+  [/paper|page size/i, '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>'],
+  [/orientation|portrait|landscape/i, '<rect x="4" y="8" width="16" height="12" rx="2"/><path d="M9 4h6a3 3 0 0 1 3 3"/><path d="m16 5 2 2-2 2"/>'],
+  [/hide|visible|column/i, '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/>'],
+  [/save ?as|export/i, '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>'],
+  [/refresh|regenerate/i, '<path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/>'],
+  [/retrieve|run\b/i, '<path d="M7 4v16l13-8z"/>'],
+  [/sort/i, '<path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/>'],
+  [/print/i, '<path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/>'],
+  [/preview|view/i, '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'],
+  [/delete|remove/i, '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'],
+  [/save/i, '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/>'],
+  [/find|search/i, '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'],
+  [/calc|total/i, '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/>'],
+  [/close|exit/i, '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>'],
+]
+const fits = (stock: string, text: string) => !MEANING[stock] || MEANING[stock].test(text)
+const toolIcon = (stock: string, text: string) => (ICONS[stock] && fits(stock, text) ? ICONS[stock] : TEXT_ICONS.find(([pattern]) => pattern.test(text))?.[1]) ?? null
 const svg = (body: string, size = 18) =>
   `<svg class="mh-i" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`
 const GLYPH = {
@@ -119,19 +149,20 @@ export function groupToolbar(tool: HTMLElement, title = ''): void {
   }
   for (const button of buttons) {
     const stock = (button.dataset.stock ?? '').toLowerCase()
-    const text = button.dataset.label || button.title
+    const text = (button.dataset.label || button.title || '').split('\t')[0].trim()
     button.setAttribute('aria-label', text)
-    if (ICONS[stock] && !button.querySelector('.mh-i')) {
+    const glyph = toolIcon(stock, text)
+    if (glyph && !button.querySelector('.mh-i')) {
       button.querySelector('.pic')?.remove()
-      button.insertAdjacentHTML('afterbegin', svg(ICONS[stock]))
+      button.insertAdjacentHTML('afterbegin', svg(glyph))
     }
-    if (LABELLED.has(stock) && !button.querySelector('.mh-label')) {
+    if (LABELLED.has(stock) && fits(stock, text) && !button.querySelector('.mh-label')) {
       const label = document.createElement('span')
       label.className = 'mh-label'
       label.textContent = LABELLED.get(stock)!
       button.append(label)
     }
-    button.classList.toggle('mh-primary', stock === 'dbadmin!')
+    button.classList.toggle('mh-primary', stock === 'dbadmin!' && fits(stock, text))
     button.classList.toggle('mh-danger', stock === 'clear!')
     group(stock === 'exit!' ? 'exit' : toolbarGroup(stock)).append(button)
   }

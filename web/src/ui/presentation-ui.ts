@@ -13,6 +13,8 @@ import { PRESENTATION_CSS } from './presentation-styles.ts'
 import { DESIGN_CSS } from './design-system.ts'
 import { HOME_CSS, HOME_ICONS, loadHome, renderHome, homeNotes, syncHomeActions } from './ds-home.ts'
 import type { HomeData, HomeAction } from './ds-home.ts'
+import { PAGES_CSS, renderReports, renderItems, loadItems, openItemDrawer } from './ds-pages.ts'
+import type { ItemsState, ReportEntry } from './ds-pages.ts'
 import { PURCHASE_CSS, purchaseState, decoratePurchase, forgetPurchaseFacts } from './ds-purchase.ts'
 import { containDialogFocus, messageDialog, promptDialog } from './presentation-dialogs.ts'
 import type { PresentationDialog } from './presentation-dialogs.ts'
@@ -26,6 +28,11 @@ import type { ThemeChoice } from './modern-header.ts'
 import type { NativeAppearance, NativeTheme } from './native-appearance.ts'
 
 /** Incremental Modern shell; business screens stay explicitly labelled compatibility views until migrated. */
+const MOTION_KEY = 'trader.ds.motion'
+/** Animations switch of the Preferences page (this workstation); Windows' reduce-motion setting applies regardless. */
+function motionOff(): boolean { try { return localStorage.getItem(MOTION_KEY) === 'off' } catch { return false } }
+function setMotion(off: boolean): void { try { if (off) localStorage.setItem(MOTION_KEY, 'off'); else localStorage.removeItem(MOTION_KEY) } catch { /* not stored */ } }
+
 export class PresentationUi extends DomUi {
   private session: PresentationSession
   private shell: HTMLElement | null = null
@@ -54,6 +61,12 @@ export class PresentationUi extends DomUi {
   private homeData: HomeData | null = null
   private homeLoaded = 0
   private homeRendered = false
+  // Approved design: Reports and Items pages open as tabs beside Home (the Home panel shows the active page).
+  private page: 'home' | 'reports' | 'items' = 'home'
+  private pageTabs = new Map<'reports' | 'items', HTMLElement>()
+  private reportState: { group?: string } = {}
+  private itemsState: ItemsState = { q: '', filter: 'all', rows: [], counts: {}, anchor: null, seq: 0 }
+  private itemsLoaded = false
   private pendingPath: { path: string[]; at: number } | null = null
   private windowPaths = new Map<NWindow, string[]>()
   private freshTabs = new Set<NWindow>()
@@ -65,7 +78,7 @@ export class PresentationUi extends DomUi {
     this.nativeAppearance = appearance
     this.presentationStyle = document.createElement('style')
     // The approved design system layers on the Modern styles (Classic never loads either).
-    this.presentationStyle.textContent = PRESENTATION_CSS + DESIGN_CSS + HOME_CSS + PURCHASE_CSS
+    this.presentationStyle.textContent = PRESENTATION_CSS + DESIGN_CSS + HOME_CSS + PURCHASE_CSS + PAGES_CSS
     document.head.append(this.presentationStyle)
     this.settings = this.buildSettings()
     if (session.activeMode === 'modern') {
@@ -308,14 +321,25 @@ export class PresentationUi extends DomUi {
     }
     if (this.homeTab) {
       const tab = this.homeTab.querySelector<HTMLButtonElement>('[role=tab]')!
-      tab.setAttribute('aria-selected', String(this.homeActive))
-      tab.tabIndex = this.homeActive ? 0 : -1
+      tab.setAttribute('aria-selected', String(this.homeActive && this.page === 'home'))
+      tab.tabIndex = this.homeActive && this.page === 'home' ? 0 : -1
       tab.disabled = modal
     }
+    for (const [page, container] of this.pageTabs) {
+      const tab = container.querySelector<HTMLButtonElement>('[role=tab]')!
+      tab.setAttribute('aria-selected', String(this.homeActive && this.page === page))
+      tab.tabIndex = this.homeActive && this.page === page ? 0 : -1
+      for (const button of container.querySelectorAll('button')) button.disabled = modal
+    }
+    if (this.homeBar) {
+      this.homeBar.querySelector('.mh-title')!.textContent = this.pageTitle()
+      for (const button of this.homeBar.querySelectorAll<HTMLElement>('[data-ds]')) button.hidden = (button.dataset.page ?? 'home') !== this.page
+    }
+    if (this.homeHost) this.homeHost.setAttribute('aria-labelledby', this.page === 'home' ? 'workspace-home-tab' : `workspace-${this.page}-tab`)
     if (this.homeHost) this.homeHost.hidden = !this.homeActive
     if (this.homeBar) this.homeBar.hidden = !this.homeActive
     this.shell?.classList.toggle('ds-home-on', this.homeActive)
-    if (this.homeActive) void this.showHome()
+    if (this.homeActive) void this.showPage()
     this.syncHomeUser()
     if (this.homeHost && this.homeActive) syncHomeActions(this.homeHost, this.homeActions())
     const module = this.homeActive ? '' : (this.selected && this.windowPaths.get(this.selected)?.[0]) || ''
@@ -476,7 +500,7 @@ export class PresentationUi extends DomUi {
         title: String(window.props.get('title') || window.name), active: window === this.selected, activate: () => controls.tab.click(),
       })),
       frameTitle: () => this.mdi?.ttlEl?.textContent || String(this.mdi?.w.props.get('title') ?? ''),
-      windowTitle: () => this.selected && !this.homeActive ? String(this.selected.props.get('title') || this.selected.name) : 'Home',
+      windowTitle: () => this.selected && !this.homeActive ? String(this.selected.props.get('title') || this.selected.name) : this.pageTitle(),
       windowPath: () => this.selected && !this.homeActive ? this.windowPaths.get(this.selected) ?? [] : [],
       openMenu: (caption) => {
         const mi = [...this.mdi?.el.querySelectorAll<HTMLElement>('.menubar .mi') ?? []].find((item) => item.textContent?.trim() === caption)
@@ -543,7 +567,11 @@ export class PresentationUi extends DomUi {
     bar.innerHTML = `<span class="mh-title">Home</span><span class="ds-spacer"></span>
       <button type="button" class="tb" data-ds="refresh" aria-label="Refresh figures"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg><span class="mh-label">Refresh</span></button>
       <button type="button" class="tb mh-primary" data-ds="sale"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${HOME_ICONS.cart}</svg><span class="mh-label">New sale</span></button>`
+    bar.insertAdjacentHTML('beforeend', `<button type="button" class="tb" data-ds="items-refresh" data-page="items" aria-label="Refresh items"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg><span class="mh-label">Refresh</span></button>
+      <button type="button" class="tb mh-primary" data-ds="item-form" data-page="items"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${HOME_ICONS.box}</svg><span class="mh-label">Item form</span></button>`)
     bar.querySelector('[data-ds=refresh]')!.addEventListener('click', () => { this.homeLoaded = 0; void this.showHome(true) })
+    bar.querySelector('[data-ds=items-refresh]')!.addEventListener('click', () => { this.itemsLoaded = false; void this.showPage() })
+    bar.querySelector('[data-ds=item-form]')!.addEventListener('click', () => this.itemFormCommand()?.())
     bar.querySelector('[data-ds=sale]')!.addEventListener('click', () => this.homeActions()[0]?.run())
     const toolbar = mdi.parentElement?.querySelector<HTMLElement>(':scope > .toolbar')
     ;(toolbar ?? tabs).after(bar)
@@ -556,6 +584,7 @@ export class PresentationUi extends DomUi {
     host.setAttribute('aria-labelledby', tab.id)
     mdi.append(host)
     this.homeHost = host
+    this.buildStatus(mdi)
     // The frame title carries the company, period and user; the header and the greeting follow it when the script sets it.
     const title = this.mdi?.ttlEl
     if (title) {
@@ -573,8 +602,144 @@ export class PresentationUi extends DomUi {
     if (heading && user && !heading.textContent?.endsWith(user)) heading.textContent = heading.textContent!.replace(/,.*$/, `, ${user}`)
   }
 
+  /** Status bar of the approved design: the original status text, then the live server connection and the application version. */
+  private buildStatus(mdi: HTMLElement): void {
+    const status = mdi.parentElement?.querySelector<HTMLElement>(':scope > .status')
+    if (!status || status.parentElement?.classList.contains('ds-statusbar')) return
+    const bar = document.createElement('footer')
+    bar.className = 'ds-statusbar'
+    status.before(bar)
+    const right = document.createElement('span')
+    right.className = 'ds-status-right'
+    const server = document.createElement('span')
+    const version = document.createElement('span')
+    version.className = 'num'
+    right.append(server, version)
+    bar.append(status, right)
+    status.setAttribute('role', 'status')
+    const draw = (connected: boolean | null) => {
+      server.innerHTML = `<span class="ds-live${connected === false ? ' ds-off' : ''}" aria-hidden="true"></span>${connected === false ? 'Server not reachable' : connected ? 'Server connected' : 'Connecting…'}`
+      const appVersion = Number(this.rt.globals.get('gl_appversion') ?? 0)
+      const database = String(this.rt.globals.get('gs_dbname') ?? '')
+      version.textContent = `${database ? `${database} · ` : ''}v2${appVersion ? ` · build ${appVersion}` : ''}`
+    }
+    const check = async () => {
+      const query = this.pageQuery()
+      if (!query) { draw(null); return }
+      try { await query('select 1'); draw(true) } catch { draw(false) }
+    }
+    draw(null)
+    void check()
+    const timer = setInterval(() => { if (document.visibilityState === 'visible') void check() }, 30_000)
+    this.cleanup.signal.addEventListener('abort', () => clearInterval(timer))
+  }
+
+  private pageTitle(): string { return this.page === 'reports' ? 'Reports' : this.page === 'items' ? 'Items' : 'Home' }
+
+  /** Opens (or returns to) the Reports or Items page tab. */
+  private openPage(page: 'reports' | 'items'): void {
+    if (this.hasModal() || !this.homeTab) return
+    if (!this.pageTabs.has(page)) {
+      const container = document.createElement('div')
+      container.className = 'presentation-tab ds-fresh'
+      container.setAttribute('role', 'presentation')
+      const tab = document.createElement('button')
+      tab.type = 'button'
+      tab.id = `workspace-${page}-tab`
+      tab.setAttribute('role', 'tab')
+      tab.setAttribute('aria-controls', 'workspace-home')
+      const title = page === 'reports' ? 'Reports' : 'Items'
+      tab.innerHTML = `<svg class="ds-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${HOME_ICONS[page === 'reports' ? 'chart' : 'box']}</svg>${title}`
+      tab.onclick = () => this.openPage(page)
+      const close = document.createElement('button')
+      close.type = 'button'
+      close.textContent = '\u00d7'
+      close.setAttribute('aria-label', `Close ${title}`)
+      close.onclick = (event) => {
+        event.stopPropagation()
+        container.remove()
+        this.pageTabs.delete(page)
+        if (this.page === page) { this.page = 'home'; this.homeRendered = false }
+        this.updateTabs()
+      }
+      container.append(tab, close)
+      ;([...this.pageTabs.values()].at(-1) ?? this.homeTab).after(container)
+      this.pageTabs.set(page, container)
+      setTimeout(() => container.classList.remove('ds-fresh'), 700)
+    }
+    if (this.page !== page) this.homeRendered = false
+    this.page = page
+    this.homeActive = true
+    this.updateTabs()
+    this.pageTabs.get(page)?.querySelector<HTMLElement>('[role=tab]')?.focus()
+  }
+
+  private async showPage(): Promise<void> {
+    const host = this.homeHost
+    if (!host) return
+    if (this.page === 'home') {
+      if (host.dataset.page !== 'home') { host.dataset.page = 'home'; host.onclick = null; host.onkeydown = null; this.homeRendered = false }
+      return this.showHome()
+    }
+    if (this.page === 'reports') {
+      // Drawn again only when the menu (rights) changed: a redraw between mousedown and click would swallow the click.
+      const entries = this.reportEntries()
+      const signature = entries.map((entry) => `${entry.group}/${entry.label}/${entry.disabled}`).join('|')
+      if (host.dataset.page !== 'reports' || host.dataset.signature !== signature || !host.querySelector('.ds-rep-grid')) {
+        host.dataset.page = 'reports'
+        host.dataset.signature = signature
+        renderReports(host, entries, this.reportState)
+      }
+      return
+    }
+    const query = this.pageQuery()
+    const draw = () => { if (this.page === 'items' && this.homeActive) renderItems(host, this.itemsState, () => { this.itemsLoaded = false; void this.showPage() }, (row) => void this.openItem(row)) }
+    if (host.dataset.page !== 'items') { host.dataset.page = 'items'; draw() }
+    if (!query) { host.innerHTML = '<div class="ds-home"><p class="ds-empty">Items are shown once the database session is ready.</p></div>'; return }
+    if (this.itemsLoaded) return
+    this.itemsLoaded = true
+    try {
+      await loadItems(query, this.itemsState)
+      draw()
+    } catch (error) {
+      console.warn('Items could not be read.', error)
+      this.itemsLoaded = false
+      host.innerHTML = '<div class="ds-home"><p class="ds-empty">The items could not be read from the database. Use Refresh to try again.</p></div>'
+    }
+  }
+
+  private pageQuery(): ((sql: string, params?: unknown[]) => Promise<unknown[][]>) | null {
+    const transaction = this.rt.globals.get('sqlca') as { db?: { query(sql: string, params: unknown[]): Promise<{ rows: unknown[][] }> } } | undefined
+    const db = transaction?.db
+    return db ? async (sql, params = []) => (await db.query(sql, params)).rows : null
+  }
+
+  /** The live Reports menu as the catalogue: each card runs the original menu item (rights as the menu bar shows them). */
+  private reportEntries(): ReportEntry[] {
+    const root = this.commandRoot()
+    const all = root ? menuCommands(root, { includeDisabled: true }) : []
+    const clean = (part: string) => part.replace(/\s*\.{3,}\s*/g, ' ').trim()
+    return all.filter((command) => /^Reports \/ /i.test(command.label)).map((command) => {
+      const parts = command.label.split(' / ').map(clean)
+      return { group: parts.length > 2 ? parts[1] : 'General', label: parts.slice(parts.length > 2 ? 2 : 1).join(' › '), disabled: !!command.disabled, run: () => void this.runCommand(command) }
+    })
+  }
+
+  private itemFormCommand(): (() => void) | null {
+    const root = this.commandRoot()
+    const command = root ? menuCommands(root).find((item) => /^Basic Data \/ Item ?\/ Item$/i.test(item.label.replace(/\s*\.{3,}\s*/g, ' '))) : undefined
+    return command ? () => void this.runCommand(command) : null
+  }
+
+  private async openItem(row: ItemsState['rows'][number]): Promise<void> {
+    const query = this.pageQuery()
+    if (!query || !this.shell) return
+    await openItemDrawer(this.shell, row, query, this.itemsState.anchor, this.itemFormCommand())
+  }
+
   private selectHome(): void {
     if (this.hasModal()) return
+    if (this.page !== 'home') { this.page = 'home'; this.homeRendered = false }
     this.homeActive = true
     this.updateTabs()
     this.homeTab?.querySelector<HTMLElement>('[role=tab]')?.focus()
@@ -592,8 +757,8 @@ export class PresentationUi extends DomUi {
     return [
       action('New sale', 'Sales › Cash Sale', 'cart', /^Sales \/ Cash ?Sale$/i),
       action('Pack purchase', 'Purchase › Purchases', 'truck', /^Purchase \/ Purchases$/i),
-      action('Items', 'Basic Data › Item', 'box', /^Basic Data \/ Item ?\/ Item$/i),
-      action('Reports', 'Daily, stock, sales', 'chart', /^Reports \/ /i),
+      { ...action('Items', 'Stock, prices, expiry', 'box', /^Basic Data \/ Item ?\/ Item$/i), run: () => this.openPage('items') },
+      { ...action('Reports', 'Daily, stock, sales', 'chart', /^Reports \/ /i), run: () => this.openPage('reports') },
       action('Users', 'Manage › Users', 'users', /^Manage \/ Users$/i),
       { label: 'Settings', hint: 'Theme, size, print', icon: 'gear', run: () => this.openSettings() },
     ]
@@ -622,7 +787,7 @@ export class PresentationUi extends DomUi {
     const user = parseFrameTitle(this.mdi?.ttlEl?.textContent || String(this.mdi?.w.props.get('title') ?? '')).user || 'there'
     const draw = (animate: boolean) => {
       if (!this.homeData) { host.innerHTML = '<div class="ds-home"><p class="ds-empty">Loading figures…</p></div>'; return }
-      renderHome(host, this.homeData, user, () => this.homeActions(), () => this.header?.openSearch(), animate)
+      renderHome(host, this.homeData, user, () => this.homeActions(), () => this.openPage('reports'), animate)
       this.homeRendered = true
     }
     const stale = Date.now() - this.homeLoaded > 5 * 60_000
@@ -646,20 +811,52 @@ export class PresentationUi extends DomUi {
     const dialog = document.createElement('dialog')
     dialog.className = 'presentation-settings'
     dialog.setAttribute('aria-labelledby', 'appearance-title')
-    dialog.innerHTML = `<form><h2 id="appearance-title">Appearance</h2>
-      <p>Settings belong to this workstation, application user and database. Interface changes apply at the next sign-in.</p>
-      <label><span id="appearance-mode-label">Next sign-in interface</span><select name="mode" aria-labelledby="appearance-mode-label"><option value="modern">Modern</option><option value="classic">Classic</option></select></label>
-      <label><span id="appearance-theme-label">Theme</span><select name="theme" aria-labelledby="appearance-theme-label"><option value="system">Windows preference</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
-      <label><span id="appearance-density-label">Density</span><select name="density" aria-labelledby="appearance-density-label"><option value="compact">Compact</option><option value="comfortable">Comfortable</option></select></label>
-      <label><span id="appearance-size-label">Text size</span><select name="textSize" aria-labelledby="appearance-size-label"><option value="100">100%</option><option value="125">125%</option><option value="150">150%</option><option value="175">175%</option><option value="200">200%</option></select></label>
-      <label><span id="appearance-print-label">Print layout</span><select name="printMode" aria-labelledby="appearance-print-label" aria-describedby="appearance-print-help"><option value="classic">Classic</option><option value="modern">Modern</option></select></label>
-      <p id="appearance-print-help">Modern is available only for listed previews or approved templates. Other documents require Classic.</p>
-      <fieldset class="presentation-print-families"><legend>Document layouts</legend>
+    const card = (key: string, title: string, hint: string, body: string, c1: string, c2: string) =>
+      `<button type="button" class="ds-tcard" data-theme-card="${key}" aria-pressed="false"><span class="ds-tprev" aria-hidden="true"><span class="h"></span><span class="b" style="background:${body}"><i style="background:${c1}"></i><i style="background:${c2}"></i><i style="background:${c2}"></i><i style="background:${c1}"></i></span></span><b>${title}</b><span class="ds-help">${hint}</span></button>`
+    const seg = (name: string, label: string, options: [string, string][]) =>
+      `<span class="ds-seg" role="group" aria-label="${label}">${options.map(([value, text]) => `<button type="button" data-seg="${name}" data-value="${value}" aria-pressed="false">${text}</button>`).join('')}</span>`
+    // Approved design: the Preferences page of the mockup.  The named selects stay the form's values (kept for keyboard users
+    // and saved exactly as before); the cards, segments and switch set them.
+    dialog.innerHTML = `<form><div class="ds-set-head"><h2 id="appearance-title">Appearance</h2><span class="ds-help">Applies to this workstation, application user and database</span></div>
+      <section class="ds-set-card"><div class="ds-theme-cards" role="group" aria-label="Theme">${card('light', 'Light', 'Bright rooms, daytime', '#f3f5f7', '#ffffff', '#e1f0ef')}${card('dark', 'Dark', 'Low light, less glare', '#0f1418', '#161d23', '#163331')}${card('system', 'Match Windows', 'Follows the PC setting', 'linear-gradient(90deg,#f3f5f7 50%,#0f1418 50%)', '#c9d3dc', '#4fb8b2')}</div>
+      <div class="ds-set-row"><div><b>Text size</b><p>Bigger text for counters and older screens.</p></div>${seg('textSize', 'Text size', [['100', '100%'], ['125', '125%'], ['150', '150%'], ['175', '175%'], ['200', '200%']])}</div>
+      <div class="ds-set-row"><div><b>Density</b><p>Compact fits more rows; comfortable gives bigger targets.</p></div>${seg('density', 'Density', [['compact', 'Compact'], ['comfortable', 'Comfortable']])}</div>
+      <div class="ds-set-row"><div><b>Animations</b><p>Turn off motion if it is distracting. Windows' "reduce motion" setting is always respected.</p></div><button class="ds-switch" type="button" role="switch" aria-checked="true" aria-label="Animations" data-motion></button></div>
+      <div class="ds-set-row"><div><b>Interface</b><p>Classic keeps the original look; Modern is this design. Applies at next sign-in.</p></div>${seg('mode', 'Interface', [['classic', 'Classic'], ['modern', 'Modern']])}</div>
+      <div class="ds-set-row"><div><b id="appearance-print-label">Print layout</b><p id="appearance-print-help">Modern is available only for listed previews or approved templates. Other documents print Classic.</p></div><select name="printMode" aria-labelledby="appearance-print-label" aria-describedby="appearance-print-help"><option value="classic">Classic</option><option value="modern">Modern</option></select></div>
+      <details class="ds-set-more"><summary>Document layouts</summary><fieldset class="presentation-print-families"><legend class="ds-sr">Document layouts</legend>
         <p id="appearance-family-help">Default follows Print layout above. Choose Classic or Modern to override it for one document family. Preview templates are synthetic-checked only and are not approved for official documents.</p>
         <div class="print-family-list"></div>
-      </fieldset>
-      <p>Theme, density and text size apply to the Modern workspace. Compatibility forms and Classic printing retain their original presentation.</p>
+      </fieldset></details>
+      <div class="ds-sr"><label><span id="appearance-mode-label">Next sign-in interface</span><select name="mode" aria-labelledby="appearance-mode-label" tabindex="-1"><option value="modern">Modern</option><option value="classic">Classic</option></select></label>
+      <label><span id="appearance-theme-label">Theme</span><select name="theme" aria-labelledby="appearance-theme-label" tabindex="-1"><option value="system">Windows preference</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+      <label><span id="appearance-density-label">Density</span><select name="density" aria-labelledby="appearance-density-label" tabindex="-1"><option value="compact">Compact</option><option value="comfortable">Comfortable</option></select></label>
+      <label><span id="appearance-size-label">Text size</span><select name="textSize" aria-labelledby="appearance-size-label" tabindex="-1"><option value="100">100%</option><option value="125">125%</option><option value="150">150%</option><option value="175">175%</option><option value="200">200%</option></select></label></div></section>
+      <section class="ds-set-card ds-set-data"><h3>Data &amp; safety</h3>
+        <div class="ds-set-row" data-cmd-row="backup" hidden><div><b>Back up the database</b><p>Runs the application's own backup.</p></div><button type="button" data-run="backup">Back up now</button></div>
+        <div class="ds-set-row" data-cmd-row="lasttx" hidden><div><b>Last transaction date</b><p>Changing it is in Maintenance › Modify Last Transaction Date.</p></div><button type="button" data-run="lasttx">Open</button></div>
+        <p class="ds-help" data-cmd-none>Backup and the last transaction date are in the Maintenance menu.</p></section>
       <p class="presentation-error" role="alert" hidden></p><footer><button type="button">Cancel</button><button type="submit">Save settings</button></footer></form>`
+    const form = () => dialog.querySelector('form')!
+    const sync = () => {
+      const value = (name: string) => form().querySelector<HTMLSelectElement>(`select[name="${name}"]`)!.value
+      for (const button of dialog.querySelectorAll<HTMLElement>('[data-theme-card]')) button.setAttribute('aria-pressed', String(button.dataset.themeCard === value('theme')))
+      for (const button of dialog.querySelectorAll<HTMLElement>('[data-seg]')) button.setAttribute('aria-pressed', String(button.dataset.value === value(button.dataset.seg!)))
+      dialog.querySelector('[data-motion]')!.setAttribute('aria-checked', String(!motionOff()))
+    }
+    dialog.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement
+      const set = (name: string, value: string) => { const select = form().querySelector<HTMLSelectElement>(`select[name="${name}"]`)!; if (![...select.options].some((o) => o.value === value)) select.add(new Option(value, value)); select.value = value; sync() }
+      const theme = target.closest<HTMLElement>('[data-theme-card]')
+      if (theme) set('theme', theme.dataset.themeCard!)
+      const segment = target.closest<HTMLElement>('[data-seg]')
+      if (segment) set(segment.dataset.seg!, segment.dataset.value!)
+      const motion = target.closest<HTMLElement>('[data-motion]')
+      if (motion) motion.setAttribute('aria-checked', String(motion.getAttribute('aria-checked') !== 'true'))
+      const run = target.closest<HTMLElement>('[data-run]')
+      if (run) { const command = this.settingsCommand(run.dataset.run!); if (command) { dialog.close(); void this.runCommand(command) } }
+    })
+    dialog.addEventListener('ds-sync', sync)
     dialog.querySelector('button[type=button]')!.addEventListener('click', () => dialog.close())
     containDialogFocus(dialog)
     dialog.querySelector('form')!.addEventListener('submit', (event) => {
@@ -679,6 +876,7 @@ export class PresentationUi extends DomUi {
           textSize: Number(values.get('textSize')), printMode: values.get('printMode'), printFamilies: printFamilyValues,
         })
         this.session.save(preferences)
+        setMotion(dialog.querySelector('[data-motion]')!.getAttribute('aria-checked') !== 'true')
         this.applyAppearance(true)
         dialog.close()
       } catch (cause) {
@@ -702,7 +900,18 @@ export class PresentationUi extends DomUi {
     }
     this.renderPrintFamilies()
     this.settings.querySelector<HTMLElement>('.presentation-error')!.hidden = true
+    let any = false
+    for (const row of this.settings.querySelectorAll<HTMLElement>('[data-cmd-row]')) { row.hidden = !this.settingsCommand(row.dataset.cmdRow!); any ||= !row.hidden }
+    this.settings.querySelector<HTMLElement>('[data-cmd-none]')!.hidden = any
+    this.settings.dispatchEvent(new Event('ds-sync'))
     this.settings.showModal()
+  }
+
+  /** Menu items the Preferences page links to (shown only when the menu offers them to this user). */
+  private settingsCommand(key: string): ReturnType<typeof menuCommands>[number] | undefined {
+    const root = this.commandRoot()
+    const pattern = key === 'backup' ? /\bback ?up\b/i : /last transaction date/i
+    return root ? menuCommands(root).find((command) => pattern.test(command.label)) : undefined
   }
 
   private renderPrintFamilies(): void {
@@ -764,6 +973,7 @@ export class PresentationUi extends DomUi {
     const preferences = this.session.preferences
     element.dataset.theme = preferences.theme === 'system' ? this.systemTheme.matches ? 'dark' : 'light' : preferences.theme
     element.dataset.density = preferences.density
+    element.classList.toggle('ds-no-motion', motionOff())
     element.style.setProperty('--p-scale', String(preferences.textSize / 100))
   }
 

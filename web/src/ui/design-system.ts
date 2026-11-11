@@ -100,6 +100,7 @@ export const DESIGN_CSS = `
 .presentation-ui .mh-toolbar .tb:disabled {opacity:.36;}
 .mh-toolbar .mh-pos {font:12px var(--p-mono);color:var(--p-muted);padding:0 8px;white-space:nowrap;}
 @media (max-width:1360px){.mh-toolbar .mh-label,.mh-toolbar .mh-group-label{display:none}.mh-toolbar .tb.mh-primary .mh-label{display:inline}}
+@media (max-width:900px){.modern-entry-window .modern-surface .simplified-form:not(.simplified-summary) .simplified-row{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media (max-width:850px){.presentation-ui:has(>.presentation-sidebar){grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);overflow:hidden}.presentation-ui > .presentation-work{grid-row:2;min-height:0}}
 @media (max-width:900px){.presentation-ui .toolbar.mh-toolbar{position:static;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}}
 
@@ -137,7 +138,12 @@ export const DESIGN_CSS = `
 
 /* ---------- status bar ---------- */
 .presentation-ui .pbwin:has(> div > .mdi-client) .status {display:flex;align-items:center;gap:16px;height:auto;padding:6px 16px;border-top:1px solid var(--p-hair);background:var(--p-surface);color:var(--p-muted);font:12px var(--p-font);}
-.presentation-ui .ds-status-right {margin-left:auto;display:flex;gap:16px;flex-wrap:wrap;}
+.presentation-ui .ds-statusbar {display:flex;align-items:center;gap:16px;padding:0 16px 0 0;border-top:1px solid var(--p-hair);background:var(--p-surface);color:var(--p-muted);font:12px var(--p-font);flex-wrap:wrap;}
+.presentation-ui .pbwin:has(> div > .mdi-client) .ds-statusbar > .status {flex:1;min-width:0;border-top:0;background:none;}
+.presentation-ui .ds-status-right {margin-left:auto;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.presentation-ui .ds-status-right > span {display:inline-flex;align-items:center;white-space:nowrap;}
+.presentation-ui .ds-status-right .ds-off {background:var(--p-danger);animation:none;}
+.presentation-ui .ds-status-right .num {font-family:var(--p-mono);}
 .presentation-ui .ds-status-right .ds-live {display:inline-block;width:7px;height:7px;border-radius:50%;background:#4ec98a;margin-right:6px;animation:ds-pulse 2s infinite;}
 
 /* ---------- cards (data surfaces, panels) ---------- */

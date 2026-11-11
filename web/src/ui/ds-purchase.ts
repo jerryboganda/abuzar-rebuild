@@ -93,6 +93,43 @@ export function decoratePurchase(ctx: PurchaseContext, state: PurchaseState, too
       <span>Terms <b>${info === 'loading' ? '…' : esc(info?.terms ?? '—')}</b></span><span>Last purchase <b>${info === 'loading' ? '…' : esc(info?.last ?? '—')}</b></span></div></div>`
     if (card.dataset.html !== html) { card.innerHTML = html; card.dataset.html = html }
   } else card?.remove()
+  // quick-add bar of the approved design at the top of the lines card.  It sits outside the DataWindow (the grid's own markup is
+  // never touched) and hands the keyboard to the item cell of the open line, adding a line with the original New Item command when
+  // every line already has an item; the original item search then runs in that cell.
+  const gridCtl = detail.querySelector<HTMLElement>(':scope > .entry-control:has(.simplified-grid)')
+  const gridSurface = gridCtl?.querySelector<HTMLElement>(':scope > .modern-surface')
+  if (gridCtl && gridSurface && !state.posted) {
+    let quick = gridCtl.querySelector<HTMLElement>(':scope > .ds-quick-card')
+    if (!quick) {
+      quick = document.createElement('div')
+      quick.className = 'ds-quick-card'
+      quick.innerHTML = `<div class="ds-quick-h"><h2>Items</h2><span>Type a name, code or barcode</span></div><div class="ds-quick">
+        <label class="ds-quick-f"><span>Item · name, code or barcode</span><span class="ds-quick-in"><svg class="ds-i s" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="text" placeholder="Start typing… e.g. pana" autocomplete="off" aria-describedby="ds-quick-help"></span></label>
+        <button type="button" class="ds-btn primary" data-quick-add><svg class="ds-i s" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M12 13v5M9.5 15.5h5"/></svg>Add line</button>
+        <p class="ds-help" id="ds-quick-help">Typing continues in the item column of the open line. Use ↓ ↑ to pick from the list and Enter to choose, then fill batch, expiry, packs and price.</p></div>`
+      const openRow = () => [...gridSurface.querySelectorAll<HTMLElement>('tbody tr')].find((row) => !row.querySelector('[data-obj=itemname]')?.textContent?.trim())
+      const toItemCell = (allowNew: boolean): void => {
+        const cell = openRow()?.querySelector<HTMLElement>('[data-obj=itemname]')
+        if (cell) {
+          for (const type of ['mousedown', 'mouseup', 'click']) cell.dispatchEvent(new MouseEvent(type, { bubbles: true, view: window }))
+          cell.closest('td')?.querySelector<HTMLElement>('input,textarea')?.focus()
+          return
+        }
+        if (allowNew && toolbar('update!') && !toolbar('update!')!.disabled) { toolbar('update!')!.click(); setTimeout(() => toItemCell(false), 350) }
+      }
+      quick.querySelector('input')!.addEventListener('focus', () => toItemCell(true))
+      quick.querySelector('[data-quick-add]')!.addEventListener('click', () => toItemCell(true))
+      gridCtl.prepend(quick)
+    }
+    quick.querySelector<HTMLButtonElement>('[data-quick-add]')!.disabled = !toolbar('update!') || toolbar('update!')!.disabled
+  } else gridCtl?.querySelector(':scope > .ds-quick-card')?.remove()
+  // the original item search list floats just under the line being typed (like the mockup's suggestions under the input)
+  const aux = detail.querySelector<HTMLElement>(':scope > .entry-auxiliary:not(.hidden)')
+  if (aux && gridCtl) {
+    const editor = gridCtl.querySelector<HTMLElement>('tr.cur') ?? gridCtl.querySelector<HTMLElement>('tbody tr')
+    const top = editor ? Math.max(0, Math.round(editor.getBoundingClientRect().bottom - gridCtl.getBoundingClientRect().top + 4)) : 150
+    if (aux.style.marginTop !== `${top}px`) aux.style.marginTop = `${top}px`
+  }
   // ready-to-post panel under the bill summary
   const summaryCtl = detail.querySelector<HTMLElement>(':scope > .entry-control:has(.simplified-summary)')
   if (summaryCtl) {
@@ -157,6 +194,26 @@ export const PURCHASE_CSS = `
 .ds-steps .sn {width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:12px;border:2px solid var(--p-line);background:var(--p-surface);transition:all .35s var(--p-spring);}
 .ds-steps li.done {color:var(--p-text);} .ds-steps li.done .sn {background:var(--p-ok);border-color:var(--p-ok);color:#fff;transform:scale(1.06);}
 .ds-steps li.now {color:var(--p-accent);} .ds-steps li.now .sn {border-color:var(--p-accent);color:var(--p-accent);box-shadow:0 0 0 5px var(--p-glow);}
+.modern-entry-window .entry-detail:has(.simplified-summary) > .entry-control:has(> .ds-quick-card):has(.simplified-grid),.modern-entry-window .entry-detail > .entry-control:has(> .ds-quick-card) {display:flex!important;flex-direction:column;height:calc(clamp(300px,52vh,620px) + 150px)!important;background:var(--p-surface)!important;border:1px solid var(--p-hair)!important;border-radius:14px;box-shadow:var(--p-shadow)!important;overflow:hidden;}
+.modern-entry-window .entry-detail:has(.simplified-summary) > .entry-control:has(> .ds-quick-card):has(.simplified-grid) > .modern-surface,.modern-entry-window .entry-detail > .entry-control:has(> .ds-quick-card) > .modern-surface {position:relative!important;inset:auto!important;flex:1;min-height:0;height:auto!important;border:0!important;box-shadow:none!important;border-radius:0 0 14px 14px;}
+.modern-entry-window .entry-detail > .entry-control:has(> .ds-quick-card) .simplified-grid > .simplified-head {display:none;}
+.ds-quick-card {flex:none;}
+.ds-quick-h {display:flex;align-items:baseline;gap:10px;padding:14px 18px;border-bottom:1px solid var(--p-hair);flex-wrap:wrap;}
+.ds-quick-h h2 {margin:0;font-size:15px;font-weight:600;}
+.ds-quick-h span {color:var(--p-muted);font-size:12.5px;}
+.ds-quick {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:end;padding:14px 18px;background:var(--p-sunk);border-bottom:1px solid var(--p-hair);}
+.ds-quick-f {display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:500;color:var(--p-muted);}
+.ds-quick-in {position:relative;display:block;}
+.ds-quick-in .ds-i {position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--p-faint);pointer-events:none;}
+.ds-quick-in input {width:100%;height:40px;padding:0 12px 0 34px;border:1px solid var(--p-line);border-radius:8px;background:var(--p-surface);color:var(--p-text);font:14px var(--p-font);box-sizing:border-box;}
+.ds-quick-in input:focus {outline:0;border-color:var(--p-accent);box-shadow:0 0 0 4px var(--p-glow);}
+.ds-quick .ds-btn {height:40px;display:inline-flex;align-items:center;gap:6px;}
+.ds-quick .ds-help {grid-column:1 / -1;margin:0;}
+/* the original item search list (the window's auxiliary DataWindow) floats over the lines like the mockup's suggestion list */
+.modern-entry-window .entry-detail.ds-transaction > .entry-auxiliary:not(.hidden) {grid-column:1;grid-row:3;align-self:start;justify-self:start;width:min(680px,100%)!important;z-index:30;height:min(360px,60vh)!important;border:1px solid var(--p-hair);border-radius:12px;box-shadow:var(--p-shadow-lg);background:var(--p-surface);overflow:hidden;animation:ds-drop .16s var(--p-ease);transition:margin-top .12s;}
+.modern-entry-window .entry-detail.ds-transaction > .entry-auxiliary:not(.hidden) > .modern-surface {width:100%!important;height:100%!important;border:0!important;box-shadow:none!important;border-radius:12px;}
+.modern-entry-window .entry-detail.ds-transaction > .entry-auxiliary .simplified-head {display:none;}
+.modern-entry-window .entry-detail.ds-transaction > .entry-auxiliary:not(.hidden) tr.cur {background:var(--p-selected)!important;}
 .ds-supp {display:flex;gap:14px;align-items:center;padding:12px 14px;border-radius:12px;background:var(--p-selected);margin:0 18px 18px;flex-wrap:wrap;animation:ds-up .4s var(--p-ease);}
 .ds-supp .av {width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#0f6b6f,#1d5f80);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:600;flex:none;}
 .ds-supp-body {flex:1;min-width:0;}
