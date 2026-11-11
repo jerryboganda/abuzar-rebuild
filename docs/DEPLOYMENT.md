@@ -103,6 +103,10 @@ Each PC needs the browser only; nothing else to install. Add the token page to t
   Rollback: copy the backup `src` and `index.html` back over `C:\Waseela\web`.
   Same day, commit `79386ba8` (header matched to the approved mockup) copied the same way; the same backup is the rollback. The Modern interface
   opens only with `&presentation=1` in the address.
+* **Web update 2026-11-12 (commit `3b560b01`): whole-app Modern design (approved mockup v4).** Sign-in screen, Home dashboard, shell,
+  cards, Pack Purchase companion, dialogs, dark mode and phone/tablet layouts. Built from a clean worktree with `build-static.ts` and copied over
+  `C:\Waseela\web\src` and `index.html` (server not restarted; users reload). Rollback: the 2026-11-11 backup `C:\Waseela\web.before-header-2026-11-11`.
+  Browser-checked on the local test copy `waseela_rehearsal`; Modern still opens only with `&presentation=1`.
 * The old PowerBuilder application and its SQL Server instance keep running untouched; do not decommission
   them until the snapshot decision is made and a period of parallel running is accepted.
 * The rebuilt application has no licence checks (owner decision 2026-11-02), server-side rights are not
