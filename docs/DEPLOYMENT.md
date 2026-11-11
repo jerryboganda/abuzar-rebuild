@@ -107,6 +107,7 @@ Each PC needs the browser only; nothing else to install. Add the token page to t
   cards, Pack Purchase companion, dialogs, dark mode and phone/tablet layouts. Built from a clean worktree with `build-static.ts` and copied over
   `C:\Waseela\web\src` and `index.html` (server not restarted; users reload). Rollback: the 2026-11-11 backup `C:\Waseela\web.before-header-2026-11-11`.
   Browser-checked on the local test copy `waseela_rehearsal`; Modern still opens only with `&presentation=1`.
+  Same day, commit `debf8f60` (Reports and Items pages, Preferences layout, rights switch matrix, status bar, Pack Purchase quick-add) copied the same way; same rollback.
 * The old PowerBuilder application and its SQL Server instance keep running untouched; do not decommission
   them until the snapshot decision is made and a period of parallel running is accepted.
 * The rebuilt application has no licence checks (owner decision 2026-11-02), server-side rights are not
