@@ -123,6 +123,7 @@ export class PresentationUi extends DomUi {
     const view = this.views.get(this.selected)
     this.decorateReport()
     if (!view || !view.el.classList.contains('modern-entry-window')) return
+    this.decorateListToggle(view.el)
     const byName = (name: string) => [...view.ctlViews.keys()].find((control) => control.name === name)
     const transaction = this.rt.globals.get('sqlca') as { db?: { query(sql: string, params: unknown[]): Promise<{ rows: unknown[][] }> } } | undefined
     const ctx = {
@@ -130,7 +131,14 @@ export class PresentationUi extends DomUi {
       model: (name: string) => (byName(name) as unknown as { model?: never } | undefined)?.model ?? null,
       query: async (sql: string, params: unknown[]) => transaction?.db ? (await transaction.db.query(sql, params)).rows : [],
     }
-    decorateSale(view.el, ctx.query, (stock) => this.mdi?.el.querySelector<HTMLButtonElement>(`.mh-toolbar button[data-stock="${stock}"]`) ?? null, () => this.decorateActive())
+    const creditSale = /credit/i.test(String(this.selected.props.get('title') ?? ''))
+    const other = (() => {
+      const root = this.commandRoot()
+      const pattern = creditSale ? /^Sales \/ Cash ?Sale$/i : /^Sales \/ Credit Sale$/i
+      return root ? menuCommands(root).find((command) => pattern.test(command.label)) : undefined
+    })()
+    decorateSale(view.el, ctx.query, (stock) => this.mdi?.el.querySelector<HTMLButtonElement>(`.mh-toolbar button[data-stock="${stock}"]`) ?? null, () => this.decorateActive(),
+      other ? () => void this.runCommand(other) : null, creditSale)
     const state = purchaseState(ctx, () => this.decorateActive())
     if (!state) return
     if (this.purchaseDirty && !state.dirty) { forgetPurchaseFacts(); this.purchaseDirty = false; return void this.decorateActive() }
@@ -649,8 +657,11 @@ export class PresentationUi extends DomUi {
           this.setHomeContext(1, reply.ok ? 'FBR fiscal invoicing online' : 'FBR fiscal invoicing offline')
         }
       } catch { /* the preference table is not readable: no FBR status shown */ }
-      // the signed-in workstation's default godown (gl_defaultgcode)
-      const code = String(this.rt.globals.get('gl_defaultgcode') ?? '')
+      // the default godown: the DefaultGCode preference (the global gl_defaultgcode when a script has set it)
+      let code = String(this.rt.globals.get('gl_defaultgcode') ?? '')
+      if (!Number(code)) {
+        try { code = String((await query(`SELECT prefvalue FROM dbo.softwarepreferences WHERE lower(name) = 'defaultgcode'`))[0]?.[0] ?? '').trim() } catch { code = '' }
+      }
       if (code && code !== godownCode) {
         godownCode = code
         try {
@@ -676,6 +687,8 @@ export class PresentationUi extends DomUi {
     let back = bar.querySelector<HTMLButtonElement>(':scope > .ds-rep-back')
     let pill = bar.querySelector<HTMLElement>(':scope > .ds-rep-pill')
     if (!isReport) { back?.remove(); pill?.remove(); return }
+    // the report's criteria dialog docks just under this header
+    document.documentElement.style.setProperty('--ds-report-top', `${Math.round(bar.getBoundingClientRect().bottom + 8)}px`)
     if (!back) {
       back = document.createElement('button')
       back.type = 'button'
@@ -689,6 +702,34 @@ export class PresentationUi extends DomUi {
       pill.className = 'ds-rep-pill'
       pill.textContent = 'Preview'
       bar.querySelector(':scope > .mh-title')?.after(pill)
+    }
+  }
+
+  /** Approved design: entry windows switch between Detail and List with one toolbar button (the tab strip is not drawn).  On the
+   * Detail page it is the window's own List command; on the List page it shows Detail and selects the original Detail tab. */
+  private decorateListToggle(root: HTMLElement): void {
+    const tabs = root.querySelector<HTMLElement>('.entry-tabs')
+    const strip = tabs?.querySelector<HTMLElement>(':scope > .strip')
+    const button = [...this.mdi?.el.querySelectorAll<HTMLButtonElement>('.mh-toolbar button[data-stock="find!"]') ?? []].find((b) => b.offsetParent)
+    if (!tabs || !strip || !button) { tabs?.classList.remove('ds-tabs-in-toolbar'); return }
+    tabs.classList.add('ds-tabs-in-toolbar')
+    const pages = [...tabs.querySelectorAll<HTMLElement>(':scope > .page')]
+    const onList = pages.length === 2 && !pages[1].hidden && pages[1].offsetParent !== null
+    const label = button.querySelector<HTMLElement>('.mh-label')
+    const text = onList ? 'Detail' : 'List'
+    if (label && label.textContent !== text) label.textContent = text
+    button.setAttribute('aria-label', onList ? 'Detail view' : (button.dataset.label || 'List View').split('	')[0])
+    button.classList.toggle('ds-on-list', onList)
+    if (!button.dataset.dsToggle) {
+      button.dataset.dsToggle = '1'
+      button.addEventListener('click', (event) => {
+        if (!button.classList.contains('ds-on-list')) return
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        const detail = root.querySelector<HTMLElement>('.entry-tabs > .strip > :first-child')
+        detail?.click()
+        setTimeout(() => this.decorateActive(), 50)
+      }, true)
     }
   }
 

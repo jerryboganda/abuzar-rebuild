@@ -250,7 +250,7 @@ export const HOME_CSS = `
 .ds-tag {font-size:11px;padding:1px 7px;border-radius:5px;background:var(--p-sunk);color:var(--p-muted);font-weight:500;white-space:nowrap;}
 .ds-tag.warn {background:var(--p-warn-soft);color:var(--p-warn);} .ds-tag.bad {background:var(--p-danger-soft);color:var(--p-danger);}
 .ds-empty {margin:0;color:var(--p-muted);}
-@media (max-width:760px){.ds-hello-actions{display:none}}
+@media (max-width:760px){.ds-hello{flex-direction:column;align-items:flex-start}.ds-hello-actions{margin-top:4px}}
 `
 
 /** Greys or enables the quick actions as the live menu allows them now. */

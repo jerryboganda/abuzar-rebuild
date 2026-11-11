@@ -289,6 +289,17 @@ export const PAGES_CSS = `
 .modern-window .dw:not(.modern-surface) .band.row:hover {background:var(--p-sunk);}
 .modern-window .dw:not(.modern-surface) .band.row.cur:hover {background:var(--p-selected)!important;}
 .modern-window .dw:not(.modern-surface) :is(input,textarea,select).dw-edit {background:var(--p-surface)!important;color:var(--p-text)!important;}
+/* ---------- Report criteria (the original w_arg_* dialogs) docked under the report header as the mockup's filter card: same
+   window, fields and Ok/Cancel; it only sits in the page instead of floating over a dimmed screen ---------- */
+dialog.presentation-compatibility-dialog[open]:has(.pbwin[data-win^=w_arg_]) {position:fixed;inset:var(--ds-report-top,150px) 16px auto 16px;margin:0;width:auto;max-width:none;max-height:calc(100vh - var(--ds-report-top,150px) - 48px);animation:ds-drop .2s var(--p-ease);}
+dialog.presentation-compatibility-dialog:has(.pbwin[data-win^=w_arg_])::backdrop {background:transparent;backdrop-filter:none;}
+dialog.presentation-compatibility-dialog[open]:has(.pbwin[data-win^=w_arg_]) .modern-window.pbwin {width:100%!important;max-width:none!important;box-shadow:var(--p-shadow-lg);}
+@media (min-width:900px){
+  dialog.presentation-compatibility-dialog[open]:has(.pbwin[data-win^=w_arg_]) .window-fields.has-grid {display:flex!important;flex-wrap:wrap;align-items:flex-end;gap:12px 18px;}
+  dialog.presentation-compatibility-dialog[open]:has(.pbwin[data-win^=w_arg_]) .window-fields.has-grid > * {flex:1 1 220px;grid-column:auto!important;grid-row:auto!important;}
+  dialog.presentation-compatibility-dialog[open]:has(.pbwin[data-win^=w_arg_]) .window-fields.has-grid > .window-frame {flex:1 1 100%;}
+  dialog.presentation-compatibility-dialog[open]:has(.pbwin[data-win^=w_arg_]) .window-fields.has-grid > .window-option {flex:0 1 auto;}
+}
 /* ---------- Group Rights (Manage › Groups): the original rights grid as the mockup's matrix — level shown by weight and a
    tint instead of the source's blue bands, permissions as switches (the cell, its click handling and the saved value are unchanged) */
 .pbwin[data-win=w_groups_form] .dw:has(.o[data-obj=checked]) {background:var(--p-surface)!important;}

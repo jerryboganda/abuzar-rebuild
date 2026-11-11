@@ -69,6 +69,8 @@ export const DESIGN_CSS = `
 .mh-context .mh-crumbs .mh-crumb:hover {color:var(--p-chrome-text);background:var(--p-chrome-hover);}
 .mh-context .mh-crumbs strong {padding-left:4px;}
 @media (max-width:1460px){.mh-context .mh-period{display:none}}
+@media (max-width:560px){.mh-context .mh-brand{flex:1 0 100%}.mh-context .mh-fill{display:none}}
+@media (max-width:560px){.presentation-ui .ds-statusbar{flex-wrap:nowrap;padding:0 12px 0 0}.presentation-ui .ds-status-right{flex-wrap:nowrap}.presentation-ui .ds-status-right > span:not(:first-child){display:none!important}}
 @media (max-width:1050px){.mh-context .mh-search{order:9;flex-basis:100%}.mh-context .mh-crumbs,.mh-context .mh-chip{display:none}}
 
 /* ---------- menu bar and drop-downs ---------- */
@@ -106,6 +108,7 @@ export const DESIGN_CSS = `
 /* a long command set (report windows: 25 commands) scrolls sideways instead of wrapping onto a second row */
 .presentation-ui .toolbar.mh-toolbar {flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;}
 .presentation-ui .toolbar.mh-toolbar > :not(.mh-spacer) {flex:none;}
+.modern-entry-window .entry-tabs.ds-tabs-in-toolbar > .strip {display:none!important;}
 .presentation-ui .toolbar.mh-toolbar .ds-rep-back {display:inline-flex;align-items:center;gap:6px;color:var(--p-muted);}
 .presentation-ui .toolbar.mh-toolbar .ds-rep-back .mh-label {display:inline!important;}
 .presentation-ui .toolbar.mh-toolbar .ds-rep-pill {font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--p-info-soft);color:var(--p-info);}

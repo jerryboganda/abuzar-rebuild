@@ -42,7 +42,7 @@ async function openCell(cell: HTMLElement): Promise<HTMLInputElement | null> {
   return null
 }
 
-export function decorateSale(root: HTMLElement, query: Query, toolbar: (stock: string) => HTMLButtonElement | null, onAsync: () => void): void {
+export function decorateSale(root: HTMLElement, query: Query, toolbar: (stock: string) => HTMLButtonElement | null, onAsync: () => void, openOther: (() => void) | null = null, credit = false): void {
   const detail = root.querySelector<HTMLElement>('.entry-detail.ds-transaction[data-win=w_sale]')
   if (!detail) return
   const gridCtl = detail.querySelector<HTMLElement>(':scope > .entry-control:not(.entry-auxiliary):has(.simplified-grid)')
@@ -138,18 +138,31 @@ export function decorateSale(root: HTMLElement, query: Query, toolbar: (stock: s
   if (!pay) {
     pay = document.createElement('section')
     pay.className = 'ds-change'
-    pay.innerHTML = `<div class="row"><label for="ds-cash">Cash received</label><input id="ds-cash" type="text" inputmode="decimal" placeholder="0" autocomplete="off"></div>
+    pay.innerHTML = `<div class="row"><span>Sale type</span><span class="ds-seg" role="group" aria-label="Sale type"><button type="button" data-mode="cash">Cash</button><button type="button" data-mode="credit">Credit</button></span></div>
+      <div class="ds-cash-only"><div class="row"><label for="ds-cash">Cash received</label><input id="ds-cash" type="text" inputmode="decimal" placeholder="0" autocomplete="off"></div>
       <div class="quick">${[500, 1000, 5000].map((n) => `<button type="button" data-add="${n}">+${n}</button>`).join('')}</div>
       <div class="row ch"><span>Change to return</span><b class="num" aria-live="polite">0.00</b></div>
-      <p class="ds-help">Counts the change only; nothing here is saved with the sale.</p>`
+      <p class="ds-help">Counts the change only; nothing here is saved with the sale.</p></div>`
     const cash = pay.querySelector<HTMLInputElement>('#ds-cash')!
     pay.addEventListener('click', (event) => {
+      const mode = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-mode]')
+      if (mode) { if (mode.getAttribute('aria-pressed') !== 'true') pay!.dispatchEvent(new CustomEvent('ds-credit')); return }
       const add = (event.target as HTMLElement).closest<HTMLElement>('[data-add]')
       if (add) { cash.value = String(num(cash.value) + Number(add.dataset.add)); onAsync() }
     })
     cash.addEventListener('input', () => onAsync())
     footer.append(pay)
   }
+  // the switch shows which window this is (Cash Sale or Credit Sale); the other choice opens that window from the Sales menu
+  for (const button of pay.querySelectorAll<HTMLButtonElement>('[data-mode]')) {
+    const current = (button.dataset.mode === 'credit') === credit
+    button.setAttribute('aria-pressed', String(current))
+    button.disabled = !current && !openOther
+    button.title = current ? '' : `Opens Sales › ${button.dataset.mode === 'credit' ? 'Credit Sale' : 'Cash Sale'}`
+  }
+  pay.querySelector<HTMLElement>('.ds-cash-only')!.hidden = credit
+  ;(pay as HTMLElement & { _credit?: () => void })._credit = openOther ?? undefined
+  if (!pay.dataset.creditWired) { pay.dataset.creditWired = '1'; pay.addEventListener('ds-credit', () => (pay as HTMLElement & { _credit?: () => void })._credit?.()) }
   // the amount the customer pays: the window's own grand total (rounded, with its charges)
   const net = num(footer.querySelector('[data-obj=c_big_grandtotal]')?.textContent ?? footer.querySelector('[data-obj=total]')?.textContent)
   const cashInput = pay.querySelector<HTMLInputElement>('#ds-cash')!
@@ -198,5 +211,9 @@ export const SALE_CSS = `
 .ds-change .ch b {font:600 16px var(--p-mono);color:var(--p-text);}
 .ds-change .ch b.neg {color:var(--p-danger);}
 .ds-change .ds-help {margin:0;}
+.ds-change .ds-seg {display:inline-flex;padding:3px;border-radius:10px;background:var(--p-sunk);gap:2px;}
+.ds-change .ds-seg button {border:0;background:none;padding:5px 14px;border-radius:7px;cursor:pointer;color:var(--p-muted);font:500 13px var(--p-font);}
+.ds-change .ds-seg button[aria-pressed=true] {background:var(--p-surface);color:var(--p-text);box-shadow:0 1px 3px rgb(0 0 0 / .12);}
+.ds-change .ds-seg button:disabled {opacity:.5;cursor:not-allowed;}
 @media (max-width:1000px){.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale]{grid-template-columns:minmax(0,1fr)}.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > *{grid-column:1!important;grid-row:auto!important}.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-auxiliary:not(.hidden){grid-row:2!important}}
 `
