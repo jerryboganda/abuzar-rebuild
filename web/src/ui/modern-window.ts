@@ -259,6 +259,11 @@ export function applyModernWindow(view: WinView): boolean {
   const actions = document.createElement('footer')
   actions.className = 'window-actions'
   for (const name of surface.actions) actions.append(elements.get(name)!)
+  // Approved design: the window's main action is the primary button (its default button, else the first Ok / Save / Print / Run)
+  if (!actions.querySelector('.default')) {
+    const main = [...actions.querySelectorAll<HTMLButtonElement>('button')].find((button) => /^(ok|save|yes|apply|print|run|retrieve|post|search|find|generate)/i.test(button.textContent?.trim() ?? ''))
+    main?.classList.add('ds-primary')
+  }
   const auxiliary = (surface.auxiliary ?? []).map((name) => {
     const element = elements.get(name)!
     element.classList.add('window-auxiliary')

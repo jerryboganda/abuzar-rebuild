@@ -92,6 +92,8 @@ export function messageDialog(title: string, text: string, icon: string, buttons
     return button
   })
   element.append(footer)
+  // the default answer is the dialog's primary button in the approved design
+  controls[defaultButton >= 1 && defaultButton <= controls.length ? defaultButton - 1 : 0]?.classList.add('ds-primary')
   // Escape answers as the Windows message box does: Cancel, or the only button; otherwise it does nothing.  The browser can close a modal
   // dialog on a repeated Escape even when its cancel event is prevented, so Escape is handled before the browser sees it, and a dialog
   // closed any other way while its script still waits is shown again: a message box never disappears without an answer.

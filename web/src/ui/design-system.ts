@@ -214,6 +214,10 @@ export const DESIGN_CSS = `
 .modern-window .window-field label,.modern-window .window-caption {font-size:12.5px;font-weight:500;color:var(--p-muted);}
 
 /* ---------- dialogs and response windows (mockup .modal) ---------- */
+.modern-window .window-actions {display:flex!important;flex-direction:row!important;justify-content:flex-end;align-items:center;flex-wrap:wrap;}
+.modern-window .window-actions > button.ctl:not(.window-embedded):not(.window-embedded *):not(.window-source-layout *),.modern-window .window-actions > button {width:auto!important;flex:0 0 auto!important;min-width:96px;height:auto!important;position:static!important;}
+.modern-window .window-actions button.ctl.ds-primary:not(:disabled):not(.window-embedded *):not(.window-source-layout *),.modern-window .window-actions button.ds-primary:not(:disabled) {background:linear-gradient(180deg,var(--p-accent-2),var(--p-accent))!important;border-color:var(--p-accent)!important;color:var(--p-on-accent)!important;box-shadow:0 6px 18px var(--p-glow);}
+
 .presentation-compatibility-dialog::backdrop,.presentation-settings::backdrop,.mh-palette::backdrop {background:var(--p-scrim);backdrop-filter:blur(3px);}
 .presentation-compatibility-dialog .modern-window.pbwin,.presentation-settings {border:1px solid var(--p-hair);border-radius:16px;box-shadow:var(--p-shadow-lg);overflow:hidden;}
 .modern-window.pbwin>.tbar {padding:18px 20px 6px;border-bottom:0;}
@@ -223,6 +227,16 @@ export const DESIGN_CSS = `
 .presentation-settings form {padding:18px 20px;}
 .presentation-settings select {min-height:40px;border:1px solid var(--p-line);border-radius:8px;padding:0 10px;background:var(--p-surface);color:var(--p-text);}
 
+/* runtime message boxes and prompts (mockup .modal) */
+.presentation-runtime-dialog {width:min(480px,calc(100vw - 32px));padding:0!important;}
+.presentation-runtime-dialog h2 {display:flex;align-items:center;gap:10px;margin:0;padding:18px 20px 0;font:600 17px/1.3 var(--p-font);color:var(--p-text);}
+.presentation-runtime-dialog .presentation-message-icon svg {width:22px;height:22px;color:var(--p-accent);}
+.presentation-runtime-dialog .presentation-copy {margin:0;padding:12px 20px 16px;color:var(--p-muted);white-space:pre-wrap;}
+.presentation-runtime-dialog label,.presentation-runtime-dialog input {margin:0 20px 12px;}
+.presentation-runtime-dialog input {min-height:40px;border:1px solid var(--p-line);border-radius:8px;padding:0 12px;background:var(--p-surface);color:var(--p-text);width:calc(100% - 40px);}
+.presentation-runtime-dialog footer {display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--p-hair);margin:0;}
+.presentation-runtime-dialog footer button {min-width:96px;}
+.presentation-runtime-dialog footer button.ds-primary,.presentation-settings footer button.ds-primary {background:linear-gradient(180deg,var(--p-accent-2),var(--p-accent))!important;border-color:var(--p-accent)!important;color:var(--p-on-accent)!important;box-shadow:0 6px 18px var(--p-glow);}
 /* ---------- entry window Detail / List tabs (mockup .tabs) ---------- */
 .modern-entry-window .entry-tabs>.strip {gap:4px;border-bottom:1px solid var(--p-hair);background:transparent;padding:0 16px;}
 .modern-entry-window .entry-tabs>.strip>.t {border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:9px 12px;color:var(--p-muted);font-weight:500;transition:color .2s,border-color .2s;}
