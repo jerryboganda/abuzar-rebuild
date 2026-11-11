@@ -146,6 +146,7 @@ export const PURCHASE_CSS = `
 .modern-entry-window .entry-detail:has(.ds-steps) > .entry-control:has(.simplified-summary) {grid-row:2 / span 3!important;}
 .modern-entry-window .entry-detail:has(.ds-steps) > .entry-control:has(.simplified-form:not(.simplified-summary)) {grid-row:2;}
 .modern-entry-window .entry-detail:has(.ds-steps) > .entry-control:has(.simplified-grid) {grid-row:3;}
+@media (max-width:1000px){.modern-entry-window .entry-detail:has(.ds-steps) > .entry-control:has(.simplified-summary){grid-row:4!important}.modern-entry-window .entry-detail:has(.ds-steps) > .ds-post{grid-row:5}}
 /* the bill form card holds the supplier card, as in the approved design */
 .modern-entry-window .entry-detail > .entry-control:has(> .ds-supp) {background:var(--p-surface)!important;border:1px solid var(--p-hair)!important;border-radius:14px;box-shadow:var(--p-shadow)!important;}
 .modern-entry-window .entry-detail > .entry-control:has(> .ds-supp) > .modern-surface {border:0!important;box-shadow:none!important;border-radius:14px 14px 0 0;}

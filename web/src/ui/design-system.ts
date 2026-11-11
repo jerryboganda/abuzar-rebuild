@@ -100,6 +100,7 @@ export const DESIGN_CSS = `
 .presentation-ui .mh-toolbar .tb:disabled {opacity:.36;}
 .mh-toolbar .mh-pos {font:12px var(--p-mono);color:var(--p-muted);padding:0 8px;white-space:nowrap;}
 @media (max-width:1360px){.mh-toolbar .mh-label,.mh-toolbar .mh-group-label{display:none}.mh-toolbar .tb.mh-primary .mh-label{display:inline}}
+@media (max-width:850px){.presentation-ui:has(>.presentation-sidebar){grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);overflow:hidden}.presentation-ui > .presentation-work{grid-row:2;min-height:0}}
 @media (max-width:900px){.presentation-ui .toolbar.mh-toolbar{position:static;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}}
 
 /* ---------- Home tab bar and panel ---------- */
