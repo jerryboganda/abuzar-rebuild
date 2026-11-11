@@ -10,6 +10,10 @@ import { readableText } from './pb.ts'
 import { printFamilies, printTemplateFor, resolvePrintPresentation } from './print-templates.ts'
 import { menuCommands, menuModules, executeMenuCommand } from './menu-commands.ts'
 import { PRESENTATION_CSS } from './presentation-styles.ts'
+import { DESIGN_CSS } from './design-system.ts'
+import { HOME_CSS, HOME_ICONS, loadHome, renderHome, homeNotes, syncHomeActions } from './ds-home.ts'
+import type { HomeData, HomeAction } from './ds-home.ts'
+import { PURCHASE_CSS, purchaseState, decoratePurchase, forgetPurchaseFacts } from './ds-purchase.ts'
 import { containDialogFocus, messageDialog, promptDialog } from './presentation-dialogs.ts'
 import type { PresentationDialog } from './presentation-dialogs.ts'
 import { ModernDwView } from './modern-dwview.ts'
@@ -17,7 +21,7 @@ import type { DwView } from './dwview.ts'
 import { applyModernWindow } from './modern-window.ts'
 import { applyModernEntryWindow } from './modern-entry-window.ts'
 import { nativeAppearance, nativeTheme } from './native-appearance.ts'
-import { ModernHeader, groupToolbar } from './modern-header.ts'
+import { ModernHeader, groupToolbar, parseFrameTitle } from './modern-header.ts'
 import type { ThemeChoice } from './modern-header.ts'
 import type { NativeAppearance, NativeTheme } from './native-appearance.ts'
 
@@ -42,13 +46,26 @@ export class PresentationUi extends DomUi {
   private nativeRevision = 0
   private nativeAppearance: NativeAppearance
   private header: ModernHeader | null = null
+  // Approved design: Home dashboard tab, menu path per window (breadcrumbs, current module, tab icon), notifications.
+  private homeActive = true
+  private homeHost: HTMLElement | null = null
+  private homeBar: HTMLElement | null = null
+  private homeTab: HTMLElement | null = null
+  private homeData: HomeData | null = null
+  private homeLoaded = 0
+  private homeRendered = false
+  private pendingPath: { path: string[]; at: number } | null = null
+  private windowPaths = new Map<NWindow, string[]>()
+  private freshTabs = new Set<NWindow>()
+  private purchaseDirty = false
 
   constructor(rt: Runtime, desktop: HTMLElement, session: PresentationSession, appearance: NativeAppearance = nativeAppearance) {
     super(rt, desktop)
     this.session = session
     this.nativeAppearance = appearance
     this.presentationStyle = document.createElement('style')
-    this.presentationStyle.textContent = PRESENTATION_CSS
+    // The approved design system layers on the Modern styles (Classic never loads either).
+    this.presentationStyle.textContent = PRESENTATION_CSS + DESIGN_CSS + HOME_CSS + PURCHASE_CSS
     document.head.append(this.presentationStyle)
     this.settings = this.buildSettings()
     if (session.activeMode === 'modern') {
@@ -79,6 +96,27 @@ export class PresentationUi extends DomUi {
     }, { signal: this.cleanup.signal })
     this.applyAppearance()
     this.refreshCommands()
+    // Approved design: the Pack Purchase companion follows the window's live DataWindows.
+    const companion = setInterval(() => this.decorateActive(), 400)
+    this.cleanup.signal.addEventListener('abort', () => clearInterval(companion))
+  }
+
+  private decorateActive(): void {
+    if (!this.shell || this.homeActive || !this.selected || this.hasModal()) return
+    const view = this.views.get(this.selected)
+    if (!view || !view.el.classList.contains('modern-entry-window')) return
+    const byName = (name: string) => [...view.ctlViews.keys()].find((control) => control.name === name)
+    const transaction = this.rt.globals.get('sqlca') as { db?: { query(sql: string, params: unknown[]): Promise<{ rows: unknown[][] }> } } | undefined
+    const ctx = {
+      root: view.el,
+      model: (name: string) => (byName(name) as unknown as { model?: never } | undefined)?.model ?? null,
+      query: async (sql: string, params: unknown[]) => transaction?.db ? (await transaction.db.query(sql, params)).rows : [],
+    }
+    const state = purchaseState(ctx, () => this.decorateActive())
+    if (!state) return
+    if (this.purchaseDirty && !state.dirty) { forgetPurchaseFacts(); this.purchaseDirty = false; return void this.decorateActive() }
+    this.purchaseDirty = state.dirty
+    decoratePurchase(ctx, state, (stock) => this.mdi?.el.querySelector<HTMLButtonElement>(`.mh-toolbar button[data-stock="${stock}"]`) ?? null, () => this.decorateActive())
   }
 
   protected override shortcutsEnabled(): boolean {
@@ -108,11 +146,23 @@ export class PresentationUi extends DomUi {
     return this.dialogs.size > 0 || [...this.views.values()].some((view) => view.modal && view.w.isOpen)
   }
 
+  override menuItemInvoked(item: PBObject): void {
+    const path: string[] = []
+    for (let node: PBObject | null = item; node && node.native !== 'window'; node = node.parent) {
+      const text = String(node.props.get('text') ?? '').split(/<TAB>|\t/)[0].replace(/&&/g, '\0').replace(/&/g, '').replace(/\0/g, '&').replace(/\.{3,}/g, '').trim()
+      if (text) path.unshift(text)
+    }
+    this.pendingPath = { path: path.slice(0, -1), at: Date.now() }
+  }
+
   override menuRendered(bar: HTMLElement): void {
     // Modern: the open-window tabs sit under the frame's menu bar and command bar, above the windows.
     const tabs = this.shell?.querySelector<HTMLElement>('.presentation-tabs')
     const mdi = bar.parentElement?.querySelector<HTMLElement>(':scope > .mdi-client')
     if (tabs && mdi && tabs.nextElementSibling !== mdi) mdi.before(tabs)
+    if (this.shell && tabs && mdi && !this.homeHost) this.buildHome(tabs, mdi)
+    // the user's rights are applied to the menu after sign-in: the quick actions follow the menu as it is now
+    if (this.homeHost) syncHomeActions(this.homeHost, this.homeActions())
     if (!this.shell && !bar.querySelector('.appearance-trigger')) {
       const button = document.createElement('button')
       button.className = 'appearance-trigger'
@@ -209,6 +259,9 @@ export class PresentationUi extends DomUi {
     container.append(tab, close)
     this.shell.querySelector('.presentation-tabs')!.append(container)
     const changed = () => this.updateTabs()
+    if (this.pendingPath && Date.now() - this.pendingPath.at < 8000) this.windowPaths.set(window, this.pendingPath.path)
+    this.pendingPath = null
+    this.freshTabs.add(window)
     this.tabs.set(window, { container, tab, changed })
     window.listeners.add(changed)
     this.updateTabs()
@@ -224,7 +277,7 @@ export class PresentationUi extends DomUi {
   }
 
   override windowActivated(window: NWindow): void {
-    if (this.tabs.has(window)) this.selected = window
+    if (this.tabs.has(window)) { this.selected = window; this.homeActive = false }
     this.updateTabs()
     this.refreshCommands()
   }
@@ -232,8 +285,16 @@ export class PresentationUi extends DomUi {
   private updateTabs(): void {
     const modal = this.hasModal()
     for (const [window, controls] of this.tabs) {
-      const active = window === this.selected
-      controls.tab.textContent = String(window.props.get('title') || window.name)
+      const active = window === this.selected && !this.homeActive
+      const title = String(window.props.get('title') || window.name)
+      const module = this.windowPaths.get(window)?.[0] ?? ''
+      controls.tab.replaceChildren()
+      if (this.windowModified(window)) {
+        const dot = document.createElement('span'); dot.className = 'ds-tab-dot'; dot.title = 'Unsaved changes'; controls.tab.append(dot)
+      }
+      controls.tab.insertAdjacentHTML('beforeend', `<svg class="ds-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${HOME_ICONS[moduleIcon(module)]}</svg>`)
+      controls.tab.append(title)
+      controls.container.classList.toggle('ds-fresh', this.freshTabs.delete(window))
       controls.tab.setAttribute('aria-selected', String(active))
       controls.tab.tabIndex = active ? 0 : -1
       controls.tab.disabled = modal
@@ -245,9 +306,23 @@ export class PresentationUi extends DomUi {
       const view = this.views.get(window)
       if (view) view.el.hidden = !active
     }
+    if (this.homeTab) {
+      const tab = this.homeTab.querySelector<HTMLButtonElement>('[role=tab]')!
+      tab.setAttribute('aria-selected', String(this.homeActive))
+      tab.tabIndex = this.homeActive ? 0 : -1
+      tab.disabled = modal
+    }
+    if (this.homeHost) this.homeHost.hidden = !this.homeActive
+    if (this.homeBar) this.homeBar.hidden = !this.homeActive
+    this.shell?.classList.toggle('ds-home-on', this.homeActive)
+    if (this.homeActive) void this.showHome()
+    this.syncHomeUser()
+    if (this.homeHost && this.homeActive) syncHomeActions(this.homeHost, this.homeActions())
+    const module = this.homeActive ? '' : (this.selected && this.windowPaths.get(this.selected)?.[0]) || ''
+    this.mdi?.el.querySelectorAll<HTMLElement>('.menubar .mi').forEach((mi) => mi.classList.toggle('ds-current', !!module && mi.textContent?.trim() === module))
     this.header?.refresh()
     const heading = this.mdi?.el.querySelector<HTMLElement>('.mh-toolbar .mh-title')
-    if (heading) heading.textContent = this.selected ? String(this.selected.props.get('title') || this.selected.name) : ''
+    if (heading) heading.textContent = this.selected && !this.homeActive ? String(this.selected.props.get('title') || this.selected.name) : ''
     const notice = this.shell?.querySelector('.presentation-compatibility')
     if (notice) notice.textContent = this.selected && this.views.get(this.selected)?.el.classList.contains('modern-entry-window')
       ? 'Modern entry layout preview / Production workflow acceptance is pending'
@@ -267,6 +342,8 @@ export class PresentationUi extends DomUi {
     }
     this.tabs.get(window)?.container.remove()
     this.tabs.delete(window)
+    this.windowPaths.delete(window)
+    if (!this.tabs.size) this.homeActive = true
     this.lastFocus.delete(window)
     // The window that becomes active is the most recently activated one (the top of the z-order), as in Classic, not the last tab.
     const top = <T extends PBObject>(windows: Iterable<T>): T | null => [...windows].filter((item) => this.views.has(item))
@@ -394,26 +471,20 @@ export class PresentationUi extends DomUi {
     const COLLAPSED = 'trader-modern-commands-hidden'
     const header = new ModernHeader({
       commands: () => { const root = this.commandRoot(); return root ? menuCommands(root, { includeDisabled: true }) : [] },
-      run: async (command) => {
-        const root = this.commandRoot()
-        if (this.executing || this.hasModal() || !root) return
-        this.executing = true
-        try {
-          if (!(await executeMenuCommand(this.rt, root, command))) {
-            await this.messageBox('Command unavailable', 'This command is no longer available in the active workspace.', 'information!', 'ok!', 1)
-          }
-        } catch (error) {
-          this.rt.onError(error)
-        } finally {
-          this.executing = false
-          this.refreshCommands()
-        }
-      },
+      run: (command) => this.runCommand(command),
       windows: () => [...this.tabs].map(([window, controls]) => ({
         title: String(window.props.get('title') || window.name), active: window === this.selected, activate: () => controls.tab.click(),
       })),
       frameTitle: () => this.mdi?.ttlEl?.textContent || String(this.mdi?.w.props.get('title') ?? ''),
-      windowTitle: () => this.selected ? String(this.selected.props.get('title') || this.selected.name) : 'Home',
+      windowTitle: () => this.selected && !this.homeActive ? String(this.selected.props.get('title') || this.selected.name) : 'Home',
+      windowPath: () => this.selected && !this.homeActive ? this.windowPaths.get(this.selected) ?? [] : [],
+      openMenu: (caption) => {
+        const mi = [...this.mdi?.el.querySelectorAll<HTMLElement>('.menubar .mi') ?? []].find((item) => item.textContent?.trim() === caption)
+        mi?.click()
+      },
+      notes: () => this.homeData ? homeNotes(this.homeData) : [],
+      openHome: () => this.selectHome(),
+      toggleCommands: () => toggle(),
       theme: () => this.session.preferences.theme as ThemeChoice,
       setTheme: (theme) => {
         try {
@@ -429,12 +500,146 @@ export class PresentationUi extends DomUi {
     const apply = (hidden: boolean) => this.shell?.classList.toggle('mh-commands-hidden', hidden)
     // Hidden by default, as in the approved header design; the header button shows it.
     try { apply(localStorage.getItem(COLLAPSED) !== '0') } catch { apply(true) }
-    header.onToggleCommands(() => {
+    const toggle = () => {
       const hidden = !this.shell?.classList.contains('mh-commands-hidden')
       apply(hidden)
       try { localStorage.setItem(COLLAPSED, hidden ? '1' : '0') } catch { /* per-session only */ }
-    })
+    }
     return header
+  }
+
+  /** True when a DataWindow of the window has changes that are not saved. */
+  private windowModified(window: NWindow): boolean {
+    const view = this.views.get(window)
+    if (!view) return false
+    for (const control of view.ctlViews.keys()) {
+      const model = (control as unknown as { model?: { buf?: { primary?: { s?: string }[]; deleted?: unknown[] } } }).model
+      const rows = model?.buf?.primary
+      if (rows?.some((row) => row.s === 'new!' || row.s === 'newmodified!' || row.s === 'datamodified!')) return true
+      if (model?.buf?.deleted?.length) return true
+    }
+    return false
+  }
+
+  /** The Home tab, its command bar and the dashboard panel over the window area. */
+  private buildHome(tabs: HTMLElement, mdi: HTMLElement): void {
+    const container = document.createElement('div')
+    container.className = 'presentation-tab ds-home-tab'
+    container.setAttribute('role', 'presentation')
+    const tab = document.createElement('button')
+    tab.type = 'button'
+    tab.id = 'workspace-home-tab'
+    tab.setAttribute('role', 'tab')
+    tab.setAttribute('aria-controls', 'workspace-home')
+    tab.innerHTML = `<svg class="ds-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${HOME_ICONS.chart}</svg>Home`
+    tab.onclick = () => this.selectHome()
+    container.append(tab)
+    tabs.prepend(container)
+    this.homeTab = container
+    const bar = document.createElement('div')
+    bar.className = 'ds-home-bar'
+    bar.setAttribute('role', 'toolbar')
+    bar.setAttribute('aria-label', 'Home commands')
+    bar.innerHTML = `<span class="mh-title">Home</span><span class="ds-spacer"></span>
+      <button type="button" class="tb" data-ds="refresh" aria-label="Refresh figures"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg><span class="mh-label">Refresh</span></button>
+      <button type="button" class="tb mh-primary" data-ds="sale"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${HOME_ICONS.cart}</svg><span class="mh-label">New sale</span></button>`
+    bar.querySelector('[data-ds=refresh]')!.addEventListener('click', () => { this.homeLoaded = 0; void this.showHome(true) })
+    bar.querySelector('[data-ds=sale]')!.addEventListener('click', () => this.homeActions()[0]?.run())
+    const toolbar = mdi.parentElement?.querySelector<HTMLElement>(':scope > .toolbar')
+    ;(toolbar ?? tabs).after(bar)
+    if (toolbar) tabs.before(bar)
+    this.homeBar = bar
+    const host = document.createElement('section')
+    host.className = 'ds-home-host'
+    host.id = 'workspace-home'
+    host.setAttribute('role', 'tabpanel')
+    host.setAttribute('aria-labelledby', tab.id)
+    mdi.append(host)
+    this.homeHost = host
+    // The frame title carries the company, period and user; the header and the greeting follow it when the script sets it.
+    const title = this.mdi?.ttlEl
+    if (title) {
+      const observer = new MutationObserver(() => { this.header?.refresh(); this.syncHomeUser() })
+      observer.observe(title, { childList: true, characterData: true, subtree: true })
+      this.cleanup.signal.addEventListener('abort', () => observer.disconnect())
+    }
+    this.updateTabs()
+  }
+
+  /** The greeting follows the signed-in user named in the frame title (set by the application script after the Home was drawn). */
+  private syncHomeUser(): void {
+    const heading = this.homeHost?.querySelector('.ds-hello h2')
+    const user = parseFrameTitle(this.mdi?.ttlEl?.textContent || '').user
+    if (heading && user && !heading.textContent?.endsWith(user)) heading.textContent = heading.textContent!.replace(/,.*$/, `, ${user}`)
+  }
+
+  private selectHome(): void {
+    if (this.hasModal()) return
+    this.homeActive = true
+    this.updateTabs()
+    this.homeTab?.querySelector<HTMLElement>('[role=tab]')?.focus()
+  }
+
+  /** Quick actions run the live menu items (greyed when the menu does not offer them to this user). */
+  private homeActions(): HomeAction[] {
+    const root = this.commandRoot()
+    const all = root ? menuCommands(root, { includeDisabled: true }) : []
+    const find = (pattern: RegExp) => all.find((command) => pattern.test(command.label.replace(/\s*\.{3,}\s*/g, ' ')))
+    const action = (label: string, hint: string, icon: string, pattern: RegExp): HomeAction => {
+      const command = find(pattern)
+      return { label, hint, icon, disabled: !command || !!command.disabled, run: () => { if (command && !command.disabled) void this.runCommand(command) } }
+    }
+    return [
+      action('New sale', 'Sales › Cash Sale', 'cart', /^Sales \/ Cash ?Sale$/i),
+      action('Pack purchase', 'Purchase › Purchases', 'truck', /^Purchase \/ Purchases$/i),
+      action('Items', 'Basic Data › Item', 'box', /^Basic Data \/ Item ?\/ Item$/i),
+      action('Reports', 'Daily, stock, sales', 'chart', /^Reports \/ /i),
+      action('Users', 'Manage › Users', 'users', /^Manage \/ Users$/i),
+      { label: 'Settings', hint: 'Theme, size, print', icon: 'gear', run: () => this.openSettings() },
+    ]
+  }
+
+  private async runCommand(command: ReturnType<typeof menuCommands>[number]): Promise<void> {
+    const root = this.commandRoot()
+    if (this.executing || this.hasModal() || !root) return
+    this.pendingPath = { path: command.label.split(' / ').slice(0, -1), at: Date.now() }
+    this.executing = true
+    try {
+      if (!(await executeMenuCommand(this.rt, root, command))) {
+        await this.messageBox('Command unavailable', 'This command is no longer available in the active workspace.', 'information!', 'ok!', 1)
+      }
+    } catch (error) {
+      this.rt.onError(error)
+    } finally {
+      this.executing = false
+      this.refreshCommands()
+    }
+  }
+
+  private async showHome(force = false): Promise<void> {
+    const host = this.homeHost
+    if (!host) return
+    const user = parseFrameTitle(this.mdi?.ttlEl?.textContent || String(this.mdi?.w.props.get('title') ?? '')).user || 'there'
+    const draw = (animate: boolean) => {
+      if (!this.homeData) { host.innerHTML = '<div class="ds-home"><p class="ds-empty">Loading figures…</p></div>'; return }
+      renderHome(host, this.homeData, user, () => this.homeActions(), () => this.header?.openSearch(), animate)
+      this.homeRendered = true
+    }
+    const stale = Date.now() - this.homeLoaded > 5 * 60_000
+    if (!this.homeData || stale || force) {
+      if (!this.homeData) draw(false)
+      const transaction = this.rt.globals.get('sqlca') as { db?: { query(sql: string, params: unknown[]): Promise<{ rows: unknown[][] }> } } | undefined
+      if (!transaction?.db) { host.innerHTML = '<div class="ds-home"><p class="ds-empty">Figures are shown once the database session is ready.</p></div>'; return }
+      this.homeLoaded = Date.now()
+      try {
+        this.homeData = await loadHome(async (sql) => (await transaction.db!.query(sql, [])).rows)
+        draw(true)
+        this.header?.refresh()
+      } catch (error) {
+        console.warn('Home figures could not be read.', error)
+        host.innerHTML = '<div class="ds-home"><p class="ds-empty">The figures could not be read from the database. Use Refresh to try again.</p></div>'
+      }
+    } else if (!this.homeRendered || !host.firstElementChild) draw(false)
   }
 
   private buildSettings(): HTMLDialogElement {
@@ -638,4 +843,11 @@ export class PresentationUi extends DomUi {
       this.shell.remove()
     }
   }
+}
+
+/** Icon of a window tab by the menu it was opened from (approved design). */
+function moduleIcon(module: string): string {
+  const m = module.toLowerCase()
+  return m.startsWith('purchase') ? 'truck' : m.startsWith('sale') ? 'cart' : m.startsWith('report') ? 'chart' : m.startsWith('basic') || m.startsWith('item') ? 'box'
+    : m.startsWith('manage') ? 'users' : m.startsWith('maint') ? 'gear' : 'doc'
 }

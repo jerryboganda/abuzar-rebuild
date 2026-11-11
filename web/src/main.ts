@@ -13,6 +13,7 @@ import { localeDateOrder, setDateOrder } from './runtime/values.ts'
 import { startApplication, DEFAULT_CONFIG } from './app/startup.ts'
 import { PresentationSession, SessionPreferenceStorage } from './app/ui-preferences.ts'
 import { PresentationUi } from './ui/presentation-ui.ts'
+import { startDesignBoot } from './ui/design-boot.ts'
 import { nativeAppearance } from './ui/native-appearance.ts'
 import { fixSqlTables } from './runtime/sql-fixes.ts'
 import { autoLogin } from './app/autologin.ts'
@@ -176,6 +177,8 @@ async function main(): Promise<void> {
   if (q.get('app') === '1' || (server !== null && q.get('app') !== '0' && !q.get('w'))) {
     const auto = (q.get('autologin') ?? '').split(':')
     if (auto.length === 2) void autoLogin(rt, auto[0], auto[1])
+    // The approved design's sign-in screen; removed when the Modern workspace starts (or the Classic interface continues).
+    const stopBoot = q.get('presentation') === '1' ? startDesignBoot() : () => {}
     try {
       await startApplication(rt, { ...DEFAULT_CONFIG, company: q.get('company') ?? '' }, q.get('presentation') === '1' ? {
         // Appearance preferences never block a sign-in: an unreadable or newer stored record, refused storage, an unidentified
@@ -205,12 +208,14 @@ async function main(): Promise<void> {
               })
             } catch (fallback) {
               console.warn('The Modern interface could not start; the Classic interface continues.', fallback)
+              stopBoot()
               return
             }
           }
           ui.dispose()
           ui = new PresentationUi(rt, desktop, session)
           rt.ui = ui
+          stopBoot()
         },
       } : {})
     } catch (e) {

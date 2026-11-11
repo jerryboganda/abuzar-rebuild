@@ -1695,6 +1695,12 @@ export class DwView {
 
   protected placeEditor(editor: HTMLElement, cell: HTMLElement): void {
     cell.parentElement?.appendChild(editor)
+    // A stylesheet may lay the field out elsewhere (the Modern sign-in screen); the editor then covers the field where it is drawn.
+    // In the Classic layout the drawn position equals the inline geometry, so nothing changes there.
+    const inline = (key: 'left' | 'top') => parseFloat(cell.style[key])
+    if (Number.isFinite(inline('left')) && (Math.abs(cell.offsetLeft - inline('left')) > 1 || Math.abs(cell.offsetTop - inline('top')) > 1)) {
+      Object.assign(editor.style, { left: `${cell.offsetLeft}px`, top: `${cell.offsetTop}px`, width: `${cell.offsetWidth}px`, height: `${cell.offsetHeight}px` })
+    }
     if (cell.classList.contains('dw-checkbox-left') && editor instanceof HTMLInputElement && editor.type === 'checkbox') {
       const marker = cell.querySelector<HTMLElement>('.cbx')
       if (marker) {

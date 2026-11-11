@@ -124,6 +124,8 @@ export class DomUi implements UiHost {
   }
   windowActivated(_window: NWindow): void {}
   menuRendered(_bar: HTMLElement): void {}
+  /** A menu item was chosen in the menu bar (the Modern workspace remembers which menu opened a window). */
+  menuItemInvoked(_item: PBObject): void {}
   /** Called after the frame toolbar is rebuilt (the Modern workspace groups and labels its buttons). */
   toolbarRendered(_tool: HTMLElement): void {}
   accessibleTabs(): boolean { return false }
@@ -912,6 +914,7 @@ export class WinView {
           e.stopPropagation()
           if (sub.props.get('enabled') === false) return
           document.body.click()
+          this.ui.menuItemInvoked(sub)
           void this.ui.rt.fire(sub, 'clicked').then(() => this.ui.rt.flushPosted())
         }
       }

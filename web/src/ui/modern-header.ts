@@ -16,9 +16,25 @@ export interface HeaderHost {
   setTheme(theme: ThemeChoice): void
   openSettings(): void
   busy(): boolean
+  /** Menu path of the active window (["Purchase"] for Pack Purchase), used for the breadcrumbs. */
+  windowPath(): string[]
+  /** Opens a top-level menu of the menu bar by its caption. */
+  openMenu(caption: string): void
+  /** Notifications for the bell (real figures from the company database). */
+  notes(): { tone: 'bad' | 'warn' | 'info' | 'ok'; title: string; detail: string }[]
+  openHome(): void
+  toggleCommands(): void
 }
 
 export interface FrameTitle { company: string; period?: string; user?: string; raw: string }
+
+/** "01.01.2022" as the approved design shows it: "01 Jan 2022" (anything else is shown as it is). */
+export function formatPeriod(period: string | undefined): string {
+  const m = (period ?? '').match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/)
+  if (!m) return period ?? ''
+  const year = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3])
+  return new Date(year, Number(m[2]) - 1, Number(m[1])).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+}
 
 /** The frame title the application script builds: "WASEELA  ABUZAR V2 01.01.2022 : ADMIN : 11/11/26 02:25:13 - [Sheet]". */
 export function parseFrameTitle(title: string): FrameTitle {
@@ -73,6 +89,8 @@ const GLYPH = {
   down: '<path d="m6 9 6 6 6-6"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
   panel: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',
+  bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01"/>',
   win: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/>',
   bolt: '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>',
 }
@@ -143,23 +161,28 @@ export class ModernHeader {
     header.className = 'presentation-header mh-context'
     header.innerHTML = `
       <div class="mh-brand"><span class="mh-mark" aria-hidden="true">TA</span><span><b class="mh-company"></b><span class="mh-sub"></span></span></div>
-      <nav class="mh-crumbs" aria-label="Location"><strong class="mh-where"></strong></nav>
+      <nav class="mh-crumbs" aria-label="You are here"></nav>
       <span class="mh-fill"></span>
       <button type="button" class="mh-search" aria-haspopup="dialog">${svg(GLYPH.search)}<span>Search screens and commands…</span><kbd>Ctrl</kbd><kbd>K</kbd></button>
-      <button type="button" class="mh-chip mh-period" hidden>${svg(GLYPH.cal, 14)}<span>Period from <b></b></span></button>
+      <button type="button" class="mh-chip mh-period" hidden>${svg(GLYPH.cal, 14)}<span>FY from <b></b></span></button>
       <button type="button" class="mh-chip mh-clock" aria-label="Date and time"><span class="mh-dot" aria-hidden="true"></span><b></b></button>
       <div class="mh-theme" role="group" aria-label="Colour theme">
         <button type="button" data-theme-choice="light" aria-label="Light mode" title="Light mode">${svg(GLYPH.sun, 14)}</button>
         <button type="button" data-theme-choice="system" aria-label="Match Windows theme" title="Match Windows">${svg(GLYPH.auto, 14)}</button>
         <button type="button" data-theme-choice="dark" aria-label="Dark mode" title="Dark mode">${svg(GLYPH.moon, 14)}</button>
       </div>
-      <button type="button" class="mh-icon mh-commands" aria-label="Show or hide all commands" title="All commands">${svg(GLYPH.panel, 16)}</button>
-      <button type="button" class="mh-icon mh-appearance" aria-label="Appearance" title="Appearance">${svg(GLYPH.gear, 16)}</button>
+      <button type="button" class="mh-icon mh-bell" aria-label="Notifications" aria-haspopup="dialog">${svg(GLYPH.bell, 15)}<span class="mh-badge" hidden></span></button>
+      <button type="button" class="mh-icon mh-help" aria-label="Help and keyboard shortcuts">${svg(GLYPH.help, 15)}</button>
       <button type="button" class="mh-user" aria-haspopup="menu"><span class="mh-avatar" aria-hidden="true"></span><span class="mh-user-name"></span>${svg(GLYPH.down, 14)}</button>`
     this.element = header
     const signal = this.abort.signal
     header.querySelector('.mh-search')!.addEventListener('click', () => this.openSearch())
-    header.querySelector('.mh-appearance')!.addEventListener('click', () => host.openSettings())
+    header.querySelector('.mh-bell')!.addEventListener('click', (event) => { event.stopPropagation(); this.showNotes(event.currentTarget as HTMLElement) })
+    header.querySelector('.mh-help')!.addEventListener('click', () => this.showShortcuts())
+    header.querySelector('.mh-crumbs')!.addEventListener('click', (event) => {
+      const crumb = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-crumb]')
+      if (crumb) { event.stopPropagation(); host.openMenu(crumb.dataset.crumb!) }
+    })
     // The opening click must not reach the document's click-outside handler, which would close the popover at once.
     header.querySelector('.mh-period')!.addEventListener('click', (event) => { event.stopPropagation(); this.showPeriod(event.currentTarget as HTMLElement) })
     header.querySelector('.mh-user')!.addEventListener('click', (event) => { event.stopPropagation(); this.showUser(event.currentTarget as HTMLElement) })
@@ -181,10 +204,6 @@ export class ModernHeader {
     this.refresh()
   }
 
-  /** Collapses or shows the command panel; the host owns the panel. */
-  onToggleCommands(handler: () => void): void {
-    this.element.querySelector('.mh-commands')!.addEventListener('click', handler)
-  }
 
   refresh(): void {
     const title = parseFrameTitle(this.host.frameTitle())
@@ -192,10 +211,24 @@ export class ModernHeader {
     const [name, ...rest] = (title.company || 'Trader').split(' ')
     q('.mh-company').textContent = name
     q('.mh-sub').textContent = rest.join(' ')
-    q('.mh-where').textContent = this.host.windowTitle()
+    const crumbs = q('.mh-crumbs')
+    crumbs.replaceChildren()
+    for (const part of this.host.windowPath()) {
+      const sep = document.createElement('span'); sep.className = 'mh-sep'; sep.textContent = crumbs.childElementCount ? '›' : '/'; sep.setAttribute('aria-hidden', 'true')
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'mh-crumb'; button.dataset.crumb = part; button.textContent = part
+      crumbs.append(sep, button)
+    }
+    const lead = document.createElement('span'); lead.className = 'mh-sep'; lead.setAttribute('aria-hidden', 'true'); lead.textContent = crumbs.childElementCount ? '›' : '/'
+    const where = document.createElement('strong'); where.textContent = this.host.windowTitle()
+    crumbs.append(lead, where)
     const period = q<HTMLButtonElement>('.mh-period')
     period.hidden = !title.period
-    period.querySelector('b')!.textContent = title.period ?? ''
+    period.querySelector('b')!.textContent = formatPeriod(title.period)
+    const notes = this.host.notes()
+    const badge = q('.mh-badge')
+    badge.hidden = !notes.length
+    badge.textContent = String(notes.length)
+    q('.mh-bell').setAttribute('aria-label', notes.length ? `Notifications, ${notes.length} new` : 'Notifications')
     q('.mh-user-name').textContent = title.user ?? 'User'
     q('.mh-avatar').textContent = (title.user ?? 'U').slice(0, 2).toUpperCase()
     const theme = this.host.theme()
@@ -259,6 +292,7 @@ export class ModernHeader {
         if (command) this.item(box, label, () => void this.host.run(command), !!command.disabled)
       }
       this.item(box, 'Appearance…', () => this.host.openSettings())
+      this.item(box, 'Show or hide all commands', () => this.host.toggleCommands())
       const themes = document.createElement('p')
       themes.className = 'mh-pop-head'
       themes.textContent = 'Theme'
@@ -291,6 +325,54 @@ export class ModernHeader {
       note.textContent = 'The clock of this computer. Invoices take the date the application sets.'
       box.append(note)
     })
+  }
+
+  private showNotes(anchor: HTMLElement): void {
+    const notes = this.host.notes()
+    this.openPopover(anchor, (box) => {
+      const head = document.createElement('p')
+      head.className = 'mh-pop-title'
+      head.textContent = 'Notifications'
+      box.append(head)
+      if (!notes.length) {
+        const empty = document.createElement('p'); empty.className = 'mh-pop-note'; empty.textContent = 'Nothing needs your attention.'; box.append(empty)
+      }
+      for (const note of notes) {
+        const button = document.createElement('button')
+        button.type = 'button'
+        button.className = 'mh-note'
+        button.innerHTML = `<span class="mh-note-dot ${note.tone}" aria-hidden="true"></span><span><b></b><small></small></span>`
+        button.querySelector('b')!.textContent = note.title
+        button.querySelector('small')!.textContent = note.detail
+        button.addEventListener('click', (event) => { event.stopPropagation(); this.closePopover(); this.host.openHome() })
+        box.append(button)
+      }
+    })
+  }
+
+  private showShortcuts(): void {
+    if (this.host.busy()) return
+    const keys: [string, string][] = [['Ctrl+K', 'Search screens and commands'], ['Alt + letter', 'Open a menu (underlined letter)'], ['Arrow keys', 'Move through menus and window tabs'], ['Esc', 'Close a menu, popover or search']]
+    for (const command of this.host.commands()) if (command.shortcut && !command.disabled) keys.push([command.shortcut, command.label.split(' / ').join(' › ')])
+    const dialog = document.createElement('dialog')
+    dialog.className = 'mh-palette mh-shortcuts'
+    dialog.setAttribute('aria-labelledby', 'mh-shortcuts-title')
+    const theme = this.element.closest<HTMLElement>('.presentation-ui')?.dataset.theme
+    if (theme) dialog.dataset.theme = theme
+    dialog.innerHTML = `<h2 id="mh-shortcuts-title">Keyboard shortcuts</h2><div class="mh-keys"></div><p class="mh-palette-foot"><button type="button" class="mh-close">Close</button></p>`
+    const list = dialog.querySelector('.mh-keys')!
+    for (const [key, label] of keys) {
+      const k = document.createElement('kbd'); k.textContent = key
+      const t = document.createElement('span'); t.textContent = label
+      list.append(k, t)
+    }
+    const close = () => { dialog.close(); dialog.remove() }
+    dialog.querySelector('.mh-close')!.addEventListener('click', close)
+    dialog.addEventListener('cancel', (event) => { event.preventDefault(); close() })
+    dialog.addEventListener('click', (event) => { if (event.target === dialog) close() })
+    document.body.append(dialog)
+    dialog.showModal()
+    dialog.querySelector<HTMLButtonElement>('.mh-close')!.focus()
   }
 
   private showPeriod(anchor: HTMLElement): void {
