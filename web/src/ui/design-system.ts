@@ -145,6 +145,14 @@ export const DESIGN_CSS = `
 .modern-surface .surface-status {font-size:12.5px;color:var(--p-muted);padding:10px 16px;}
 .modern-surface section.surface-row {gap:14px 16px;padding:16px 18px;}
 
+/* every surface: required marks as a red asterisk (the word stays for screen readers), plain row counts hidden */
+.modern-surface .surface-field > .surface-label {display:inline-block;}
+.modern-surface .surface-field > .surface-required {display:inline;}
+.modern-surface .surface-field > .surface-label + .surface-required + * ,.modern-surface .surface-field > .surface-label + :not(.surface-required) {display:block;}
+.modern-surface .surface-required {font-size:0;line-height:0;}
+.modern-surface .surface-required::after {content:"*";font-size:calc(13px * var(--p-scale));line-height:1;color:var(--p-danger);margin-left:3px;}
+.modern-surface th > span {display:inline;}
+.modern-surface > .surface-status.surface-status-summary {display:none;}
 /* labels and inputs (mockup .f / .in) */
 .modern-surface .surface-label {font-size:12.5px;font-weight:500;color:var(--p-muted);margin-bottom:5px;}
 .modern-surface .surface-field > .surface-value.editable,.modern-surface .surface-field > .surface-value[role=button],.modern-surface .surface-field > .surface-value.surface-choice {
@@ -172,6 +180,22 @@ export const DESIGN_CSS = `
 .modern-surface .surface-band {background:var(--p-sunk);border-top:1px solid var(--p-hair);font-weight:600;}
 .modern-surface .surface-band dt {font-weight:500;color:var(--p-muted);}
 
+.modern-surface .simplified-form:not(.simplified-summary) .simplified-row {grid-auto-flow:row dense;}
+.modern-surface .simplified-form .simplified-row > .grid-cell:not(.surface-field):not(.simplified-more):empty {display:none;}
+/* fields the source keeps invisible (no grid cell, zero size) stay in the page but take no slot of the card grid */
+.modern-surface .simplified-form:not(.simplified-summary) .simplified-row.has-grid > .surface-field:not(.grid-cell) {position:absolute!important;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);}
+/* section headings of the approved design (card header) */
+.modern-surface .simplified-surface > .simplified-head {margin:0!important;padding:14px 18px 12px!important;border-bottom:1px solid var(--p-hair);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.modern-surface .simplified-surface > .simplified-head h2 {font-size:15px;font-weight:600;margin:0;}
+.modern-surface .simplified-surface > .simplified-head span {color:var(--p-muted);font-size:12.5px;}
+.modern-surface .simplified-grid > .simplified-toggle {margin:10px 18px 8px;}
+/* summary panel total band, wherever the total sits inside the summary form */
+.modern-surface .simplified-summary .simplified-emphasis {order:300!important;display:grid!important;grid-template-columns:max-content auto minmax(0,1fr)!important;align-items:center;margin:12px -16px -16px!important;padding:14px 16px!important;border-radius:0 0 10px 10px;background:var(--p-text)!important;position:relative;overflow:hidden;}
+.modern-surface .simplified-summary .simplified-emphasis::after {content:"";position:absolute;top:0;bottom:0;width:30%;background:linear-gradient(90deg,transparent,rgb(255 255 255 / .16),transparent);animation:ds-sheen 3.5s ease-in-out infinite 1s;pointer-events:none;}
+.modern-surface .simplified-summary .simplified-emphasis .surface-label {color:var(--p-surface)!important;text-transform:uppercase;letter-spacing:.08em;font-size:11.5px;opacity:.8;}
+.modern-surface .simplified-summary .simplified-emphasis .surface-value {grid-column:3!important;justify-self:end;background:transparent!important;border:0!important;box-shadow:none!important;color:var(--p-surface)!important;font:600 26px var(--p-mono)!important;width:auto!important;padding:0!important;min-height:0!important;}
+.modern-surface .simplified-summary .simplified-emphasis .surface-required {display:none;}
+.modern-surface .simplified-summary .surface-group {display:contents;}
 /* ---------- buttons (mockup .btn) ---------- */
 .modern-window button.ctl.window-button:not(.window-embedded *),.modern-window .window-actions button,.presentation-settings button,.modern-surface .surface-button button,.modern-surface button.surface-button {
   min-height:40px;padding:0 16px;border-radius:9px;border:1px solid var(--p-line);background:var(--p-surface);color:var(--p-text);font:500 calc(14px * var(--p-scale)) var(--p-font);cursor:pointer;transition:transform .12s,background .15s,box-shadow .2s,border-color .15s;

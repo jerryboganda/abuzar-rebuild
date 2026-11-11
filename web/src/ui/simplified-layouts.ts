@@ -24,6 +24,8 @@ export interface SimplifiedLayout {
   primaryTotals?: readonly string[]
   /** The surface is the bill summary panel beside the form and the items. */
   summary?: boolean
+  /** Keep the source arrangement (fields placed with separate caption objects must stay next to them). */
+  keepLayout?: boolean
 }
 
 export const SIMPLIFIED_LAYOUTS: readonly SimplifiedLayout[] = [
@@ -48,6 +50,26 @@ export const SIMPLIFIED_LAYOUTS: readonly SimplifiedLayout[] = [
     primary: ['stock', 'discperc', 'flatdisc', 'misccharges', 'invgstperc1', 'advancetaxamt', 'totalstock', 'totalexp', 'itemtotalval', 'total'],
   },
 ]
+
+/** Section headings of the approved design for transaction windows (header form, line grid, footer form). */
+const TRANSACTION_HEADINGS: Record<string, [string, string, string, string, string]> = {
+  w_sale: ['Customer & invoice', 'Who is buying, and how the sale is billed', 'Sale lines', 'Scan a barcode or type an item in the item column', 'Payment'],
+  w_item_form: ['Item', 'Name, packing, prices and tax', 'Lines', '', 'Summary'],
+}
+const TOTAL_FIELDS = ['c_big_grandtotal', 'total', 'c_nettotal', 'grandtotal', 'c_grandtotal', 'nettotal']
+
+/**
+ * The approved design's layout for any entry window shaped as header form, line grid and footer form (sales, purchases, returns,
+ * vouchers): cards with headings, the header on a 4-column grid, the footer as the summary panel with its total in the dark band.
+ * Every field stays visible in its source order; nothing moves out of its surface.
+ */
+export function transactionLayout(role: 'header' | 'grid' | 'footer', surface: string, window: string, fields: readonly string[], captions: boolean): SimplifiedLayout {
+  const [h1, hint1, h2, hint2, h3] = TRANSACTION_HEADINGS[window] ?? ['Details', '', 'Lines', '', 'Summary']
+  if (role === 'grid') return { surface, kind: 'grid', moreLabel: 'columns', primary: fields, heading: h2, hint: hint2 }
+  // Footers keep their source arrangement (their totals are captioned by separate text objects) in a full-width card.
+  if (role === 'footer') return { surface, kind: 'form', moreLabel: '', primary: fields, heading: h3, keepLayout: true }
+  return { surface, kind: 'form', moreLabel: '', primary: fields, heading: h1, hint: hint1, keepLayout: captions }
+}
 
 export function simplifiedLayout(surface: string): SimplifiedLayout | undefined {
   return SIMPLIFIED_LAYOUTS.find((layout) => layout.surface === surface)
@@ -121,6 +143,7 @@ export function applySimplifiedLayout(layout: SimplifiedLayout, body: HTMLElemen
     body.insertBefore(toggle, table)
     return
   }
+  if (layout.keepLayout) return
   const wide = new Set(layout.wide ?? [])
   for (const row of body.querySelectorAll<HTMLElement>('.surface-row')) {
     row.classList.add('simplified-row')

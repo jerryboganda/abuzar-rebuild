@@ -1,7 +1,7 @@
 import { DwView } from './dwview.ts'
 import { dataSurfaceIssues } from './data-surfaces.ts'
 import { dataSurfaceByName } from './surface-registry.ts'
-import { applySimplifiedLayout, simplifiedLayout } from './simplified-layouts.ts'
+import { applySimplifiedLayout, simplifiedLayout, transactionLayout } from './simplified-layouts.ts'
 import type { SimplifiedState } from './simplified-layouts.ts'
 import type { DataSurface, DataSurfaceField } from './data-surfaces.ts'
 import type { NDwBase } from '../runtime/native/dwctrl.ts'
@@ -363,8 +363,19 @@ export class ModernDwView extends DwView {
       if (totals) body.append(totals)
     }
     body.classList.toggle('surface-body-with-footer', !!body.querySelector('.surface-band-footer'))
-    const simplified = simplifiedLayout(surface.name)
+    let simplified = simplifiedLayout(surface.name)
+    const transaction = !simplified ? this.root.closest<HTMLElement>('.ds-transaction') : null
+    if (transaction) {
+      const control = [...transaction.children].find((child) => child.contains(this.root))
+      const forms = [...transaction.children].filter((child) => child.classList.contains('entry-form'))
+      const role = surface.kind === 'grid' ? 'grid' : control === forms[0] ? 'header' : control === forms.at(-1) ? 'footer' : null
+      if (role) simplified = transactionLayout(role, surface.name, transaction.dataset.win ?? '', surface.fields.map((field) => field.object), !!surface.captions?.length)
+    }
     if (simplified) applySimplifiedLayout(simplified, body, this.simplified, model.colNames[model.col - 1]?.toLowerCase())
+    // Approved design: captions read without a trailing colon on every Modern surface (the DataWindow text is otherwise unchanged).
+    if (!simplified) for (const label of body.querySelectorAll<HTMLElement>('.surface-label, th > span:first-child')) {
+      if (label.childElementCount === 0 && /:\s*$/.test(label.textContent ?? '')) label.textContent = label.textContent!.replace(/\s*:\s*$/, '')
+    }
     if (this.changes.signal.aborted || this.stale) return
     if (revision !== this.revision || paintRevision !== this.paintRevision || this.ctl.model !== model || editor !== this.editor) {
       this.schedule()

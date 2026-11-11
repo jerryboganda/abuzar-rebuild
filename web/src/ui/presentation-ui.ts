@@ -602,7 +602,7 @@ export class PresentationUi extends DomUi {
   private async runCommand(command: ReturnType<typeof menuCommands>[number]): Promise<void> {
     const root = this.commandRoot()
     if (this.executing || this.hasModal() || !root) return
-    this.pendingPath = { path: command.label.split(' / ').slice(0, -1), at: Date.now() }
+    this.pendingPath = { path: command.label.split(' / ').slice(0, -1).map((part) => part.replace(/\s*\.{3,}\s*/g, '').trim()).filter(Boolean), at: Date.now() }
     this.executing = true
     try {
       if (!(await executeMenuCommand(this.rt, root, command))) {

@@ -115,6 +115,12 @@ export function applyModernEntryWindow(view: WinView): boolean {
   pages[0].replaceChildren(group('entry-detail', [
     ...surface.details.map((binding) => data(`${detailPath}.${binding.control}`, binding.kind)),
   ]))
+  // Approved design: every entry window's data is laid out as cards (header form, line grids, footer form); see transactionLayout.
+  if (surface.details.some((binding) => binding.kind === 'form' || binding.kind === 'grid')) {
+    const detail = pages[0].firstElementChild as HTMLElement
+    detail.classList.add('ds-transaction')
+    detail.dataset.win = view.w.name.toLowerCase()
+  }
   pages[1].replaceChildren(group('entry-list', [
     group('entry-criteria', [sort, filter]), search, data(`${listPath}.dw_list`, 'grid'), decoration,
   ]))
