@@ -23,7 +23,7 @@ import type { PresentationDialog } from './presentation-dialogs.ts'
 import { ModernDwView } from './modern-dwview.ts'
 import type { DwView } from './dwview.ts'
 import { applyModernWindow } from './modern-window.ts'
-import { applyModernEntryWindow } from './modern-entry-window.ts'
+import { applyModernEntryWindow, applyModernListWindow } from './modern-entry-window.ts'
 import { nativeAppearance, nativeTheme } from './native-appearance.ts'
 import { ModernHeader, groupToolbar, parseFrameTitle } from './modern-header.ts'
 import type { ThemeChoice } from './modern-header.ts'
@@ -206,7 +206,7 @@ export class PresentationUi extends DomUi {
     super.createWindow(window, options)
     if (!this.shell) return
     const view = this.views.get(window)!
-    const modernWindow = applyModernWindow(view) || applyModernEntryWindow(view)
+    const modernWindow = applyModernListWindow(view) || applyModernWindow(view) || applyModernEntryWindow(view)
     if (modernWindow) this.styleAppearance(view.el)
     if (options.modal) {
       const element = document.createElement('dialog')

@@ -2,7 +2,8 @@ import type { PBObject } from '../runtime/object.ts'
 import type { WinView } from './dom-ui.ts'
 import { ModernDwView } from './modern-dwview.ts'
 import { entryWindowIssues } from './window-surfaces.ts'
-import { entryWindowSurfaceByName } from './surface-registry.ts'
+import { dataSurfaceByName, entryWindowSurfaceByName } from './surface-registry.ts'
+import { LIST_WINDOW_SURFACES } from './list-window-surfaces.ts'
 import type { DataSurface } from './data-surfaces.ts'
 import { planGrid, applyGrid } from './grid-plan.ts'
 import { useSourceTabOrder } from './source-tab-order.ts'
@@ -24,6 +25,81 @@ export function entryControls(window: PBObject): Map<string, PBObject> {
   }
   walk(window, '')
   return controls
+}
+
+
+const LIST_CONTROLS = ['r_1', 'gb_sort', 'gb_fliter', 'ddlb_sort', 'rb_ascending', 'rb_descending', 'ddlb_filter_column', 'ddlb_op', 'ddlb_data',
+  'cb_filter', 'dw_list', 'st_find', 'st_1', 'st_2', 'dw_find', 'cb_retrieve']
+
+/**
+ * Approved design for the list windows (Groups, Employees, MR list and the other w_listview_form windows): their single List page
+ * gets the same Modern layout as the List page of the entry windows (criteria, find, the list as a Modern grid).  The controls,
+ * their runtime objects and events are the original ones; a window whose controls or list mapping differ keeps its layout.
+ */
+export function applyModernListWindow(view: WinView): boolean {
+  if (!view.sheet || view.modal) return false
+  const controls = entryControls(view.w)
+  const tabPath = 'tab_retrieve'
+  const listPath = `${tabPath}.tabpage_list`
+  if (!controls.has(`${listPath}.dw_list`) || controls.has(`${tabPath}.tabpage_detail`)) return false
+  if (LIST_CONTROLS.some((name) => !controls.get(`${listPath}.${name}`) || !view.ctlViews.get(controls.get(`${listPath}.${name}`)!))) return false
+  const tab = view.ctlViews.get(controls.get(tabPath)!)?.el
+  const pages = tab?.querySelectorAll<HTMLElement>(':scope > .page')
+  const findView = view.ctlViews.get(controls.get(`${listPath}.dw_find`)!)?.dw
+  const listView = view.ctlViews.get(controls.get(`${listPath}.dw_list`)!)?.dw
+  const listName = String(controls.get(`${listPath}.dw_list`)!.props.get('dataobject') ?? '').toLowerCase()
+  const surface = dataSurfaceByName(listName) ?? LIST_WINDOW_SURFACES.find((item) => item.name === listName)
+  if (!tab || pages?.length !== 1 || !(findView instanceof ModernDwView) || !(listView instanceof ModernDwView) || !surface || surface.kind !== 'grid') {
+    console.warn(`Classic list layout retained for ${view.w.className}`)
+    return false
+  }
+  const identity = `list-window-${++nextEntry}`
+  const element = (name: string) => view.ctlViews.get(controls.get(`${listPath}.${name}`)!)!.el
+  for (const name of LIST_CONTROLS) {
+    element(name).classList.add('entry-control')
+    element(name).dataset.entryControl = `${listPath}.${name}`
+  }
+  useSourceTabOrder(view.el, view.client, LIST_CONTROLS.map((name) => ({ element: element(name), taborder: controls.get(`${listPath}.${name}`)!.props?.get('taborder') })))
+  const group = (className: string, children: HTMLElement[]) => {
+    const section = document.createElement('div')
+    section.className = className
+    section.append(...children)
+    return section
+  }
+  const named = (name: string, label: string) => { const control = element(name); control.setAttribute('aria-label', label); return control }
+  const criteria = (name: string, children: HTMLElement[]) => {
+    const caption = element(name)
+    caption.id = `${identity}-${name}`
+    caption.classList.add('entry-caption')
+    const section = group('entry-criteria-group', [caption, ...children])
+    section.setAttribute('role', 'group')
+    section.setAttribute('aria-labelledby', caption.id)
+    return section
+  }
+  const sort = criteria('gb_sort', [named('ddlb_sort', 'Sort column'), group('entry-order', [element('rb_ascending'), element('rb_descending')])])
+  const filter = criteria('gb_fliter', [
+    group('entry-filter-fields', [named('ddlb_filter_column', 'Filter column'), named('ddlb_op', 'Filter operator'), named('ddlb_data', 'Filter value')]),
+    group('entry-filter-actions', [element('cb_filter'), element('cb_retrieve')]),
+  ])
+  const findLabel = element('st_find')
+  findLabel.id = `${identity}-find-label`
+  const find = element('dw_find')
+  find.classList.add('entry-data', 'entry-form', 'entry-find')
+  const help = element('st_1')
+  help.id = `${identity}-find-help`
+  find.setAttribute('aria-describedby', help.id)
+  const list = element('dw_list')
+  list.classList.add('entry-data', 'entry-grid')
+  const decoration = element('r_1')
+  decoration.classList.add('entry-decoration')
+  decoration.setAttribute('aria-hidden', 'true')
+  pages[0].replaceChildren(group('entry-list', [group('entry-criteria', [sort, filter]), group('entry-search', [findLabel, help, find, element('st_2')]), list, decoration]))
+  findView.useContextSurface(ENTRY_FIND_SURFACE, new Map([['find', findLabel]]))
+  listView.useContextSurface(surface)
+  tab.classList.add('entry-tabs', 'entry-control')
+  tab.dataset.entryControl = tabPath
+  view.el.classList.add('modern-entry-window', 'modern-list-window')
+  return true
 }
 
 /** Reflow reviewed entry controls without replacing their runtime objects or events. */
