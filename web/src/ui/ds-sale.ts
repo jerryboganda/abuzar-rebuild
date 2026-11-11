@@ -1,0 +1,202 @@
+// Cash Sale companion of the approved design (point-of-sale layout): a scan bar and frequent-item tiles over the original sale lines,
+// the customer and totals beside them, and a change calculator.  Items are always added through the window's own item column and
+// item search (the same keystroke handling and checks); the change calculator only displays a sum and saves nothing.
+
+type Query = (sql: string, params: unknown[]) => Promise<unknown[][]>
+const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
+const money = (n: number) => n.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const num = (text: string | null | undefined) => Number(String(text ?? '').replace(/[^0-9.-]/g, '')) || 0
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+interface Tile { name: string; stock: number; price: number }
+let tiles: Tile[] | 'loading' | null = null
+
+/** Types text into a cell editor one character at a time, as a person would: the window's own search narrows with each one. */
+export async function typeInto(first: HTMLInputElement, text: string, done?: () => boolean): Promise<void> {
+  // the window redraws its line after a keystroke and the cell gets a new editor: always type into the live one
+  const field = first.closest('td')?.dataset.field
+  const live = (): HTMLInputElement | null => {
+    const active = document.activeElement
+    if (active instanceof HTMLInputElement && active.closest('td')?.dataset.field === field) return active
+    return first.isConnected ? first : null
+  }
+  for (let i = 1; i <= text.length; i++) {
+    const editor = live()
+    if (!editor) return
+    editor.value = text.slice(0, i)
+    editor.dispatchEvent(new InputEvent('input', { bubbles: true, data: text[i - 1], inputType: 'insertText' }))
+    // a person's typing speed: each keystroke's own handling (search, checks) finishes before the next
+    await wait(140)
+    if (done?.()) return
+  }
+}
+
+/** Opens the editor of a line's cell the way a click on it does and resolves with it once it exists. */
+async function openCell(cell: HTMLElement): Promise<HTMLInputElement | null> {
+  for (const type of ['mousedown', 'mouseup', 'click']) cell.dispatchEvent(new MouseEvent(type, { bubbles: true, view: window }))
+  for (let i = 0; i < 40; i++) {
+    const editor = cell.closest('td')?.querySelector<HTMLInputElement>('input,textarea')
+    if (editor) { editor.focus(); return editor }
+    await wait(25)
+  }
+  return null
+}
+
+export function decorateSale(root: HTMLElement, query: Query, toolbar: (stock: string) => HTMLButtonElement | null, onAsync: () => void): void {
+  const detail = root.querySelector<HTMLElement>('.entry-detail.ds-transaction[data-win=w_sale]')
+  if (!detail) return
+  const gridCtl = detail.querySelector<HTMLElement>(':scope > .entry-control:not(.entry-auxiliary):has(.simplified-grid)')
+  const gridSurface = gridCtl?.querySelector<HTMLElement>(':scope > .modern-surface')
+  const forms = [...detail.querySelectorAll<HTMLElement>(':scope > .entry-form')]
+  const footer = forms.at(-1)
+  if (!gridCtl || !gridSurface || !footer) return
+  const rows = () => [...gridSurface.querySelectorAll<HTMLElement>('tbody tr')]
+  const openRow = () => rows().find((row) => !row.querySelector('[data-obj=itemname]')?.textContent?.trim())
+  /** the next open line's item cell (a new line from the original New Item command when every line has an item) */
+  const itemCell = async (): Promise<HTMLElement | null> => {
+    let row = openRow()
+    if (!row && toolbar('update!') && !toolbar('update!')!.disabled) { toolbar('update!')!.click(); await wait(350); row = openRow() }
+    return row?.querySelector<HTMLElement>('[data-obj=itemname]') ?? null
+  }
+  /** types an item name into the item column and lets the original search choose it (Enter), as a cashier would */
+  const addByName = async (name: string) => {
+    const cell = await itemCell()
+    const editor = cell && await openCell(cell)
+    if (!editor) return
+    await wait(250)
+    // Enter only once the original search list has landed on exactly this item; otherwise the name stays typed for the cashier
+    const norm = (text: string) => text.replace(/\s+/g, ' ').trim().toUpperCase()
+    const landed = () => norm(detail.querySelector<HTMLElement>(':scope > .entry-auxiliary:not(.hidden) tbody tr.cur [data-obj=itemname]')?.textContent ?? '') === norm(name)
+    await typeInto(editor, name, landed)
+    for (let i = 0; i < 30; i++) {
+      await wait(100)
+      const current = detail.querySelector<HTMLElement>(':scope > .entry-auxiliary:not(.hidden) tbody tr.cur [data-obj=itemname]')
+      if (current && norm(current.textContent ?? '') === norm(name)) {
+        const target = document.activeElement instanceof HTMLInputElement && document.activeElement.closest('td')?.dataset.field === 'itemname' ? document.activeElement : editor
+        for (const type of ['keydown', 'keyup']) target.dispatchEvent(new KeyboardEvent(type, { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }))
+        return
+      }
+    }
+  }
+
+  // scan bar at the top of the lines card
+  let scan = gridCtl.querySelector<HTMLElement>(':scope > .ds-scan')
+  if (!scan) {
+    scan = document.createElement('div')
+    scan.className = 'ds-scan'
+    scan.innerHTML = `<label class="ds-scan-in"><span class="ds-sr">Scan a barcode or type an item name</span><svg class="ds-i s" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="text" placeholder="Scan a barcode or type an item name…" autocomplete="off"></label>`
+    const input = scan.querySelector('input')!
+    const go = async () => {
+      const cell = await itemCell()
+      const editor = cell && await openCell(cell)
+      if (editor && input.value) await typeInto(editor, input.value)
+      input.value = ''
+    }
+    input.addEventListener('mousedown', (event) => event.preventDefault())
+    input.addEventListener('click', () => void go())
+    input.addEventListener('focus', () => setTimeout(() => { if (document.activeElement === input) void go() }, 0))
+    gridCtl.prepend(scan)
+  }
+
+  // frequent items (most sold in the last 30 days up to the latest business day)
+  let tileBox = gridCtl.querySelector<HTMLElement>(':scope > .ds-tiles')
+  if (!tileBox) {
+    tileBox = document.createElement('section')
+    tileBox.className = 'ds-tiles'
+    tileBox.setAttribute('aria-label', 'Frequent items')
+    gridCtl.append(tileBox)
+    tileBox.addEventListener('click', (event) => {
+      const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-tile]')
+      if (button && !button.disabled) void addByName(button.dataset.tile!)
+    })
+  }
+  if (tiles === null) {
+    tiles = 'loading'
+    void query(`SELECT i.name::text, coalesce(s.qty, 0), coalesce(i.saleprice, 0), count(*) n FROM dbo.saledetail d
+        JOIN dbo.saleledger l ON l.saleinvcode = d.saleinvcode JOIN dbo.item i ON i.icode = d.icode
+        LEFT JOIN (SELECT icode, sum(qty) qty FROM dbo.view_waseelamini_stock GROUP BY icode) s ON s.icode = d.icode
+        WHERE l.date >= (SELECT max(date) FROM dbo.saleledger) - interval '30 days' AND i.active = 1
+        GROUP BY 1, 2, 3 ORDER BY n DESC LIMIT 10`, [])
+      .then((r) => { tiles = r.map((row) => ({ name: String(row[0] ?? ''), stock: Number(row[1] ?? 0), price: Number(row[2] ?? 0) })); onAsync() })
+      .catch(() => { tiles = [] })
+  }
+  if (Array.isArray(tiles)) {
+    const html = `<div class="ds-tiles-h"><h2>Frequent items</h2><span>tap to add</span></div><div class="ds-tiles-g">${tiles.map((t) =>
+      `<button type="button" class="ds-tile" data-tile="${esc(t.name)}"><b>${esc(t.name)}</b><small class="${t.stock > 0 ? '' : 'out'}">${t.stock > 0 ? `${t.stock.toLocaleString('en-PK')} in stock` : 'Out of stock'}</small><span class="p">Rs ${money(t.price)}</span></button>`).join('') || '<p class="ds-help">No sales in the last 30 days.</p>'}</div>`
+    if (tileBox.dataset.html !== html) { tileBox.innerHTML = html; tileBox.dataset.html = html }
+  }
+
+  // the original item search list floats just under the line being typed
+  const aux = detail.querySelector<HTMLElement>(':scope > .entry-auxiliary:not(.hidden)')
+  if (aux) {
+    const line = gridCtl.querySelector<HTMLElement>('tr.cur') ?? gridCtl.querySelector<HTMLElement>('tbody tr')
+    const top = line ? Math.max(0, Math.round(line.getBoundingClientRect().bottom - gridCtl.getBoundingClientRect().top + 4)) : 150
+    if (aux.style.marginTop !== `${top}px`) aux.style.marginTop = `${top}px`
+  }
+  // change calculator under the totals (display only)
+  let pay = footer.querySelector<HTMLElement>(':scope > .ds-change')
+  if (!pay) {
+    pay = document.createElement('section')
+    pay.className = 'ds-change'
+    pay.innerHTML = `<div class="row"><label for="ds-cash">Cash received</label><input id="ds-cash" type="text" inputmode="decimal" placeholder="0" autocomplete="off"></div>
+      <div class="quick">${[500, 1000, 5000].map((n) => `<button type="button" data-add="${n}">+${n}</button>`).join('')}</div>
+      <div class="row ch"><span>Change to return</span><b class="num" aria-live="polite">0.00</b></div>
+      <p class="ds-help">Counts the change only; nothing here is saved with the sale.</p>`
+    const cash = pay.querySelector<HTMLInputElement>('#ds-cash')!
+    pay.addEventListener('click', (event) => {
+      const add = (event.target as HTMLElement).closest<HTMLElement>('[data-add]')
+      if (add) { cash.value = String(num(cash.value) + Number(add.dataset.add)); onAsync() }
+    })
+    cash.addEventListener('input', () => onAsync())
+    footer.append(pay)
+  }
+  // the amount the customer pays: the window's own grand total (rounded, with its charges)
+  const net = num(footer.querySelector('[data-obj=c_big_grandtotal]')?.textContent ?? footer.querySelector('[data-obj=total]')?.textContent)
+  const cashInput = pay.querySelector<HTMLInputElement>('#ds-cash')!
+  if (net === 0 && document.activeElement !== cashInput && cashInput.value) cashInput.value = ''
+  const received = num(cashInput.value)
+  const change = pay.querySelector<HTMLElement>('.ch b')!
+  const text = received ? money(received - net) : '0.00'
+  if (change.textContent !== text) change.textContent = text
+  change.classList.toggle('neg', received > 0 && received < net)
+}
+
+export const SALE_CSS = `
+/* ---------- Cash Sale (mockup point-of-sale layout) ---------- */
+.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] {display:grid!important;grid-template-columns:minmax(0,1fr) minmax(300px,360px);gap:16px;align-items:start;}
+.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-form:first-of-type {grid-column:2;grid-row:1;}
+.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-control:not(.entry-auxiliary):has(.simplified-grid) {grid-column:1;grid-row:1 / span 2;}
+.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-form ~ .entry-form {grid-column:2;grid-row:2;}
+.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-auxiliary:not(.hidden) {grid-column:1;grid-row:1;}
+.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-form:first-of-type .simplified-row {grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-control:has(> .ds-scan) {display:flex!important;flex-direction:column;height:auto!important;background:var(--p-surface)!important;border:1px solid var(--p-hair)!important;border-radius:14px;box-shadow:var(--p-shadow)!important;overflow:hidden;}
+.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-control:has(> .ds-scan) > .modern-surface {position:relative!important;inset:auto!important;flex:none;height:clamp(300px,52vh,620px)!important;border:0!important;box-shadow:none!important;border-radius:0;}
+.ds-scan {flex:none;padding:14px 18px;background:linear-gradient(180deg,var(--p-selected),transparent);border-bottom:1px solid var(--p-hair);}
+.ds-scan-in {position:relative;display:block;}
+.ds-scan-in .ds-i {position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--p-faint);pointer-events:none;}
+.ds-scan-in input {width:100%;height:46px;padding:0 52px 0 40px;border:1px solid var(--p-line);border-radius:10px;background:var(--p-surface);color:var(--p-text);font:15px var(--p-font);box-sizing:border-box;}
+.ds-scan-in input:focus {outline:0;border-color:var(--p-accent);box-shadow:0 0 0 4px var(--p-glow);}
+.ds-scan-in kbd {position:absolute;right:12px;top:50%;transform:translateY(-50%);font:11px var(--p-mono);padding:2px 6px;border:1px solid var(--p-line);border-radius:5px;color:var(--p-muted);background:var(--p-sunk);}
+.ds-tiles {flex:none;background:var(--p-surface);border-top:1px solid var(--p-hair);}
+.ds-tiles-h {display:flex;align-items:baseline;gap:10px;padding:14px 18px;border-bottom:1px solid var(--p-hair);}
+.ds-tiles-h h2 {margin:0;font-size:15px;font-weight:600;}
+.ds-tiles-h span {color:var(--p-muted);font-size:12.5px;}
+.ds-tiles-g {display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:14px 18px;}
+.ds-tile {display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:10px 12px;border:1px solid var(--p-hair);border-radius:12px;background:var(--p-surface);color:var(--p-text);cursor:pointer;text-align:left;font:13px var(--p-font);transition:transform .2s cubic-bezier(.34,1.56,.64,1),border-color .2s,box-shadow .2s;}
+.ds-tile:hover {transform:translateY(-2px);border-color:var(--p-accent);box-shadow:0 8px 20px var(--p-glow);}
+.ds-tile b {font-weight:500;}
+.ds-tile small {color:var(--p-muted);font-size:11.5px;}
+.ds-tile small.out {color:var(--p-danger);}
+.ds-tile .p {font:600 13.5px var(--p-mono);color:var(--p-accent);margin-top:4px;}
+.ds-change {margin:0 18px 18px;padding-top:12px;border-top:1px solid var(--p-hair);display:grid;gap:10px;}
+.ds-change .row {display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13.5px;color:var(--p-muted);}
+.ds-change input {width:120px;height:38px;padding:0 10px;border:1px solid var(--p-line);border-radius:8px;background:var(--p-surface);color:var(--p-text);font:14px var(--p-mono);text-align:right;}
+.ds-change input:focus {outline:0;border-color:var(--p-accent);box-shadow:0 0 0 4px var(--p-glow);}
+.ds-change .quick {display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.ds-change .quick button {height:38px;border:1px solid var(--p-line);border-radius:8px;background:var(--p-surface);color:var(--p-text);font:600 13px var(--p-mono);cursor:pointer;}
+.ds-change .quick button:hover {border-color:var(--p-accent);background:var(--p-selected);}
+.ds-change .ch b {font:600 16px var(--p-mono);color:var(--p-text);}
+.ds-change .ch b.neg {color:var(--p-danger);}
+.ds-change .ds-help {margin:0;}
+@media (max-width:1000px){.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale]{grid-template-columns:minmax(0,1fr)}.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > *{grid-column:1!important;grid-row:auto!important}.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-auxiliary:not(.hidden){grid-row:2!important}}
+`

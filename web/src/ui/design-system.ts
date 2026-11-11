@@ -103,6 +103,12 @@ export const DESIGN_CSS = `
 @media (max-width:900px){.modern-entry-window .modern-surface .simplified-form:not(.simplified-summary) .simplified-row{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media (max-width:850px){.presentation-ui:has(>.presentation-sidebar){grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);overflow:hidden}.presentation-ui > .presentation-work{grid-row:2;min-height:0}}
 @media (max-width:900px){.presentation-ui .toolbar.mh-toolbar{position:static;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}}
+/* a long command set (report windows: 25 commands) scrolls sideways instead of wrapping onto a second row */
+.presentation-ui .toolbar.mh-toolbar {flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;}
+.presentation-ui .toolbar.mh-toolbar > :not(.mh-spacer) {flex:none;}
+.presentation-ui .toolbar.mh-toolbar .ds-rep-back {display:inline-flex;align-items:center;gap:6px;color:var(--p-muted);}
+.presentation-ui .toolbar.mh-toolbar .ds-rep-back .mh-label {display:inline!important;}
+.presentation-ui .toolbar.mh-toolbar .ds-rep-pill {font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--p-info-soft);color:var(--p-info);}
 
 /* ---------- Home tab bar and panel ---------- */
 .presentation-ui .ds-home-bar {display:flex;align-items:center;gap:10px;padding:9px 16px;background:var(--p-surface);border-bottom:1px solid var(--p-hair);min-height:52px;}

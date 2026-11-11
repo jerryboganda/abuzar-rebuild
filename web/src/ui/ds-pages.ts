@@ -262,6 +262,33 @@ export const PAGES_CSS = `
 .ds-btn-primary {background:var(--p-accent);color:var(--p-on-accent);border-color:var(--p-accent);}
 .ds-btn-primary:hover {background:var(--p-accent-2);}
 .ds-btn:disabled {opacity:.5;cursor:not-allowed;}
+/* ---------- Classic content inside Modern windows (list windows, embedded tabs): the design system's colours, borders and
+   controls over the original geometry.  Only the default colours are replaced; a DataWindow's own colour expressions stay. */
+.modern-window .window-embedded {background-color:var(--p-surface)!important;color:var(--p-text)!important;color-scheme:inherit!important;border-radius:12px;}
+.modern-window .window-embedded .strip {border-bottom:1px solid var(--p-hair);background:none!important;}
+.modern-window .window-embedded .strip .t {border:0!important;border-bottom:2px solid transparent!important;background:none!important;color:var(--p-muted)!important;font:500 13.5px var(--p-font)!important;padding:6px 12px!important;border-radius:0!important;}
+.modern-window .window-embedded .strip .t.on {color:var(--p-accent)!important;border-bottom-color:var(--p-accent)!important;}
+.modern-window .window-embedded .page {background:var(--p-surface)!important;}
+.modern-window .window-embedded fieldset.ctl {border:1px solid var(--p-hair)!important;border-radius:10px;background:none!important;}
+.modern-window .window-embedded fieldset.ctl legend {color:var(--p-muted)!important;font:600 12px var(--p-font)!important;padding:0 6px;}
+.modern-window .window-embedded .ctl.st,.modern-window .window-embedded label.ctl {color:var(--p-text)!important;background:none!important;}
+.modern-window .window-embedded button.ctl {background:var(--p-surface)!important;color:var(--p-text)!important;border:1px solid var(--p-line)!important;border-radius:8px!important;font:500 13px var(--p-font)!important;box-shadow:none!important;transition:background .15s,border-color .15s;}
+.modern-window .window-embedded button.ctl:hover:not(:disabled) {background:var(--p-selected)!important;border-color:var(--p-accent)!important;}
+.modern-window .window-embedded button.ctl:disabled {color:var(--p-faint)!important;background:var(--p-sunk)!important;}
+.modern-window .window-embedded :is(.pb-dropdown .dropdown-select,.pb-dropdown .dropdown-input,input.ctl,select.ctl,textarea.ctl) {background:var(--p-surface)!important;color:var(--p-text)!important;border:1px solid var(--p-line)!important;border-radius:6px!important;}
+.modern-window .window-embedded .pb-dropdown .dropdown-toggle {background:none!important;border:0!important;color:var(--p-muted)!important;}
+.modern-window .window-embedded :is(input,select,textarea):focus {outline:0!important;border-color:var(--p-accent)!important;box-shadow:0 0 0 3px var(--p-glow)!important;}
+.modern-window .window-embedded .pb-dropdown .dropdown-list {background:var(--p-surface)!important;color:var(--p-text)!important;border:1px solid var(--p-hair)!important;border-radius:10px;box-shadow:var(--p-shadow-lg);}
+.modern-window .dw:not(.modern-surface) {background:var(--p-surface)!important;color:var(--p-text);border-color:var(--p-hair)!important;}
+.modern-window .dw:not(.modern-surface) > .dw-inner:is([style*="background: rgb(240, 240, 240)"],[style*="background: rgb(255, 255, 255)"],[style*="background-color: rgb(240, 240, 240)"],[style*="background-color: rgb(255, 255, 255)"]) {background:var(--p-surface)!important;}
+.modern-window .dw:not(.modern-surface) .band.hdr .o {background:var(--p-sunk)!important;color:var(--p-muted)!important;border-color:var(--p-hair)!important;font-weight:600!important;}
+.modern-window .dw:not(.modern-surface) .band.row .o:is([style*="background: rgb(255, 255, 255)"],[style*="background: rgb(240, 240, 240)"],[style*="background: rgb(236, 233, 216)"]) {background:transparent!important;}
+.modern-window .dw:not(.modern-surface) .o[style*="; color: rgb(0, 0, 0)"] {color:var(--p-text)!important;}
+.modern-window .dw:not(.modern-surface) .band.row {border-bottom:1px solid var(--p-hair);box-sizing:border-box;}
+.modern-window .dw:not(.modern-surface) .band.row.cur {background:var(--p-selected)!important;box-shadow:inset 3px 0 0 var(--p-accent);}
+.modern-window .dw:not(.modern-surface) .band.row:hover {background:var(--p-sunk);}
+.modern-window .dw:not(.modern-surface) .band.row.cur:hover {background:var(--p-selected)!important;}
+.modern-window .dw:not(.modern-surface) :is(input,textarea,select).dw-edit {background:var(--p-surface)!important;color:var(--p-text)!important;}
 /* ---------- Group Rights (Manage › Groups): the original rights grid as the mockup's matrix — level shown by weight and a
    tint instead of the source's blue bands, permissions as switches (the cell, its click handling and the saved value are unchanged) */
 .pbwin[data-win=w_groups_form] .dw:has(.o[data-obj=checked]) {background:var(--p-surface)!important;}

@@ -13,6 +13,8 @@ import { PRESENTATION_CSS } from './presentation-styles.ts'
 import { DESIGN_CSS } from './design-system.ts'
 import { HOME_CSS, HOME_ICONS, loadHome, renderHome, homeNotes, syncHomeActions } from './ds-home.ts'
 import type { HomeData, HomeAction } from './ds-home.ts'
+import { inetRequest } from '../runtime/native/fiscal.ts'
+import { SALE_CSS, decorateSale } from './ds-sale.ts'
 import { PAGES_CSS, renderReports, renderItems, loadItems, openItemDrawer } from './ds-pages.ts'
 import type { ItemsState, ReportEntry } from './ds-pages.ts'
 import { PURCHASE_CSS, purchaseState, decoratePurchase, forgetPurchaseFacts } from './ds-purchase.ts'
@@ -67,6 +69,8 @@ export class PresentationUi extends DomUi {
   private reportState: { group?: string } = {}
   private itemsState: ItemsState = { q: '', filter: 'all', rows: [], counts: {}, anchor: null, seq: 0 }
   private itemsLoaded = false
+  /** godown and FBR status for the Home subtitle (filled by the status bar's checks) */
+  private homeContext: string[] = []
   private pendingPath: { path: string[]; at: number } | null = null
   private windowPaths = new Map<NWindow, string[]>()
   private freshTabs = new Set<NWindow>()
@@ -78,7 +82,7 @@ export class PresentationUi extends DomUi {
     this.nativeAppearance = appearance
     this.presentationStyle = document.createElement('style')
     // The approved design system layers on the Modern styles (Classic never loads either).
-    this.presentationStyle.textContent = PRESENTATION_CSS + DESIGN_CSS + HOME_CSS + PURCHASE_CSS + PAGES_CSS
+    this.presentationStyle.textContent = PRESENTATION_CSS + DESIGN_CSS + HOME_CSS + PURCHASE_CSS + PAGES_CSS + SALE_CSS
     document.head.append(this.presentationStyle)
     this.settings = this.buildSettings()
     if (session.activeMode === 'modern') {
@@ -117,6 +121,7 @@ export class PresentationUi extends DomUi {
   private decorateActive(): void {
     if (!this.shell || this.homeActive || !this.selected || this.hasModal()) return
     const view = this.views.get(this.selected)
+    this.decorateReport()
     if (!view || !view.el.classList.contains('modern-entry-window')) return
     const byName = (name: string) => [...view.ctlViews.keys()].find((control) => control.name === name)
     const transaction = this.rt.globals.get('sqlca') as { db?: { query(sql: string, params: unknown[]): Promise<{ rows: unknown[][] }> } } | undefined
@@ -125,6 +130,7 @@ export class PresentationUi extends DomUi {
       model: (name: string) => (byName(name) as unknown as { model?: never } | undefined)?.model ?? null,
       query: async (sql: string, params: unknown[]) => transaction?.db ? (await transaction.db.query(sql, params)).rows : [],
     }
+    decorateSale(view.el, ctx.query, (stock) => this.mdi?.el.querySelector<HTMLButtonElement>(`.mh-toolbar button[data-stock="${stock}"]`) ?? null, () => this.decorateActive())
     const state = purchaseState(ctx, () => this.decorateActive())
     if (!state) return
     if (this.purchaseDirty && !state.dirty) { forgetPurchaseFacts(); this.purchaseDirty = false; return void this.decorateActive() }
@@ -565,7 +571,7 @@ export class PresentationUi extends DomUi {
     bar.setAttribute('role', 'toolbar')
     bar.setAttribute('aria-label', 'Home commands')
     bar.innerHTML = `<span class="mh-title">Home</span><span class="ds-spacer"></span>
-      <button type="button" class="tb" data-ds="refresh" aria-label="Refresh figures"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg><span class="mh-label">Refresh</span></button>
+      <button type="button" class="tb" data-ds="refresh" aria-label="Refresh figures" title="Refresh figures"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
       <button type="button" class="tb mh-primary" data-ds="sale"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${HOME_ICONS.cart}</svg><span class="mh-label">New sale</span></button>`
     bar.insertAdjacentHTML('beforeend', `<button type="button" class="tb" data-ds="items-refresh" data-page="items" aria-label="Refresh items"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg><span class="mh-label">Refresh</span></button>
       <button type="button" class="tb mh-primary" data-ds="item-form" data-page="items"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${HOME_ICONS.box}</svg><span class="mh-label">Item form</span></button>`)
@@ -612,9 +618,13 @@ export class PresentationUi extends DomUi {
     const right = document.createElement('span')
     right.className = 'ds-status-right'
     const server = document.createElement('span')
+    const fbr = document.createElement('span')
+    const godown = document.createElement('span')
     const version = document.createElement('span')
     version.className = 'num'
-    right.append(server, version)
+    fbr.hidden = true
+    godown.hidden = true
+    right.append(server, fbr, godown, version)
     bar.append(status, right)
     status.setAttribute('role', 'status')
     const draw = (connected: boolean | null) => {
@@ -623,15 +633,70 @@ export class PresentationUi extends DomUi {
       const database = String(this.rt.globals.get('gs_dbname') ?? '')
       version.textContent = `${database ? `${database} · ` : ''}v2${appVersion ? ` · build ${appVersion}` : ''}`
     }
+    let fiscal: boolean | null = null
+    let godownCode = ''
     const check = async () => {
       const query = this.pageQuery()
       if (!query) { draw(null); return }
-      try { await query('select 1'); draw(true) } catch { draw(false) }
+      try { await query('select 1'); draw(true) } catch { draw(false); return }
+      // FBR IMS: only where this deployment fiscalizes (FiscalizationMethod set); the same local test address the original uses
+      try {
+        if (fiscal === null) fiscal = Number((await query(`SELECT prefvalue FROM dbo.softwarepreferences WHERE lower(name) = 'fiscalizationmethod'`))[0]?.[0] ?? 0) > 0
+        if (fiscal) {
+          const reply = await inetRequest('http://localhost:8524/api/IMSFiscal/Get', 'GET')
+          fbr.hidden = false
+          fbr.innerHTML = `<span class="ds-live${reply.ok ? '' : ' ds-off'}" aria-hidden="true"></span>FBR IMS: ${reply.ok ? 'online' : 'offline'}`
+          this.setHomeContext(1, reply.ok ? 'FBR fiscal invoicing online' : 'FBR fiscal invoicing offline')
+        }
+      } catch { /* the preference table is not readable: no FBR status shown */ }
+      // the signed-in workstation's default godown (gl_defaultgcode)
+      const code = String(this.rt.globals.get('gl_defaultgcode') ?? '')
+      if (code && code !== godownCode) {
+        godownCode = code
+        try {
+          const name = String((await query('SELECT name FROM dbo.godown WHERE gcode = $1', [Number(code)]))[0]?.[0] ?? '').trim()
+          godown.hidden = !name
+          godown.textContent = `Godown: ${name}`
+          if (name) this.setHomeContext(0, name)
+        } catch { godown.hidden = true }
+      }
     }
     draw(null)
     void check()
     const timer = setInterval(() => { if (document.visibilityState === 'visible') void check() }, 30_000)
     this.cleanup.signal.addEventListener('abort', () => clearInterval(timer))
+  }
+
+  /** Report windows (opened from the Reports menu) get the mockup's report-viewer header: a way back to the catalogue and a
+   * Preview tag beside the title.  The window, its criteria dialog and its commands are the original's. */
+  private decorateReport(): void {
+    const bar = this.mdi?.el.querySelector<HTMLElement>('.mh-toolbar')
+    if (!bar) return
+    const isReport = !!this.selected && this.windowPaths.get(this.selected)?.[0] === 'Reports'
+    let back = bar.querySelector<HTMLButtonElement>(':scope > .ds-rep-back')
+    let pill = bar.querySelector<HTMLElement>(':scope > .ds-rep-pill')
+    if (!isReport) { back?.remove(); pill?.remove(); return }
+    if (!back) {
+      back = document.createElement('button')
+      back.type = 'button'
+      back.className = 'tb ds-rep-back'
+      back.innerHTML = '<svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span class="mh-label">All reports</span>'
+      back.addEventListener('click', () => this.openPage('reports'))
+      bar.prepend(back)
+    }
+    if (!pill) {
+      pill = document.createElement('span')
+      pill.className = 'ds-rep-pill'
+      pill.textContent = 'Preview'
+      bar.querySelector(':scope > .mh-title')?.after(pill)
+    }
+  }
+
+  private setHomeContext(slot: number, text: string): void {
+    if (this.homeContext[slot] === text) return
+    this.homeContext[slot] = text
+    const span = this.homeHost?.querySelector('.ds-hello .ds-ctx')
+    if (span) span.textContent = this.homeContext.filter(Boolean).map((part) => ` · ${part}`).join('')
   }
 
   private pageTitle(): string { return this.page === 'reports' ? 'Reports' : this.page === 'items' ? 'Items' : 'Home' }
@@ -752,7 +817,7 @@ export class PresentationUi extends DomUi {
     const find = (pattern: RegExp) => all.find((command) => pattern.test(command.label.replace(/\s*\.{3,}\s*/g, ' ')))
     const action = (label: string, hint: string, icon: string, pattern: RegExp): HomeAction => {
       const command = find(pattern)
-      return { label, hint, icon, disabled: !command || !!command.disabled, run: () => { if (command && !command.disabled) void this.runCommand(command) } }
+      return { label, hint: command?.shortcut || hint, icon, disabled: !command || !!command.disabled, run: () => { if (command && !command.disabled) void this.runCommand(command) } }
     }
     return [
       action('New sale', 'Sales › Cash Sale', 'cart', /^Sales \/ Cash ?Sale$/i),
@@ -787,7 +852,7 @@ export class PresentationUi extends DomUi {
     const user = parseFrameTitle(this.mdi?.ttlEl?.textContent || String(this.mdi?.w.props.get('title') ?? '')).user || 'there'
     const draw = (animate: boolean) => {
       if (!this.homeData) { host.innerHTML = '<div class="ds-home"><p class="ds-empty">Loading figures…</p></div>'; return }
-      renderHome(host, this.homeData, user, () => this.homeActions(), () => this.openPage('reports'), animate)
+      renderHome(host, this.homeData, user, () => this.homeActions(), () => this.openPage('reports'), animate, this.homeContext)
       this.homeRendered = true
     }
     const stale = Date.now() - this.homeLoaded > 5 * 60_000

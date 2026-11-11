@@ -1474,7 +1474,9 @@ export class DwView {
     if (!cm) return null
     let load = this.childLoads.get(cm)
     if (retry && load?.failed) { this.childLoads.delete(cm); load = undefined }
-    if (cm.rowCount() === 0 && !load && choiceProperty(o, 'dddw.autoretrieve', this.ctl.model?.overrides) === 'yes' && argList(cm.def).length === 0) {
+    // AutoRetrieve uses the parent's transaction; while neither has one, PowerBuilder leaves the list empty without an error
+    if (!cm.trans?.db && this.ctl.trans) { c.trans = this.ctl.trans; cm.trans = this.ctl.trans }
+    if (cm.rowCount() === 0 && !load && cm.trans?.db && choiceProperty(o, 'dddw.autoretrieve', this.ctl.model?.overrides) === 'yes' && argList(cm.def).length === 0) {
       const state: { ready: Promise<void>; failed: boolean; error?: unknown } = { ready: Promise.resolve(), failed: false }
       this.childLoads.set(cm, state)
       state.ready = (async () => {

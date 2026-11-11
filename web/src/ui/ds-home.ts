@@ -109,24 +109,25 @@ function chart(series: HomeData['series']): string {
     <circle cx="${x(last)}" cy="${y(series[last].sales)}" r="5" class="end"/><line class="hair" x1="0" x2="0" y1="${P[0]}" y2="${H - P[2]}"/></svg><div class="ds-tip" hidden></div></div>`
 }
 
-export function renderHome(host: HTMLElement, d: HomeData, user: string, actionsNow: () => HomeAction[], openReports: () => void, animate: boolean): void {
+export function renderHome(host: HTMLElement, d: HomeData, user: string, actionsNow: () => HomeAction[], openReports: () => void, animate: boolean, context: string[] = []): void {
   const actions = actionsNow()
   const h = new Date().getHours()
   const greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
-  const change = (cur: number, prev: number) => prev ? `${cur >= prev ? '+' : '−'}${Math.abs((cur - prev) / prev * 100).toFixed(1)}% vs previous day` : 'No figures for the previous day'
   const anchorText = d.anchor ? fmtDay(d.anchor, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'No transactions yet'
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const stale = !!d.anchor && d.anchor.getTime() < today.getTime()
+  // the approved wording ("Today's sales … vs yesterday") when the latest business day is today; otherwise the day is named
+  const change = (cur: number, prev: number) => prev ? `${cur >= prev ? '+' : '−'}${Math.abs((cur - prev) / prev * 100).toFixed(1)}% vs ${stale ? 'previous day' : 'yesterday'}` : `No figures for ${stale ? 'the previous day' : 'yesterday'}`
   const kpis = [
-    ['Sales', d.sales, change(d.sales, d.salesPrev), d.sales >= d.salesPrev ? 'up' : 'down', 'cart', d.series.map((r) => r.sales)],
-    ['Purchases', d.purchases, change(d.purchases, d.purchasesPrev), d.purchases <= d.purchasesPrev ? 'up' : 'down', 'truck', d.series.map((r) => r.purchases)],
+    [stale ? 'Sales' : "Today's sales", d.sales, change(d.sales, d.salesPrev), d.sales >= d.salesPrev ? 'up' : 'down', 'cart', d.series.map((r) => r.sales)],
+    [stale ? 'Purchases' : 'Purchases today', d.purchases, change(d.purchases, d.purchasesPrev), d.purchases <= d.purchasesPrev ? 'up' : 'down', 'truck', d.series.map((r) => r.purchases)],
     ['Receivables', d.receivable, d.receivableCount ? `${d.receivableCount.toLocaleString('en-PK')} customers owe` : 'No customer balances', d.receivableCount ? 'down' : '', 'wallet', []],
     ['Payables', d.payable, d.payableCount ? `${d.payableCount.toLocaleString('en-PK')} suppliers to pay` : 'No supplier balances', '', 'doc', []],
   ] as const
   const months = (e: Date) => (e.getFullYear() - today.getFullYear()) * 12 + e.getMonth() - today.getMonth()
   const tag = (e: Date) => { const m = months(e); return `<span class="ds-tag ${e < today ? 'bad' : m < 4 ? 'bad' : m < 12 ? 'warn' : ''}">${e < today ? 'expired' : 'exp'} ${String(e.getMonth() + 1).padStart(2, '0')}/${e.getFullYear()}</span>` }
   host.innerHTML = `<div class="ds-home${animate ? ' ds-enter' : ''}">
-    <div class="ds-hello"><div><h2>${greet}, ${esc(user)}</h2><p>${stale ? 'Latest business day: ' : ''}${esc(anchorText)}</p></div>
+    <div class="ds-hello"><div><h2>${greet}, ${esc(user)}</h2><p>${stale ? 'Latest business day: ' : ''}${esc(anchorText)}<span class="ds-ctx">${context.map((part) => ` · ${esc(part)}`).join('')}</span></p></div>
       <div class="ds-hello-actions"><button type="button" class="ds-btn" data-home="reports">${icon('chart', 's')}Reports</button><button type="button" class="ds-btn primary" data-home="0">${icon('cart', 's')}New sale</button></div></div>
     <div class="ds-kpis ds-stagger">${kpis.map(([t, v, sub, c, ic, sp], i) => `<div class="ds-card ds-lift ds-kpi" style="--i:${i}"><div class="k"><span class="ki">${icon(ic, 's')}</span>${t}${i < 2 && stale ? ' · latest day' : ''}</div>
       <div class="v" data-to="${v}">${rs0(v)}</div><div class="d ${c}">${esc(sub)}</div>${spark([...sp])}</div>`).join('')}</div>

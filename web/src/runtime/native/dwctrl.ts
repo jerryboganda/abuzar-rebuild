@@ -334,6 +334,13 @@ export class NDwBase extends PBObject {
     this.trans = t instanceof NTransaction ? t : null
     const m = await this.m()
     if (m) m.trans = this.trans
+    // PowerBuilder shares the transaction with the drop-down DataWindow children that have none of their own
+    for (const child of this.childControls.values()) {
+      if (child.destroyed || child.trans) continue
+      child.trans = this.trans
+      const cm = await child.m()
+      if (cm && !cm.trans) cm.trans = this.trans
+    }
     return 1
   }
   async n_settrans(t: unknown): Promise<number> {

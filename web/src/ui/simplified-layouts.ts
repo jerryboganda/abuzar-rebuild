@@ -45,7 +45,7 @@ export const SIMPLIFIED_LAYOUTS: readonly SimplifiedLayout[] = [
       'c_gstval', 'c_finalitemval', 'c_margin'],
   },
   {
-    surface: 'd_purchasefooter', kind: 'form', moreLabel: '', emphasis: 'total', heading: 'Bill summary', summary: true,
+    surface: 'd_purchasefooter', kind: 'form', moreLabel: '', emphasis: 'total', heading: 'Bill summary', hint: 'updates as you type', summary: true,
     order: ['itemtotalval', 'discperc', 'flatdisc', 'misccharges', 'invgstperc1', 'advancetaxamt', 'stock', 'totalstock', 'totalexp', 'total'],
     primary: ['stock', 'discperc', 'flatdisc', 'misccharges', 'invgstperc1', 'advancetaxamt', 'totalstock', 'totalexp', 'itemtotalval', 'total'],
   },
