@@ -110,6 +110,8 @@ Each PC needs the browser only; nothing else to install. Add the token page to t
   Same day, commit `debf8f60` (Reports and Items pages, Preferences layout, rights switch matrix, status bar, Pack Purchase quick-add) copied the same way; same rollback.
   Same day, commit `606e9f1e` (Cash Sale point-of-sale layout, quick-add fields, FBR/godown status, report header, classic-content skin, Groups error fix) copied the same way; same rollback.
   Same day, commit `12ee4612` (List/Detail toggle, Cash/Credit switch, docked report criteria, phone header) copied the same way; same rollback.
+  Same day, commit `2499efeb` (the 13 list windows, Groups among them, get the approved Modern List layout) copied the same way; same rollback.
+  Ports 8787 and 8790 serve the new files.
 * The old PowerBuilder application and its SQL Server instance keep running untouched; do not decommission
   them until the snapshot decision is made and a period of parallel running is accepted.
 * The rebuilt application has no licence checks (owner decision 2026-11-02), server-side rights are not
