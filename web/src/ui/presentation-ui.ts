@@ -60,6 +60,8 @@ export class PresentationUi extends DomUi {
   private header: ModernHeader | null = null
   // Approved design: Home dashboard tab, menu path per window (breadcrumbs, current module, tab icon), notifications.
   private homeActive = true
+  /** false once the user closed the Home tab (the "Nothing open" card shows when no other tab is open) */
+  private homeOpen = true
   private homeHost: HTMLElement | null = null
   private homeBar: HTMLElement | null = null
   private homeTab: HTMLElement | null = null
@@ -376,12 +378,20 @@ export class PresentationUi extends DomUi {
     }
     if (this.homeBar) {
       this.homeBar.querySelector('.mh-title')!.textContent = this.pageTitle()
-      for (const button of this.homeBar.querySelectorAll<HTMLElement>('[data-ds]')) button.hidden = (button.dataset.page ?? 'home') !== this.page
+      for (const button of this.homeBar.querySelectorAll<HTMLElement>('[data-ds]')) button.hidden = (button.dataset.page ?? 'home') !== this.page || (this.page === 'home' && !this.homeOpen)
     }
     if (this.homeHost) this.homeHost.setAttribute('aria-labelledby', this.page === 'home' ? 'workspace-home-tab' : `workspace-${this.page}-tab`)
     if (this.homeHost) this.homeHost.hidden = !this.homeActive
     if (this.homeBar) this.homeBar.hidden = !this.homeActive
     this.shell?.classList.toggle('ds-home-on', this.homeActive)
+    // the approved design's empty tab strip
+    const strip = this.shell?.querySelector<HTMLElement>('.presentation-tabs')
+    if (strip) {
+      let none = strip.querySelector<HTMLElement>(':scope > .ds-no-tabs')
+      const empty = !this.homeOpen && !this.tabs.size && !this.pageTabs.size
+      if (empty && !none) { none = document.createElement('span'); none.className = 'ds-no-tabs'; none.textContent = 'No open windows. Pick a screen from the menu, or press Ctrl+K.'; strip.append(none) }
+      if (!empty) none?.remove()
+    }
     if (this.homeActive) void this.showPage()
     this.syncHomeUser()
     if (this.homeHost && this.homeActive) syncHomeActions(this.homeHost, this.homeActions())
@@ -612,7 +622,26 @@ export class PresentationUi extends DomUi {
     tab.setAttribute('aria-controls', 'workspace-home')
     tab.innerHTML = `<svg class="ds-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${HOME_ICONS.chart}</svg>Home`
     tab.onclick = () => this.selectHome()
-    container.append(tab)
+    // the approved design's Home tab closes like any window tab; with nothing open the "Nothing open" card offers it again
+    const close = document.createElement('button')
+    close.type = 'button'
+    close.textContent = '×'
+    close.setAttribute('aria-label', 'Close Home')
+    close.onclick = (event) => {
+      event.stopPropagation()
+      if (this.hasModal()) return
+      this.homeOpen = false
+      container.hidden = true
+      if (this.page === 'home') {
+        const next = [...this.pageTabs.keys()].at(-1)
+        if (next) { this.openPage(next); return }
+        const last = [...this.tabs.keys()].at(-1)
+        if (last) { this.tabs.get(last)!.tab.click(); return }
+      }
+      this.homeRendered = false
+      this.updateTabs()
+    }
+    container.append(tab, close)
     tabs.prepend(container)
     this.homeTab = container
     const bar = document.createElement('div')
@@ -798,7 +827,7 @@ export class PresentationUi extends DomUi {
     if (span) span.textContent = this.homeContext.filter(Boolean).map((part) => ` · ${part}`).join('')
   }
 
-  private pageTitle(): string { return this.page === 'home' ? 'Home' : PAGES[this.page].title }
+  private pageTitle(): string { return this.page === 'home' ? (this.homeOpen ? 'Home' : 'Trader') : PAGES[this.page].title }
 
   /** Opens (or returns to) the Reports or Items page tab. */
   private openPage(page: Page): void {
@@ -823,7 +852,14 @@ export class PresentationUi extends DomUi {
         event.stopPropagation()
         container.remove()
         this.pageTabs.delete(page)
-        if (this.page === page) { this.page = 'home'; this.homeRendered = false }
+        if (this.page === page) {
+          this.page = 'home'
+          this.homeRendered = false
+          const last = !this.homeOpen && ([...this.pageTabs.keys()].at(-1) ?? null)
+          if (last) { this.openPage(last); return }
+          const window = !this.homeOpen ? [...this.tabs.keys()].at(-1) : undefined
+          if (window) { this.tabs.get(window)!.tab.click(); return }
+        }
         this.updateTabs()
       }
       container.append(tab, close)
@@ -841,6 +877,16 @@ export class PresentationUi extends DomUi {
   private async showPage(): Promise<void> {
     const host = this.homeHost
     if (!host) return
+    if (this.page === 'home' && !this.homeOpen) {
+      // drawn once: a redraw between mousedown and click would swallow the click
+      if (host.dataset.page === 'empty') return
+      host.dataset.page = 'empty'
+      host.innerHTML = `<div class="ds-home"><div class="ds-card ds-nothing"><svg class="ds-i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg>
+        <h2>Nothing open</h2><p>Pick a screen from the menu bar, or press <kbd>Ctrl</kbd> <kbd>K</kbd> and type its name.</p><button type="button" class="ds-btn primary" data-open-home>Open Home</button></div></div>`
+      host.onclick = (event) => { if ((event.target as HTMLElement).closest('[data-open-home]')) this.selectHome() }
+      host.onkeydown = null
+      return
+    }
     if (this.page === 'home') {
       if (host.dataset.page !== 'home') { host.dataset.page = 'home'; host.onclick = null; host.onkeydown = null; this.homeRendered = false }
       return this.showHome()
@@ -941,6 +987,7 @@ export class PresentationUi extends DomUi {
 
   private selectHome(): void {
     if (this.hasModal()) return
+    if (!this.homeOpen) { this.homeOpen = true; if (this.homeTab) this.homeTab.hidden = false; this.homeRendered = false }
     if (this.page !== 'home') { this.page = 'home'; this.homeRendered = false }
     this.homeActive = true
     this.updateTabs()

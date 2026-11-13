@@ -160,6 +160,12 @@ export const DESIGN_CSS = `
 .mh-palette [role=option] > kbd {margin-left:auto;}
 .mh-palette mark {background:none;color:var(--p-accent);font-weight:600;}
 .mh-palette .mh-palette-foot {gap:14px;flex-wrap:wrap;}
+.presentation-ui .presentation-tabs .ds-no-tabs {padding:8px 4px 10px;color:var(--p-muted);font-size:13px;}
+.ds-nothing {max-width:640px;margin:40px auto;padding:44px 16px;text-align:center;color:var(--p-muted);}
+.ds-nothing .ds-i {width:56px;height:56px;color:var(--p-line);margin-bottom:8px;}
+.ds-nothing h2 {color:var(--p-text);margin:4px 0;font-size:20px;}
+.ds-nothing kbd {font:500 .72em var(--p-mono);border:1px solid var(--p-line);border-bottom-width:2px;border-radius:5px;padding:0 5px;}
+.ds-nothing .ds-btn.primary {background:linear-gradient(180deg,var(--p-accent-2),var(--p-accent));border-color:var(--p-accent);color:var(--p-on-accent);margin-top:8px;}
 .mh-shortcuts {padding:0;}
 .mh-shortcuts h2 {font-size:17px;margin:0;padding:18px 20px 6px;}
 .mh-shortcuts .mh-keys {display:grid;grid-template-columns:auto 1fr;gap:8px 18px;padding:12px 20px;max-height:60vh;overflow:auto;font-size:13px;}
