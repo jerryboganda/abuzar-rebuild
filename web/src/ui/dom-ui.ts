@@ -1470,7 +1470,7 @@ export class WinView {
       case 'picture': {
         const img = document.createElement('img')
         img.className = 'ctl'
-        img.src = 'data/assets/' + str(c, 'picturename').replace(/^.*[\\/]/, '').toLowerCase()
+        img.src = 'assets/' + str(c, 'picturename').replace(/^.*[\\/]/, '').toLowerCase()
         img.onerror = () => (img.style.visibility = 'hidden')
         img.onclick = () => void rt.fire(c, 'clicked').then(() => rt.flushPosted()).then(() => rt.flushPosted())
         el = img

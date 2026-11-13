@@ -257,6 +257,41 @@ test('the f_validatedw fix gates on the row filled by the first FindRequired cal
   assert.deepEqual(fixClassData('f_validatedw', data), [])
 })
 
+test('cashier activity and change password treat SQLCode 100 as no rows, not a database error', () => {
+  const parse = (library: string, name: string) => {
+    const { file, errors } = parseScriptFile(readFileSync(resolve(import.meta.dirname, '..', '..', 'data', 'src', 'scripts', library, name + '.pbs'), 'utf8'))
+    assert.deepEqual(errors, [])
+    const routines: Record<string, Record<string, Routine[]>> = {}
+    for (const routine of file.routines) ((routines[routine.owner] ??= {})[routine.name] ??= []).push(routine)
+    return { routines }
+  }
+  const cashier = parse('cashierjob', 'w_cashieractivitymonitor')
+  assert.deepEqual(fixClassData('w_cashieractivitymonitor', cashier), ['w_cashieractivitymonitor.open treats SQLCode 100 as no rows'])
+  assert.match(JSON.stringify(cashier.routines.w_cashieractivitymonitor.open[0].body), /"v":100/)
+  assert.deepEqual(fixClassData('w_cashieractivitymonitor', cashier), [])
+
+  const password = parse('components', 'w_changepassword')
+  assert.deepEqual(fixClassData('w_changepassword', password), ['cb_ok.clicked treats SQLCode 100 as no rows'])
+  const passwordBody = password.routines.cb_ok.clicked[0].body
+  assert.match(JSON.stringify(passwordBody), /"v":100/)
+  const selectGate = passwordBody.find((node) => node.k === 'if' && JSON.stringify(node.c).includes('sqlcode'))!
+  assert.match(JSON.stringify(selectGate.ei?.[0]?.c), /"v":100/)
+  assert.deepEqual(fixClassData('w_changepassword', password), [])
+})
+
+test('the required-field message falls back to the column name when Describe returns !', () => {
+  const { file, errors } = parseScriptFile(readFileSync(resolve(import.meta.dirname, '..', '..', 'data', 'src', 'scripts', 'functions', 'f_validatedw.pbs'), 'utf8'))
+  assert.deepEqual(errors, [])
+  const routines: Record<string, Record<string, Routine[]>> = {}
+  for (const routine of file.routines) ((routines[routine.owner] ??= {})[routine.name] ??= []).push(routine)
+  const data = { routines }
+  assert.deepEqual(fixClassData('f_validatedw', data), ['required-field gate'])
+  const body = data.routines.f_validatedw.f_validatedw[0].body
+  assert.match(JSON.stringify(body), /"ls_textname".*"v":"!".*"ls_colname"/)
+  assert.match(JSON.stringify(body), /"messagebox".*"ls_textname"/)
+  assert.deepEqual(fixClassData('f_validatedw', data), [])
+})
+
 test('the f_validatedw fix leaves a class without the duplicated gate untouched', () => {
   const body = [{ k: 'return', e: { k: 'num', v: 1, dec: false } }]
   const data = { routines: { f_validatedw: { f_validatedw: [{ body }] } } }

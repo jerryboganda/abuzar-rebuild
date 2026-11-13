@@ -226,6 +226,42 @@ function fixCashierShift(data: Json): string[] {
   return out
 }
 
+/** `sqlcode <> 0` also matches the PowerBuilder no-row result 100; a missing lookup row is not a database failure. */
+function treatNoRowsAsSuccess(cond: Json): Json {
+  if (!cond || cond.k !== 'bin') return cond
+  const equals = (value: Json): Json => ({ k: 'bin', op: '=', l: value, r: num(100) })
+  if (cond.op === '=' && cond.r?.k === 'num' && cond.r.v === 0) {
+    return { k: 'bin', op: 'or', l: cond, r: equals(clone(cond.l)) }
+  }
+  if (cond.op === '<>' && cond.r?.k === 'num' && cond.r.v === 0) {
+    return { k: 'bin', op: 'and', l: cond, r: { k: 'bin', op: '<>', l: clone(cond.l), r: num(100) } }
+  }
+  return cond
+}
+
+function fixSqlNoRows(data: Json, owner: string, event: string, marker: string): string[] {
+  const body = data.routines?.[owner]?.[event]?.[0]?.body
+  if (!Array.isArray(body)) return []
+  const sql = body.findIndex((n) => n?.k === 'sql' && n.kind === 'select' &&
+    JSON.stringify(n.text || '').toLowerCase().includes(marker))
+  if (sql < 0) return []
+  const at = body.findIndex((n, index) => index > sql && n?.k === 'if' && JSON.stringify(n.c || {}).includes('sqlcode'))
+  if (at < 0) return []
+  if (JSON.stringify(body[at].c).includes('"v":100')) return []
+  const original = body[at].c
+  body[at].c = treatNoRowsAsSuccess(original)
+  // Change Password's next branch tests `isnull(ls_password)`, but an
+  // uninitialised PowerScript string is "" rather than null.  Route the
+  // explicit no-row result to the name-validation branch too.
+  if (owner === 'cb_ok' && original?.l) {
+    const first = body[at].ei?.[0]
+    if (first && JSON.stringify(first.c || {}).includes('isnull')) {
+      first.c = { k: 'bin', op: 'or', l: { k: 'bin', op: '=', l: clone(original.l), r: num(100) }, r: first.c }
+    }
+  }
+  return [`${owner}.${event} treats SQLCode 100 as no rows`]
+}
+
 function fixValidatedW(data: Json): boolean {
   const body = data.routines?.f_validatedw?.f_validatedw?.[0]?.body
   if (!Array.isArray(body)) return false
@@ -236,12 +272,41 @@ function fixValidatedW(data: Json): boolean {
   // and aborted.  The first gate (`FindRequired(...) < 0`) is harmless; the
   // second gate must test the row number that the first call filled in.
   const gates = body.filter((n) => n?.k === 'if' && JSON.stringify(n.c || {}).includes('findrequired'))
-  if (gates.length < 2) return false
-  const target = gates[1]
+  const hasDescribe = (n: Json): boolean => Array.isArray(n?.t) && n.t.some((statement: Json) => statement?.k === 'assign' &&
+    statement.r?.k === 'call' && statement.r.n === 'describe')
+  const target = gates.length >= 2 ? gates[1] : body.find((n) => n?.k === 'if' && hasDescribe(n))
+  if (!target) return false
   const c = target.c
-  if (c?.k === 'bin' && c.op === '<>' && c.l?.k === 'id' && c.l.n === 'll_row' && c.r?.k === 'num' && c.r.v === 0) return false
-  target.c = { k: 'bin', op: '<>', l: id('ll_row'), r: num(0) }
-  return true
+  let changed = false
+  if (!(c?.k === 'bin' && c.op === '<>' && c.l?.k === 'id' && c.l.n === 'll_row' && c.r?.k === 'num' && c.r.v === 0)) {
+    target.c = { k: 'bin', op: '<>', l: id('ll_row'), r: num(0) }
+    changed = true
+  }
+  // Describe("column_t.Text") returns "!" for a required column whose label
+  // object does not exist (for example supplier_cp).  Keep the column name as
+  // the fallback instead of showing the PowerBuilder error marker.
+  const statements = Array.isArray(target.t) ? target.t : []
+  const describe = statements.findIndex((n: Json) => n?.k === 'assign' && n.l?.k === 'id' && n.l.n === 'ls_colname' &&
+    n.r?.k === 'call' && n.r.n === 'describe')
+  if (describe >= 0) {
+    statements[describe] = { ...statements[describe], l: id('ls_textname') }
+    statements.splice(describe + 1, 0, {
+      k: 'if',
+      c: { k: 'bin', op: '=', l: id('ls_textname'), r: { k: 'str', v: '!' } },
+      t: [{ k: 'assign', l: id('ls_textname'), op: '=', r: id('ls_colname') }],
+      ei: [],
+    })
+    const box = statements.find((n: Json) => n?.k === 'expr' && n.e?.k === 'call' && n.e.n === 'messagebox')
+    const replaceName = (node: Json): void => {
+      if (Array.isArray(node)) { node.forEach(replaceName); return }
+      if (!node || typeof node !== 'object') return
+      if (node.k === 'id' && node.n === 'ls_colname') { node.n = 'ls_textname'; return }
+      Object.values(node).forEach(replaceName)
+    }
+    if (box?.e?.a?.[1]) replaceName(box.e.a[1])
+    changed = true
+  }
+  return changed
 }
 
 function fixCashierCategory(data: Json): string[] {
@@ -785,5 +850,7 @@ export function fixClassData(name: string, data: Json): string[] {
   if (n === 'w_dbbackup') return fixBackupResult(data, n)
   if (n === 'w_dbbackup1') return fixBackupResult(data, n)
   if (n === 'f_validatedw') return fixValidatedW(data) ? ['required-field gate'] : []
+  if (n === 'w_cashieractivitymonitor') return fixSqlNoRows(data, n, 'open', 'cashierjob')
+  if (n === 'w_changepassword') return fixSqlNoRows(data, 'cb_ok', 'clicked', 'users.password')
   return []
 }

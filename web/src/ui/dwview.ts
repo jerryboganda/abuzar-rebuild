@@ -1299,7 +1299,7 @@ export class DwView {
       // the file of the picture can be set at run time (the QR code of an invoice is written to qrcode.bmp before the report prints)
       const file = (await this.prop(m, o, 'filename', row, band)) || o.filename || ''
       const img = document.createElement('img')
-      img.src = 'data/assets/' + file.replace(/^.*[\\/]/, '').toLowerCase()
+      img.src = 'assets/' + file.replace(/^.*[\\/]/, '').toLowerCase()
       img.style.width = '100%'
       img.style.height = '100%'
       img.onerror = () => {

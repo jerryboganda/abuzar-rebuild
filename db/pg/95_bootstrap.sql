@@ -26,20 +26,27 @@ UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) IN ('groupc
 -- the default sales person of the original (customers and invoices refer to it)
 INSERT INTO dbo.salesman (salesmancode, name, address, phone) VALUES (1, '***', '***', '**') ON CONFLICT DO NOTHING;
 
--- the retail customer of the cash sale windows (w_sale reads `Customer WHERE custcode = 19`) with the base rows the original ships inside its pre-built
--- database (names and codes as the original shows them).  The customer table also defaults to province 7, which the recovered seed does not contain.
--- A failure is reported as an error of this block and leaves nothing half done.
+-- The customer/supplier tables default the province to 7, so the parent row
+-- must exist even in a migrated database that already has customer 19.  It
+-- used to be inserted only inside the block below, which returns early for
+-- such databases, leaving every new customer save blocked by the foreign key.
+INSERT INTO dbo.stateprovince (stateprovincecode, stateprovincedescription)
+SELECT 7, 'NOT SPECIFIED' WHERE NOT EXISTS (SELECT 1 FROM dbo.stateprovince WHERE stateprovincecode = 7);
+
+-- The retail customer of the cash sale windows (w_sale reads `Customer WHERE custcode = 19`) with the base rows the original ships inside its pre-built
+-- database (names and codes as the original shows them).  The parent rows are ensured even in a migrated database that already has customer 19: the old
+-- block returned before them, so a missing default province or area broke every later customer/supplier save.  Only the customer itself is guarded.
+INSERT INTO dbo.area (areacode, name, shortname) SELECT 1, 'DEFAULT AREA', '1' WHERE NOT EXISTS (SELECT 1 FROM dbo.area WHERE areacode = 1);
+INSERT INTO dbo.subarea (subareacode, name, manager, areacode) SELECT 1, 'SUB DEFAULT AREA', '1', 1 WHERE NOT EXISTS (SELECT 1 FROM dbo.subarea WHERE subareacode = 1);
+INSERT INTO dbo.customercategory (custcatcode, name) SELECT 1, 'DEFAULT CATEGORY' WHERE NOT EXISTS (SELECT 1 FROM dbo.customercategory WHERE custcatcode = 1);
+INSERT INTO dbo.subaccounts (subacccode, catacccode, name) SELECT 3, 1, 'CUSTOMERS/DEBITORS' WHERE NOT EXISTS (SELECT 1 FROM dbo.subaccounts WHERE subacccode = 3 OR name = 'CUSTOMERS/DEBITORS');
+INSERT INTO dbo.accounts (acccode, subcode, name, aliasname, active, restricted) SELECT 19, 3, '****CASH SALES CUSTOMER', 'CASHSALES', 'Y', 'N' WHERE NOT EXISTS (SELECT 1 FROM dbo.accounts WHERE acccode = 19);
+
 DO $boot$
 BEGIN
   IF EXISTS (SELECT 1 FROM dbo.customer WHERE custcode = 19) THEN
     RETURN;
   END IF;
-  INSERT INTO dbo.stateprovince (stateprovincecode, stateprovincedescription) SELECT 7, 'NOT SPECIFIED' WHERE NOT EXISTS (SELECT 1 FROM dbo.stateprovince WHERE stateprovincecode = 7);
-  INSERT INTO dbo.area (areacode, name, shortname) SELECT 1, 'DEFAULT AREA', '1' WHERE NOT EXISTS (SELECT 1 FROM dbo.area WHERE areacode = 1);
-  INSERT INTO dbo.subarea (subareacode, name, manager, areacode) SELECT 1, 'SUB DEFAULT AREA', '1', 1 WHERE NOT EXISTS (SELECT 1 FROM dbo.subarea WHERE subareacode = 1);
-  INSERT INTO dbo.customercategory (custcatcode, name) SELECT 1, 'DEFAULT CATEGORY' WHERE NOT EXISTS (SELECT 1 FROM dbo.customercategory WHERE custcatcode = 1);
-  INSERT INTO dbo.subaccounts (subacccode, catacccode, name) SELECT 3, 1, 'CUSTOMERS/DEBITORS' WHERE NOT EXISTS (SELECT 1 FROM dbo.subaccounts WHERE subacccode = 3 OR name = 'CUSTOMERS/DEBITORS');
-  INSERT INTO dbo.accounts (acccode, subcode, name, aliasname, active, restricted) SELECT 19, 3, '****CASH SALES CUSTOMER', 'CASHSALES', 'Y', 'N' WHERE NOT EXISTS (SELECT 1 FROM dbo.accounts WHERE acccode = 19);
   INSERT INTO dbo.customer (custcode, areacode, crlimit, dayslimit, custcatcode, subareacode, membershipid) VALUES (19, 1, 0, 0, 1, 1, '19');
 END
 $boot$;
