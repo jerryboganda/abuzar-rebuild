@@ -5,6 +5,7 @@ import { NWinSock } from './native/winsock.ts'
 import type { NWindow } from './native/controls.ts'
 import type { NDwBase } from './native/dwctrl.ts'
 import type { ClassDef, ControlDef, FieldDef, Member, RoutineEntry } from './object.ts'
+import { applyPendingAccept } from './pending-accept.ts'
 import { add, cmp, coerce, defaultValue, Dec, div, equals, isNull, mul, NUMERIC_TYPES, PBArray, PBRuntimeError, sub, toNum, toStr } from './values.ts'
 
 // ---------------------------------------------------------------------------------------------- hosts
@@ -392,8 +393,12 @@ export class Runtime {
 
   async callNative(obj: PBObject, name: string, args: unknown[], caller: Frame | null = null): Promise<unknown> {
     // Scope the ItemChanged no-op to this script call chain, not concurrent UI actions.
+    // A routine carries no name: the ItemChanged frame is recognised by its routine being one of the control's ItemChanged routines.
     if (name === 'accepttext') for (let frame = caller; frame; frame = frame.caller) {
-      if (frame.self === obj && frame.routine?.event && frame.routine.name === 'itemchanged') return 1
+      if (frame.self === obj && frame.routine?.event && obj.findRoutines('itemchanged').some((entry) => entry.r === frame.routine)) {
+        applyPendingAccept(obj)
+        return 1
+      }
     }
     const nm = (obj as unknown as Record<string, unknown>)['n_' + name]
     if (typeof nm === 'function') return (nm as (...a: unknown[]) => unknown).apply(obj, args)

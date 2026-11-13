@@ -1,5 +1,6 @@
 import type { NDwBase } from '../runtime/native/dwctrl.ts'
 import type { DwModel, DwRow } from './model.ts'
+import { withPendingAccept } from '../runtime/pending-accept.ts'
 import type { DwObject } from './def.ts'
 import { compileDw, evalDw, newCtx } from './expr.ts'
 import { Dec, PBDate, PBDateTime, PBTime, shortDateMask, toStr } from '../runtime/values.ts'
@@ -153,7 +154,9 @@ export async function commitDwValue(ctl: NDwBase, model: DwModel, row: number, c
   await guard?.()
   checkIdentity()
   if (valid) {
-    const response = await ctl.rt.fire(ctl, 'itemchanged', [row, { name: object.name }, toStr(value)])
+    // a nested AcceptText in ItemChanged applies the value (PowerBuilder), see runtime/pending-accept.ts
+    const response = await withPendingAccept(ctl, () => { if (model.setItem(row, column + 1, converted) === 1) ctl.changed() },
+      () => ctl.rt.fire(ctl, 'itemchanged', [row, { name: object.name }, toStr(value)]))
     await guard?.()
     checkIdentity()
     if (response === 2) return 'discarded'

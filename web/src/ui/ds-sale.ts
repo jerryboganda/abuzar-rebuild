@@ -1,3 +1,4 @@
+import { toast } from './ds-fx.ts'
 // Cash Sale companion of the approved design (point-of-sale layout): a scan bar and frequent-item tiles over the original sale lines,
 // the customer and totals beside them, and a change calculator.  Items are always added through the window's own item column and
 // item search (the same keystroke handling and checks); the change calculator only displays a sum and saves nothing.
@@ -10,6 +11,8 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 interface Tile { name: string; stock: number; price: number }
 let tiles: Tile[] | 'loading' | null = null
+/** What the original needs before it takes a card (Cheque/Bank) receipt on a Credit Sale; null while it is read. */
+let cardSetup: string[] | 'loading' | null = null
 
 /** Types text into a cell editor one character at a time, as a person would: the window's own search narrows with each one. */
 export async function typeInto(first: HTMLInputElement, text: string, done?: () => boolean): Promise<void> {
@@ -142,13 +145,15 @@ export function decorateSale(root: HTMLElement, query: Query, toolbar: (stock: s
   if (!pay) {
     pay = document.createElement('section')
     pay.className = 'ds-change'
-    pay.innerHTML = `<div class="row"><span>Pay by</span><span class="ds-seg" role="group" aria-label="Payment method"><button type="button" data-mode="cash">Cash</button><button type="button" data-card disabled aria-pressed="false" title="Card payment is not part of this application">Card</button><button type="button" data-mode="credit">Credit</button></span></div>
+    pay.innerHTML = `<div class="row"><span>Pay by</span><span class="ds-seg" role="group" aria-label="Payment method"><button type="button" data-mode="cash">Cash</button><button type="button" data-card aria-pressed="false">Card</button><button type="button" data-mode="credit">Credit</button></span></div>
       <div class="ds-cash-only"><div class="row"><label for="ds-cash">Cash received</label><input id="ds-cash" type="text" inputmode="decimal" placeholder="0" autocomplete="off"></div>
       <div class="quick">${[500, 1000, 5000].map((n) => `<button type="button" data-add="${n}">+${n}</button>`).join('')}</div>
       <div class="row ch"><span>Change to return</span><b class="num" aria-live="polite">0.00</b></div>
       <p class="ds-help">Counts the change only; nothing here is saved with the sale.</p></div>`
     const cash = pay.querySelector<HTMLInputElement>('#ds-cash')!
     pay.addEventListener('click', (event) => {
+      const card = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-card]')
+      if (card) { if (!card.disabled && card.getAttribute('aria-pressed') !== 'true') pay!.dispatchEvent(new CustomEvent('ds-card')); return }
       const mode = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-mode]')
       if (mode) { if (mode.getAttribute('aria-pressed') !== 'true') pay!.dispatchEvent(new CustomEvent('ds-credit')); return }
       const add = (event.target as HTMLElement).closest<HTMLElement>('[data-add]')
@@ -164,6 +169,36 @@ export function decorateSale(root: HTMLElement, query: Query, toolbar: (stock: s
     button.disabled = !current && !openOther
     button.title = current ? '' : `Opens Sales › ${button.dataset.mode === 'credit' ? 'Credit Sale' : 'Cash Sale'}`
   }
+  // Card: the original's own Cheque/Bank receipt.  A card sale is a Credit Sale whose amount is received in the payment window the
+  // original opens on save (AskAmtOnCreditSale, right 582), starting in the mode and account of SalePaymentMode / SalePaymentAccCode.
+  if (cardSetup === null) {
+    cardSetup = 'loading'
+    void query(`SELECT (SELECT count(*) FROM dbo.accounts WHERE upper(active::text) = 'Y' AND subcode = (SELECT code FROM dbo.global WHERE name = 'GT_BankSub')),
+        (SELECT max(prefvalue::text) FROM dbo.softwarepreferences WHERE lower(name) = 'askamtoncreditsale'),
+        (SELECT max(prefvalue::text) FROM dbo.softwarepreferences WHERE lower(name) = 'salepaymentmode'),
+        (SELECT max(prefvalue::text) FROM dbo.softwarepreferences WHERE lower(name) = 'salepaymentacccode'),
+        (SELECT count(*) FROM dbo.rights WHERE rightcode = 582)`, [])
+      .then((r) => {
+        const [banks, ask, mode, account, right] = r[0] ?? []
+        const missing: string[] = []
+        if (!Number(banks)) missing.push('a card (bank) account in Basic Data › Account, under the bank group')
+        if (String(ask ?? '').trim().toUpperCase() !== 'Y') missing.push('Preferences: AskAmtOnCreditSale = Y')
+        if (String(mode ?? '').trim().toUpperCase() !== 'B') missing.push('Preferences: SalePaymentMode = Cheque/Bank (B)')
+        if (!Number(account)) missing.push('Preferences: SalePaymentAccCode = the card account')
+        if (!Number(right)) missing.push('right 582 (amount on credit sale) in the rights list, granted to the cashier group')
+        cardSetup = missing
+        onAsync()
+      }).catch(() => { cardSetup = ['the payment settings could not be read'] ; onAsync() })
+  }
+  const cardButton = pay.querySelector<HTMLButtonElement>('[data-card]')!
+  const paidByBank = credit && /^b/i.test(detail.querySelector('.surface-field[data-field=paymentmode] .surface-value')?.textContent?.trim() ?? '')
+  const ready = Array.isArray(cardSetup) && !cardSetup.length
+  cardButton.setAttribute('aria-pressed', String(paidByBank))
+  cardButton.disabled = !ready || (!credit && !openOther)
+  cardButton.title = !Array.isArray(cardSetup) ? 'Checking the card payment settings…'
+    : cardSetup.length ? `Card payment needs: ${cardSetup.join('; ')}.`
+      : credit ? 'Card: on save, enter the amount received in the payment window (Cheque/Bank, card account)' : 'Opens Sales › Credit Sale; the card amount is entered in the payment window on save'
+  if (paidByBank) for (const button of pay.querySelectorAll<HTMLButtonElement>('[data-mode=credit]')) button.setAttribute('aria-pressed', 'false')
   pay.querySelector<HTMLElement>('.ds-cash-only')!.hidden = credit
   // FBR note and the big Pay & print button of the approved design, under the payment card
   let after = footer.querySelector<HTMLElement>(':scope > .ds-pay-after')
@@ -183,7 +218,17 @@ export function decorateSale(root: HTMLElement, query: Query, toolbar: (stock: s
   payButton.title = extras.print?.label === 'Save & post' ? 'File › Save And Post' : 'File › Print: saves the sale if needed, then prints the invoice'
   ;(after as HTMLElement & { _print?: () => void })._print = extras.print?.run
   ;(pay as HTMLElement & { _credit?: () => void })._credit = openOther ?? undefined
-  if (!pay.dataset.creditWired) { pay.dataset.creditWired = '1'; pay.addEventListener('ds-credit', () => (pay as HTMLElement & { _credit?: () => void })._credit?.()) }
+  if (!pay.dataset.creditWired) {
+    pay.dataset.creditWired = '1'
+    pay.addEventListener('ds-credit', () => (pay as HTMLElement & { _credit?: () => void })._credit?.())
+    // in Cash Sale, Card opens Credit Sale (where the original takes the card receipt); in Credit Sale it explains the next step
+    pay.addEventListener('ds-card', () => {
+      const p = pay as HTMLElement & { _credit?: () => void; _isCredit?: boolean }
+      if (p._isCredit) toast('Card: save the sale, then enter the amount received in the payment window (Cheque/Bank, card account)', 'ok')
+      else p._credit?.()
+    })
+  }
+  ;(pay as HTMLElement & { _isCredit?: boolean })._isCredit = credit
   // the amount the customer pays: the window's own grand total (rounded, with its charges)
   const net = num(footer.querySelector('[data-obj=c_big_grandtotal]')?.textContent ?? footer.querySelector('[data-obj=total]')?.textContent)
   const cashInput = pay.querySelector<HTMLInputElement>('#ds-cash')!

@@ -413,6 +413,31 @@ return control.accepttext()
   assert.equal(accepts, 1)
 })
 
+test('AcceptText in ItemChanged puts the new value in the row, as w_sale.wf_setcustomerinfo relies on (compiled routines carry no name)', async () => {
+  const f = fixture()
+  const rt = f.ctl.rt
+  const results: unknown[] = []
+  f.model.acceptText = async () => -1
+  const cls = scripts('dw_fixture', `
+// dw_fixture.itemchanged(long row, dwobject dwo, string data) returns long [event]
+return wf_set(row)
+// dw_fixture.wf_set(long row) returns long
+if this.accepttext() = -1 then
+	return 1
+end if
+f_observe(this.getitemnumber(row, "quantity"))
+return 0
+`)
+  // the deployed classes are compiled without routine names: the ItemChanged frame must be recognised without one
+  for (const owner of cls.routines.values()) for (const list of owner.values()) for (const routine of list) delete (routine as { name?: string }).name
+  f.ctl.scripts.push({ cls, owner: cls.name })
+  rt.sys.set('f_observe', { fn: (_rt, args) => { results.push(args[0]); return 1 } })
+  rt.fire = Runtime.prototype.fire.bind(rt)
+  assert.equal(await f.commit('12'), 'accepted')
+  assert.deepEqual(results, [12], 'GetItemNumber after the nested AcceptText reads the value being accepted')
+  assert.equal(f.model.getItem(1, 1), 12)
+})
+
 test('an unrelated AcceptText cannot inherit a suspended ItemChanged call chain', async () => {
   const f = fixture()
   const began = Promise.withResolvers<void>()

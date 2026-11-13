@@ -2234,6 +2234,11 @@ export class DwView {
     const multiline = dwMultiline(o, m.kinds[ci], m.overrides)
     const input = multiline ? document.createElement('textarea') : document.createElement('input')
     input.className = 'dw-edit'
+    // a password column (edit.password = yes) is typed masked, as in PowerBuilder
+    if (input instanceof HTMLInputElement && /^(yes|true|1)$/i.test(m.overrides.get(`${o.name.toLowerCase()}.edit.password`) ?? o['edit.password'] ?? '')) {
+      input.type = 'password'
+      input.autocomplete = 'off'
+    }
     const record = m.rowAt(row)
     const v = m.buf.primary[row - 1]?.v[ci]
     const temporal = ['date', 'datetime', 'time'].includes(m.kinds[ci])
