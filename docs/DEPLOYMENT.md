@@ -116,6 +116,10 @@ Each PC needs the browser only; nothing else to install. Add the token page to t
   buttons, Users & rights page, Item Export/Print, closable Home) copied the same way; same rollback.  At copy time the data server
   (task "Waseela Data Server") was not running: its last run, started 2026-11-13 22:38, had been stopped (result 0x41306); it was left
   stopped pending the owner.  The newer main commits `1113bfb6` and `a679efa1` (another session) are not in this copy.
+  The owner then had the data server started again (2026-11-14).  Same day, commit `ef1a3103` (main, which also carries the other
+  session's `1113bfb6`, `a679efa1`, `ca6a0193`) copied the same way: card payments, the AcceptText-in-ItemChanged fix (customer choice on
+  Credit Sale), masked DataWindow password cells; same rollback.  The live database got the card setup the same day (account 326,
+  rights 582-585, payment preferences; see docs/HANDOFF.md), backup first: C:/Waseela/files/backups/waseela-pre-cardsetup-2026-11-14.dump.
 * The old PowerBuilder application and its SQL Server instance keep running untouched; do not decommission
   them until the snapshot decision is made and a period of parallel running is accepted.
 * The rebuilt application has no licence checks (owner decision 2026-11-02), server-side rights are not
