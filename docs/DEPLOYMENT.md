@@ -112,6 +112,10 @@ Each PC needs the browser only; nothing else to install. Add the token page to t
   Same day, commit `12ee4612` (List/Detail toggle, Cash/Credit switch, docked report criteria, phone header) copied the same way; same rollback.
   Same day, commit `2499efeb` (the 13 list windows, Groups among them, get the approved Modern List layout) copied the same way; same rollback.
   Ports 8787 and 8790 serve the new files.
+  2026-11-14, commit `09987657` (rest of mockup v4: header search/pop-ups, sign-in figures, Cash Sale payment card, Pack Purchase
+  buttons, Users & rights page, Item Export/Print, closable Home) copied the same way; same rollback.  At copy time the data server
+  (task "Waseela Data Server") was not running: its last run, started 2026-11-13 22:38, had been stopped (result 0x41306); it was left
+  stopped pending the owner.  The newer main commits `1113bfb6` and `a679efa1` (another session) are not in this copy.
 * The old PowerBuilder application and its SQL Server instance keep running untouched; do not decommission
   them until the snapshot decision is made and a period of parallel running is accepted.
 * The rebuilt application has no licence checks (owner decision 2026-11-02), server-side rights are not
