@@ -149,7 +149,8 @@ export class DomUi implements UiHost {
       const button = [...box.querySelectorAll<HTMLButtonElement>('button')].find((b) => visible(b) && !b.disabled && b.dataset.mnemonic === letter)
       if (button) { button.click(); return true }
     }
-    const open = document.querySelector<HTMLElement>('.menubar .mi.open')
+    const menuAvailable = this.menuShortcutsEnabled()
+    const open = menuAvailable ? document.querySelector<HTMLElement>('.menubar .mi.open') : null
     if (open) {
       const item = this.menuItems(open).find((it) => it.dataset.mnemonic === letter)
       if (item) { this.invokeMenuItem(item); return true }
@@ -168,7 +169,7 @@ export class DomUi implements UiHost {
       const target = control(win)
       if (target) { target.click(); return true }
     }
-    const bar = document.querySelector<HTMLElement>('.menubar .mi[data-mnemonic="' + letter + '"]')
+    const bar = menuAvailable ? document.querySelector<HTMLElement>('.menubar .mi[data-mnemonic="' + letter + '"]') : null
     if (bar && visible(bar)) { bar.click(); return true }
     for (const win of [...document.querySelectorAll<HTMLElement>('.pbwin')].reverse()) {
       if (!visible(win)) continue
@@ -210,6 +211,7 @@ export class DomUi implements UiHost {
 
   /** Keyboard navigation of an open menu: the original PowerBuilder menu bar/drop-downs are fully keyboard driven. */
   private navigateMenu(e: KeyboardEvent): boolean {
+    if (!this.menuShortcutsEnabled()) return false
     const top = document.querySelector<HTMLElement>('.menubar .mi.open')
     if (!top) return false
     if (e.ctrlKey || e.altKey || e.metaKey) return false
