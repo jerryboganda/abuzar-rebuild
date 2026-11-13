@@ -21,16 +21,16 @@ instructions below; acceptance requirements and historical evidence are unchange
 
 **Source-derived Modern layouts now cover most windows; nothing new is browser-verified, and the enhancement remains incomplete and unreleased.**
 Measured from the working tree by `tools/parity/ui_completion_audit.mjs` (see
-`ui-completion-audit.md`, re-measured 2026-11-09 after the parity review fixes
-below): 2,060 of 2,062 inventoried windows (99.9%) have a Modern layout. 183 are
+`ui-completion-audit.md`, re-measured 2026-11-11 after the source-layout work
+below): 2,062 of 2,062 inventoried windows (100%) have a Modern layout. 183 are
 hand-reviewed (9 workspace/tool, 55 criteria, 4 calculator, 2 calendar and 113
-entry windows), plus 2 shell surfaces. 1,875 are generated from the recovered definitions by
-`web/tools/derive-*.ts`: 1,626 dialog and sheet windows and 249 entry masters (a
+entry windows), plus 2 shell surfaces. 1,877 are generated from the recovered definitions by
+`web/tools/derive-*.ts`: 1,628 dialog and sheet windows and 249 entry masters (a
 print/report or artwork-only DataWindow inside a window keeps its original
 element in the Modern frame; a report's own design is redesigned separately).
 The two staggered-row criteria dialogs `w_arg_cust_sdate_ldate_v13` and
-`w_arg_customers_sdate_ldate_v7` keep the labelled Classic layout after the
-browser structure gate found their source row-sharing is not reproduced. The missing/recovered cases:
+`w_arg_customers_sdate_ldate_v7` now use source-proportional placement; no
+window keeps the labelled Classic layout. The missing/recovered cases:
 `w_dashboard`'s top-10 graph is mapped by alias to the recovered
 `d_dashboard_top10sellingitems` and embedded, the `w_populate_*` master/detail/footer
 DataWindows are runtime-assigned and embedded, `w_delete_due`'s unrecoverable
@@ -83,28 +83,33 @@ source on/off value through the same ItemChanged path as a grid cell. The Graph
 form, and the RichText (processing 7) presentation maps its recovered input field
 to a multiline form field; the exporter's lost object name is restored from the
 single table column. The browser structure gate found staggered-row and compact
-card/footer forms whose row-sharing the planner did not reproduce. All 18 are
+card/footer forms whose row-sharing the planner did not reproduce. All 20 are
 now Modern layouts: the twelve compact card/footer/SMS surfaces pass after
 fields spanning several tracks fill them while single-track fields size to their
-content, and the six staggered footers use a source-proportional placement mode
-(`sourceLayout: true`) that copies each field's source box scaled to the
-container so overlapping source rows survive. Two of the original eight
-staggered DataWindows (`d_mr_pc`, `d_patientvisit_obs_us`) already passed after
-fields stopped stretching to their row tracks and ungrouped fields stayed direct
-form children. The generated compatibility catalog
-(`DERIVED_COMPATIBILITY_DATA_SURFACES`) is empty. Only the two staggered criteria
-dialogs still keep the labelled Classic window. The replaced surfaces and the two
-Classic windows are listed with their evidence in
-`ui-compatibility-acceptance.md`; no Classic window is accepted as a Modern
-layout yet.
+content, and the six staggered footers plus the two criteria dialogs use a
+source-proportional placement mode (`sourceLayout: true`) that copies each
+field's source box scaled to the container so overlapping source rows survive.
+Two of the original eight staggered DataWindows (`d_mr_pc`,
+`d_patientvisit_obs_us`) already passed after fields stopped stretching to their
+row tracks and ungrouped fields stayed direct form children. The generated
+compatibility catalog (`DERIVED_COMPATIBILITY_DATA_SURFACES`) is empty and no
+window keeps the labelled Classic layout. The replaced surfaces and windows are
+listed with their evidence in `ui-compatibility-acceptance.md`; none is accepted
+as a complete Modern screen yet.
 Verified complete Modern screens and accepted workflows remain zero.
 
-Non-browser checks on this tree: 930 frontend tests, strict presentation types,
-nine static-inventory tests and an 80-module static build all pass. The
-consolidated browser pass completed on this tree with **61,777 assertions,
-1,881 appearances, 0 failures, 0 errors, 0 page errors and 0 forbidden
-requests**; the structure gate reported 0 failures and the calculator
-focus-visibility fix is verified. The 12,819-assertion regression listed below belongs
+Non-browser checks on this tree: 938 frontend tests, strict presentation types,
+nine static-inventory tests and an 82-module static build all pass. The
+consolidated browser pass on the 18-surface tree completed with **61,823
+assertions, 1,881 appearances, 0 failures, 0 errors, 0 page errors and 0
+forbidden requests**; the structure gate reported 0 failures. The dialog-final
+tree passes the focused dialog gate (24 assertions, 0 failures). Its consolidated
+rerun reached 61,847 in-page assertions with 0 structure failures and then
+stopped in the 320 px dialog appearance capture on input contrast; the contrast
+fix is in the tree. The latest full reruns stopped on five focus checks in
+`checkWindowSurfaces` (browser environment focus, not a structure failure), so a
+clean consolidated result for the dialog-final tree is not recorded. The
+12,819-assertion regression listed below belongs
 to commit `0571876b` and says nothing about the generated families or the
 fixes made since. Mapping counts are not a completion percentage; no aggregate
 percentage is defined.
@@ -118,7 +123,7 @@ that names every item left on the Classic layout and the reason:
 |---|---|---|
 | `derive-data-surfaces.ts` | `derived-data-surfaces.ts`, `ui-derived-surfaces-backlog.json` | 5,366 global DataWindow surfaces; 369 pending (101 background computes, 70 processing style 3, 59 size 5, 31 style 4, 25 background text, 24 header computes, 17 summary reports, 10 header text, 9 header reports and the rest smaller causes) |
 | `derive-entry-windows.ts` | `derived-entry-windows.ts`, `ui-derived-windows-backlog.json` | 249 derived entry masters; 0 pending |
-| `derive-modal-windows.ts` | `derived-modal-windows.ts`, `ui-derived-modal-windows-backlog.json` | 1,626 of 1,628 non-reviewed dialog and sheet windows; 2 pending (staggered-row structure gate) |
+| `derive-modal-windows.ts` | `derived-modal-windows.ts`, `ui-derived-modal-windows-backlog.json` | 1,628 of 1,628 non-reviewed dialog and sheet windows; 0 pending |
 
 `tests/derived-surfaces.test.ts` checks that each generated file matches a fresh
 run, that every surface passes `dataSurfaceIssues` and `windowSurfaceIssues`

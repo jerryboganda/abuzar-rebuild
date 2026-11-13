@@ -175,15 +175,30 @@ async function transOf(rt: Runtime, f: Frame, using: string | undefined): Promis
   return t
 }
 
+/** the transaction of a statement that may run without one (`SQL stop` on a transaction that was never connected) */
+async function optionalTransOf(rt: Runtime, f: Frame, using: string | undefined): Promise<NTransaction | null> {
+  try {
+    return await transOf(rt, f, using)
+  } catch {
+    return null
+  }
+}
+
 /** embedded SQL statement of a script */
 export async function executeStatement(rt: Runtime, f: Frame, st: Extract<Stmt, { k: 'sql' }>): Promise<void> {
+  if (st.kind === 'disconnect') {
+    // `SQL stop USING <transaction>`: a window that never connected its transaction (the data transfer window
+    // closes itself before it connects) has no session to stop.  The original never reaches this because its
+    // version check passes; the rebuild must not raise a null reference when it does not.
+    const t = await optionalTransOf(rt, f, st.using)
+    if (!t) return
+    await t.n_disconnect()
+    return
+  }
   const t = await transOf(rt, f, st.using)
   switch (st.kind) {
     case 'connect':
       await t.n_connect()
-      return
-    case 'disconnect':
-      await t.n_disconnect()
       return
     case 'commit':
       await t.n_commit()

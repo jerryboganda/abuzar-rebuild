@@ -678,6 +678,61 @@ function fixSale(data: Json): string[] {
 }
 
 /** Apply all corrections to one parsed class. Mutates `data`. */
+/**
+ * The decompiler printed `.name` for the `object` namespace of the DataWindow in the prescription's Open event
+ * (the same defect it printed as `.borderstyle` in dozens of windows).  The statement sets the initial value of the
+ * `bsa` column of the vitals datastore the caller passes, exactly like the `X.object.COL.initial` statements
+ * everywhere else in the application; without the correction the window stops with a null reference.
+ */
+function fixVisitPrescription(data: Json): string[] {
+  const out: string[] = []
+  const body = data.routines?.w_visitprescription?.open?.[0]?.body
+  if (!Array.isArray(body)) return out
+  let fixed = 0
+  const walk = (o: Json): void => {
+    if (Array.isArray(o)) { for (const v of o) walk(v); return }
+    if (!o || typeof o !== 'object') return
+    if (o.k === 'mem' && o.n === 'name') {
+      const parent = JSON.stringify(o.o || {})
+      if (parent.includes('"n":"ds"') && parent.includes('"n":"istr_ds"')) { o.n = 'object'; fixed++ }
+    }
+    for (const v of Object.values(o)) walk(v)
+  }
+  walk(body)
+  if (fixed) out.push('w_visitprescription bsa default')
+  return out
+}
+
+/**
+ * The barcode label popup re-triggers its own `ue_postopen` event from inside that event
+ * (`event ue_postopen()` after `message.doubleparm = 1`), which recurses until the stack is exhausted.  The
+ * statement was meant to run the ancestor's `ue_postopen` again with the parameter the author set (the ancestor
+ * reads `message.doubleparm`), so the rebuild calls the ancestor's script instead.  This is a scoped correction of
+ * the recovered script, documented in `docs/FIDELITY.md`, not a change of the recovered source.
+ */
+function fixBarcodeLabelsPopup(data: Json): string[] {
+  const out: string[] = []
+  const body = data.routines?.w_barcodelabels_popup?.ue_postopen?.[0]?.body
+  if (!Array.isArray(body)) return out
+  let fixed = 0
+  const walk = (o: Json): void => {
+    if (Array.isArray(o)) { for (const v of o) walk(v); return }
+    if (!o || typeof o !== 'object') return
+    if (o.k === 'expr' && o.e?.k === 'call' && o.e?.n === 'ue_postopen' && o.e?.m === 'event') {
+      o.k = 'callsuper'
+      o.n = 'ue_postopen'
+      delete o.e
+      fixed++
+      return
+    }
+    for (const v of Object.values(o)) walk(v)
+  }
+  walk(body)
+  if (fixed) out.push('w_barcodelabels_popup postopen recursion')
+  return out
+}
+
+/** Apply all corrections to one parsed class. Mutates `data`. */
 export function fixClassData(name: string, data: Json): string[] {
   const n = name.toLowerCase()
   if (n === 'w_multi_entry') return fixMultiEntry(data) ? ['stock transfer'] : []
@@ -687,6 +742,8 @@ export function fixClassData(name: string, data: Json): string[] {
   if (n === 'w_cashiershift_closing') return fixCashierShift(data)
   if (n === 'w_cashierjobactivity_changecategory') return fixCashierCategory(data)
   if (n === 'w_calendar' || n === 'w_calendar2') return fixCalendar(n, data)
+  if (n === 'w_visitprescription') return fixVisitPrescription(data)
+  if (n === 'w_barcodelabels_popup') return fixBarcodeLabelsPopup(data)
   if (n === 'u_dwstandard' || n === 'w_customercomments') return fixDataWindowCalendar(data)
   if (n === 'w_arguements') return fixCriteriaCalendar(data)
   if (n === 'w_select_case') return [...fixCriteriaAcceptance(n, data), ...fixPackingSelection(data), ...fixCriteriaRetrieval(n, data)]

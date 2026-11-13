@@ -1134,6 +1134,21 @@ export class Runtime {
       for (const a of e.a) args.push(await this.eval(a, f))
       return this.callNative(self, name, args, f)
     }
+    // `event ue_xxx()`: a direct call of the user event of the object the script belongs to (the compiler's
+    // "event" call modifier).  `post event` is the queued variant.
+    if (self && mods.includes('event')) {
+      const args: unknown[] = []
+      for (const a of e.a) args.push(await this.eval(a, f))
+      const ents = self.findRoutines(name.toLowerCase())
+      if (ents.length) {
+        const entry = this.pick(ents, args.length)!
+        if (post) {
+          this.post(async () => void (await this.runEntry(self, entry, args, f)))
+          return 1
+        }
+        return this.runEntry(self, entry, args, f)
+      }
+    }
     this.noteMissing('fn:' + name)
     for (const a of e.a) await this.eval(a, f)
     return null

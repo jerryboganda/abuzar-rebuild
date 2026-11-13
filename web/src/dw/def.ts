@@ -111,8 +111,10 @@ export function splitExpr(v: string | undefined): { value: string; expr?: string
 /** Restore an identity the exporter lost: a RichText input field takes its single table column's name. */
 export function recoverObjectNames(def: DwDef): DwDef {
   if (Number(def.datawindow.processing ?? 0) !== 7 || def.table.columns.length !== 1) return def
-  const name = def.table.columns[0].name
-  for (const object of def.objects) if (object.type === 'column' && !object.name) object.name = name
+  const columns = def.objects.filter((object) => object.type === 'column')
+  // Only a single input field can take the one column name; several unnamed columns are a different RichText shape.
+  if (columns.length !== 1 || columns[0].name) return def
+  columns[0].name = def.table.columns[0].name
   return def
 }
 

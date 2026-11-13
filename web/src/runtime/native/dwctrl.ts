@@ -37,8 +37,14 @@ export class NDwColumn implements Member {
   }
   pbGet(prop: string): unknown {
     const m = this.dw.model
-    if (!m) return null
     const path = `${this.col}.${prop}`
+    if (!m) {
+      // A DataWindow control without a definition (no DataObject yet, or the base class of an entry window) has no
+      // columns and no objects.  The original answers 0 / '' and keeps running; a null reference would stop the
+      // window's own Open script (the entry windows read the column count there to fill their column lists).
+      const empty = emptyDescribe(path)
+      return empty === '!' ? new NDwColumn(this.dw, path) : empty
+    }
     // `object.column.visible` is an expression in many DataWindows
     // (`1~t0`).  Describe returns the expression string in the original, not
     // the static value half: the item form's security check compares it with
@@ -86,6 +92,18 @@ export class NDwColumn implements Member {
     else m.setItem(toNum(idx[0]), this.col, v)
     this.dw.changed()
   }
+}
+
+/**
+ * The properties of a DataWindow that has no definition: it has no columns and no objects, so the original answers
+ * 0 and '' for them and '!' for every unknown property.
+ */
+function emptyDescribe(path: string): string {
+  const p = path.toLowerCase()
+  if (p === 'datawindow.column.count') return '0'
+  if (p === 'datawindow.objects') return ''
+  if (p === 'datawindow.processing') return '0'
+  return '!'
 }
 
 export class NDwObject implements Member {

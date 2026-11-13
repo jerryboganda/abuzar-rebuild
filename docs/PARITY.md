@@ -6,16 +6,10 @@ Every number below is produced by a tool run; nothing is estimated.
 - classes built: 2831; routines that fail to parse: 0
 
 ## Windows (headless run, mock database)
-- windows opened without a runtime error: **2046 of 2062** (99.2%)
+- windows opened without a runtime error: **2062 of 2062** (100.0%)
 - most common failures:
-  - 7 x Null object reference (reading count)
-  - 5 x Null object reference (reading datawindow)
-  - 1 x Null object reference (reading column)
-  - 1 x Null object reference (reading printer)
-  - 1 x Null object reference (reading bsa)
-  - 1 x Null object reference (reading icode)
 - unimplemented functions / members met at run time (calls):
-  `var:w_main` 173, `method:number.sharedata` 125, `method:number.rowcount` 111, `member:number.object` 96, `method:number.getitemnumber` 57, `method:number.getitemstring` 49, `member:number.datawindow` 32, `dwname:name` 24, `method:number.rowscopy` 20, `method:object.settransobject` 16, `ole:__invoke_method` 16, `member:number.name` 16, `var:u_utilityservices` 12, `method:object.typeof` 12, `method:object.sharedata` 11, `fn:ue_postopen` 11, `graph.findseries` 6, `assign:m_multi_entry` 6, `assign:m_entry` 6, `assign:m_mainmenu` 6, `assign:m_single_entry` 6, `method:number.getrow` 6, `radiobutton.clicked!` 5, `member:number.i_status` 5, `method:number.getitemdatetime` 5
+  `method:number.getitemnumber` 41, `method:number.getitemstring` 33, `method:number.sharedata` 31, `dwname:name` 24, `ole:__invoke_method` 16, `method:number.rowcount` 15, `fn:ue_postopen` 11, `method:object.sharedata` 11, `method:number.getrow` 6, `fn:activatekeyboardlayout` 6, `method:number.getitemdatetime` 5, `member:number.i_status` 5, `datawindow.create` 4, `method:number.rowscopy` 4, `olecustomcontrol.__invoke_method` 3, `dw:d_servicepurtemplate_print` 3, `var:u_utilityservices` 2, `method:number.settransobject` 2, `dw:1` 2, `fn:registryget` 2, `dw:d_deletedue_detail` 2, `olecustomcontrol.connecttonewobject` 2, `dw:d_wholesalereturninvreport` 2, `member:number.s_name1` 2, `dw:d_populate_sales_for_proformainv_header` 2
 
 ## Against a real server and PostgreSQL 17 (CI end-to-end job, run 41716174427, commit da153f3)
 - DataWindow retrieve statements that run: **8618 of 8668** (99.4%)

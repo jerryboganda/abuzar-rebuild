@@ -41,7 +41,10 @@ const server = http.createServer(async (req, res) => {
         req.on('data', (d) => c.push(d))
         req.on('end', () => r(Buffer.concat(c)))
       })
-      const up = await fetch(api + p + url.search, { method: req.method, headers: { 'content-type': req.headers['content-type'] || 'application/json' }, body: ['GET', 'HEAD'].includes(req.method) ? undefined : body })
+      // the access token of the data server travels in a header: the proxy has to pass it on
+      const headers = { 'content-type': req.headers['content-type'] || 'application/json' }
+      if (req.headers['x-api-token']) headers['x-api-token'] = req.headers['x-api-token']
+      const up = await fetch(api + p + url.search, { method: req.method, headers, body: ['GET', 'HEAD'].includes(req.method) ? undefined : body })
       res.writeHead(up.status, { 'content-type': up.headers.get('content-type') || 'application/json' })
       res.end(Buffer.from(await up.arrayBuffer()))
       return

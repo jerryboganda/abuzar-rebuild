@@ -17,6 +17,8 @@ import { messageButtons } from './message-buttons.ts'
 import { TabSelection, tabAvailable } from './tab-selection.ts'
 import { DropdownView } from './dropdown.ts'
 import { NCalendar } from '../runtime/native/calendar.ts'
+import { NGraph } from '../runtime/native/graph.ts'
+import { renderChartSvg } from '../dw/chart.ts'
 import { CalendarView } from './calendar.ts'
 import { sourceTabNeighbour, sourceTabStops } from './source-tab-order.ts'
 
@@ -1243,6 +1245,33 @@ export class WinView {
         fill()
         this.watch(c, fill)
         wire(d)
+        el = d
+        break
+      }
+      case 'graph': {
+        // the PowerBuilder graph control: the chart is drawn from the series the scripts add
+        const d = document.createElement('div')
+        d.className = 'ctl graph'
+        d.style.overflow = 'hidden'
+        const draw = () => {
+          const g = c instanceof NGraph ? c : null
+          if (!g) return
+          const w = Math.max(40, num(c, 'width', 200)), h = Math.max(30, num(c, 'height', 120))
+          const cats: string[] = []
+          for (const s of g.series) for (const p of s.points) if (!cats.includes(p.category)) cats.push(p.category)
+          const series = g.series.map((s) => s.name)
+          const pts = g.series.flatMap((s) => s.points.map((p) => ({ cat: p.category, series: s.name, v: p.value })))
+          d.innerHTML = renderChartSvg(pts, cats, series, w, h, {
+            kind: Number(g.pbGet('graphtype') ?? 7),
+            title: String(g.pbGet('title') ?? ''),
+            background: pbColor(Number(g.pbGet('backcolor') ?? 16777215), '#fff'),
+            categoryLabel: g.category.label,
+            valuesLabel: g.values.label,
+          })
+        }
+        this.place(c, d)
+        this.watch(c, draw)
+        draw()
         el = d
         break
       }

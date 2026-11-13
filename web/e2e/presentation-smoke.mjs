@@ -2554,6 +2554,8 @@ try {
         return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight && !!element.textContent.trim()
       }), 'Horizontal grid navigation keeps its current status message visible')
     }
+    // An extreme 320 px / 200% preview scrolls its own grid: measure the focused cell in view, as the operator sees it.
+    await input.evaluate((element) => element.parentElement?.scrollIntoView({ block: 'nearest', inline: 'nearest' }))
     const appearance = await input.evaluate((input) => {
       const within = (r) => r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight
       const style = getComputedStyle(input), rect = input.getBoundingClientRect()

@@ -12,7 +12,7 @@ const KIND: Record<number, 'area' | 'bar' | 'col' | 'line' | 'pie' | 'scatter'> 
 }
 const PALETTE = ['#0000ff', '#ff0000', '#00a000', '#ff8000', '#800080', '#008080', '#808000', '#ff00ff', '#00ffff', '#804000']
 
-interface Point {
+export interface Point {
   cat: string
   series: string
   v: number
@@ -43,11 +43,19 @@ async function points(m: DwModel, o: DwObject): Promise<{ pts: Point[]; cats: st
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
 
-export async function renderChart(m: DwModel, o: DwObject, w: number, h: number): Promise<string> {
-  const kind = KIND[Number(o.graphtype ?? 7)] ?? 'col'
-  const { pts, cats, series } = await points(m, o)
-  const title = (o.title || '').replace(/^"|"$/g, '')
-  const bg = pbColor(o.backcolor, '#fff')
+export interface ChartOptions {
+  /** the PowerBuilder graph type (1..17) */
+  kind?: number
+  title?: string
+  background?: string
+  categoryLabel?: string
+  valuesLabel?: string
+}
+
+export function renderChartSvg(pts: Point[], cats: string[], series: string[], w: number, h: number, options: ChartOptions = {}): string {
+  const kind = KIND[Number(options.kind ?? 7)] ?? 'col'
+  const title = (options.title || '').replace(/^"|"$/g, '')
+  const bg = options.background ?? '#fff'
   const font = 'font-family:Tahoma,Arial,sans-serif;font-size:10px'
   const parts: string[] = [`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" style="${font};background:${bg}">`]
   const top = title ? 22 : 8
@@ -84,27 +92,29 @@ export async function renderChart(m: DwModel, o: DwObject, w: number, h: number)
     parts.push(`<line x1="${left}" y1="${top}" x2="${left}" y2="${top + plotH}" stroke="#000"/><line x1="${left}" y1="${y(0)}" x2="${left + plotW}" y2="${y(0)}" stroke="#000"/>`)
     const slot = plotW / Math.max(1, cats.length)
     const horizontal = kind === 'bar'
+    // a series may have no value for a category (the graph control takes the points the scripts add)
+    const value = (c: string, s: string) => pts.find((q) => q.cat === c && q.series === s)?.v ?? 0
     cats.forEach((c, ci) => {
       parts.push(`<text x="${left + slot * ci + slot / 2}" y="${top + plotH + 14}" text-anchor="middle">${esc(c.length > 14 ? c.slice(0, 13) + '…' : c)}</text>`)
       series.forEach((s, si) => {
-        const p = pts.find((q) => q.cat === c && q.series === s)!
+        const v = value(c, s)
         const bw = (slot * 0.7) / Math.max(1, series.length)
         const x = left + slot * ci + slot * 0.15 + bw * si
         const col = PALETTE[si % PALETTE.length]
-        if (kind === 'col' || horizontal) parts.push(`<rect x="${x}" y="${Math.min(y(p.v), y(0))}" width="${bw}" height="${Math.abs(y(p.v) - y(0))}" fill="${col}"/>`)
+        if (kind === 'col' || horizontal) parts.push(`<rect x="${x}" y="${Math.min(y(v), y(0))}" width="${bw}" height="${Math.abs(y(v) - y(0))}" fill="${col}"/>`)
       })
     })
     if (kind === 'line' || kind === 'area' || kind === 'scatter') {
       series.forEach((s, si) => {
         const col = PALETTE[si % PALETTE.length]
-        const xy = cats.map((c, ci) => [left + slot * ci + slot / 2, y(pts.find((q) => q.cat === c && q.series === s)!.v)])
+        const xy = cats.map((c, ci) => [left + slot * ci + slot / 2, y(value(c, s))])
         if (kind === 'area') parts.push(`<path d="M${xy[0]?.[0]},${y(0)} ${xy.map((p) => `L${p[0]},${p[1]}`).join(' ')} L${xy[xy.length - 1]?.[0]},${y(0)} Z" fill="${col}" fill-opacity=".45"/>`)
         if (kind !== 'scatter') parts.push(`<polyline points="${xy.map((p) => p.join(',')).join(' ')}" fill="none" stroke="${col}" stroke-width="2"/>`)
         for (const p of xy) parts.push(`<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="${col}"/>`)
       })
     }
-    const vl = (o['values.label'] || '').trim()
-    const cl = (o['category.label'] || '').trim()
+    const vl = (options.valuesLabel || '').trim()
+    const cl = (options.categoryLabel || '').trim()
     if (cl) parts.push(`<text x="${left + plotW / 2}" y="${h - 4}" text-anchor="middle" style="font-weight:bold">${esc(cl)}</text>`)
     if (vl) parts.push(`<text transform="translate(10,${top + plotH / 2}) rotate(-90)" text-anchor="middle" style="font-weight:bold">${esc(vl)}</text>`)
   }
@@ -113,4 +123,16 @@ export async function renderChart(m: DwModel, o: DwObject, w: number, h: number)
   }
   parts.push('</svg>')
   return parts.join('')
+}
+
+/** the chart of a DataWindow graph object */
+export async function renderChart(m: DwModel, o: DwObject, w: number, h: number): Promise<string> {
+  const { pts, cats, series } = await points(m, o)
+  return renderChartSvg(pts, cats, series, w, h, {
+    kind: Number(o.graphtype ?? 7),
+    title: o.title || '',
+    background: pbColor(o.backcolor, '#fff'),
+    categoryLabel: o['category.label'] || '',
+    valuesLabel: o['values.label'] || '',
+  })
 }

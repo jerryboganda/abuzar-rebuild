@@ -251,6 +251,46 @@ then changes the name and saves; the row count for the prefix stays 1
 7. **Double-close races** in message boxes and DataWindow editors produced
    `Failed to execute 'remove' on 'Element'` page errors; close operations
    are now idempotent/`isConnected`-guarded.
+8. **A DataWindow without a definition raised a null reference** where the
+   original answers an empty DataWindow: the entry windows read
+   `object.datawindow.column.count` in their Open event (`w_entry`,
+   `w_single_entry`, `w_listview_form`, the four `w_popup_*_selection`
+   windows, `w_findwindow`), and a DataWindow with no DataObject has no
+   columns and no objects. The rebuild now answers `0` and `''` for them and
+   keeps the chain of the property access alive.
+9. **The decompiler printed `.name` for the `object` namespace of a
+   DataWindow** in the Open event of `w_visitprescription`
+   (`this.istr_ds.ds.name.bsa.initial = "1"`), the same defect it printed as
+   `.borderstyle` in dozens of windows. Every other statement of the
+   application uses the `X.object.COL.initial` form, so the rebuild corrects
+   that one statement (`web/src/runtime/class-fixes.ts`); the recovered
+   source itself is not changed.
+10. **The definitions of the DataWindow controls were loaded after the
+    window's Open event** had run, so a script that read a column of its
+    grid in that event saw an empty grid. PowerBuilder loads the definition
+    when the control is created; the rebuild now waits for it before the Open
+    event (`awaitDataWindowDefinitions` in
+    `web/src/runtime/native/windowing.ts`).
+11. **The barcode label popup re-triggered its own `ue_postopen` event**
+    (`event ue_postopen()` inside that event, after `message.doubleparm = 1`),
+    which recursed until the stack was exhausted. The statement was meant to
+    run the ancestor's `ue_postopen` again with the parameter the author set
+    (the ancestor reads `message.doubleparm`); the rebuild calls the
+    ancestor's script instead (a scoped correction in
+    `web/src/runtime/class-fixes.ts`).
+12. **`SQL stop USING <transaction>` on a transaction that was never
+    connected** raised a null reference (the data transfer window closes
+    itself before it connects when the version check fails). A transaction
+    that does not exist has no session to stop: the statement is now a no-op
+    in that case.
+13. **The direct event calls did nothing.** `event ue_xxx()` and
+    `post event ue_xxx()` (the compiler's event call modifier) reached the
+    "unknown function" branch of the interpreter, so the event script never
+    ran: the Cash Sale calls `event ue_deleteitem()` 26 times, the entry
+    windows post their `ue_newform` and `ue_postopen` events, and the About
+    window posts its post-open event. The interpreter now runs the event
+    script of the object the statement belongs to (the queued variant after
+    the current script has finished).
 
 ### Remaining measured gaps
 

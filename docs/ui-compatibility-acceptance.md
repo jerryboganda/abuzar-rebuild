@@ -1,11 +1,11 @@
 # Compatibility fallback acceptance register
 
-Status: **0 DataWindow compatibility fallbacks and 2 Classic windows**, none
-accepted as a Modern field layout. This register records the selected screen
+Status: **0 DataWindow compatibility fallbacks and 0 Classic windows**, none
+accepted as a complete Modern screen. This register records the selected screen
 batch and the evidence needed for a formal acceptance decision.
 
-Evidence: `ui-browser-structure-2026-11-10.json` (consolidated pass: 61,777
-assertions, 1,881 appearances, 0 structure failures before this batch) and
+Evidence: `ui-browser-structure-2026-11-10.json` (consolidated pass: 61,823
+assertions, 1,881 appearances, 0 structure failures) and
 `ui-derived-compatibility-data-surfaces-backlog.json` (0 entries).
 
 ## Replaced in this batch (18)
@@ -57,12 +57,23 @@ copied source boxes land exactly on the half-overlap boundary after rounding; a
 grid surface keeps the exact threshold (the tolerance would otherwise add a
 border-line relation the Classic editor does not have).
 
-## Remaining Classic windows (2)
+## Replaced Classic windows (2)
 
-| Window | Structure finding | Current treatment | Status |
-|---|---|---|---|
-| `w_arg_cust_sdate_ldate_v13` | staggered date/format row | labelled Classic window | pending |
-| `w_arg_customers_sdate_ldate_v7` | list/row overlap | labelled Classic window | pending |
+Both criteria dialogs now derive with `sourceLayout: true`. Their recovered
+source geometry is complete at runtime (for example `gb_1` is
+`x=22 y=32 w=2297 h=381` and `dw_selected` is `x=95 y=147 w=2150 h=176`), and
+the frame boxes grow to cover their recorded members. A DataWindow host inside
+the dialog keeps its source box and scrolls its own content. The focused dialog
+gate passes 24 assertions with 0 failures.
+
+| Window | Previous finding | Status |
+|---|---|---|
+| `w_arg_cust_sdate_ldate_v13` | staggered date/format row | replaced — source-proportional layout |
+| `w_arg_customers_sdate_ldate_v7` | list/row overlap | replaced — source-proportional layout |
+
+## Remaining Classic windows (0)
+
+None.
 
 ## Checkbox-loading hardening
 

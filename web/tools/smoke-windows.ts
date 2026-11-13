@@ -9,15 +9,7 @@ import { MockDb } from '../src/app/mockdb.ts'
 import { HttpDb } from '../src/app/httpdb.ts'
 import type { PBObject } from '../src/runtime/object.ts'
 import { Ref } from '../src/runtime/interp.ts'
-import { PBStruct } from '../src/runtime/object.ts'
-
-/** stand-in for the argument structures the caller of a window normally provides: unknown fields read as 0 / empty text by naming convention */
-class LooseStruct extends PBStruct {
-  override pbGet(name: string): unknown {
-    if (this.f.has(name)) return this.f.get(name)
-    return /^(s|as|is)_/.test(name) ? '' : 0
-  }
-}
+import { windowArgument } from '../src/app/window-arguments.ts'
 
 const dataDir = process.argv[2]
 const whereOf = (e: unknown): string => (e as { where?: string }).where || ((e as Error).stack || '').split(String.fromCharCode(10)).slice(1, 3).map((l) => l.trim().replace(/^at /, '')).join(' < ')
@@ -77,7 +69,8 @@ async function tryOpen(name: string, type: number, stringparm: string): Promise<
   try {
     const open = rt.sys.get('open')!
     const msg = rt.globals.get('message') as PBObject
-    msg.props.set('powerobjectparm', new LooseStruct('arguments'))
+    // the argument the application passes to this window (a DataWindow, or a structure that carries one)
+    msg.props.set('powerobjectparm', await windowArgument(rt, name))
     msg.props.set('doubleparm', 1)
     msg.props.set('stringparm', stringparm)
     // response windows block until closed: close them as soon as they are shown

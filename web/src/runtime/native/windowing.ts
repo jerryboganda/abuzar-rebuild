@@ -8,6 +8,23 @@ import { NDwBase } from './dwctrl.ts'
 import { NTransaction } from './transaction.ts'
 import { NWinSock } from './winsock.ts'
 import { NCalendar } from './calendar.ts'
+import { NGraph } from './graph.ts'
+
+/**
+ * PowerBuilder loads the definition of a DataWindow control when the control is created, so the Open event of a
+ * window already sees the columns of its grids (the entry windows read `object.datawindow.column.count` there and
+ * fill their column lists).  The rebuild loads the definition asynchronously: wait for it before the window's own
+ * Open runs, so the scripts find the same objects the original finds.
+ */
+async function awaitDataWindowDefinitions(o: PBObject): Promise<void> {
+  const pending: Promise<unknown>[] = []
+  const collect = (x: PBObject): void => {
+    if (x instanceof NDwBase) pending.push(x.ready)
+    for (const c of x.children.values()) collect(c)
+  }
+  collect(o)
+  await Promise.all(pending.map((p) => p.then(() => {}, () => {})))
+}
 
 function setMessage(rt: Runtime, parm: unknown): void {
   const msg = rt.globals.get('message') as PBObject | undefined
@@ -65,6 +82,7 @@ async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: bool
   const ownedMenu = w.props.get('menuid')
   if (ownedMenu instanceof PBObject && !ownedMenu.parent) ownedMenu.parent = w
   await rt.fireConstructors(w)
+  await awaitDataWindowDefinitions(w)
   // the item list popup of the entry windows is a DataWindow that is only shown while the user searches (the original has it hidden until `show()`;
   // its definition lacks the attribute, the program keeps `visible` false: its window class is not visible in the original's control tree)
   // controls that sit inside the rectangle of a hidden group box and carry no `visible` attribute are hidden, too (the original shows none of the invoice / price fields of the
@@ -255,6 +273,7 @@ export function registerWindowing(rt: Runtime): void {
     'tab', 'groupbox', 'picture', 'picturebutton', 'progressbar', 'hscrollbar', 'vscrollbar', 'hprogressbar', 'userobject', 'oval', 'rectangle', 'roundrectangle', 'line',
     'richtextedit', 'treeview', 'listview', 'ole', 'olecustomcontrol', 'graph', 'hslider', 'vslider', 'monthcalendar', 'datepicker', 'statichyperlink', 'picturehyperlink',
   ]) nat.set(k, (r, c) => new NControl(r, c, k))
+  nat.set('graph', (r, c) => new NGraph(r, c))
   nat.set('monthcalendar', (r, c) => new NCalendar(r, c))
   rt.nativeParent.set('u_transaction', 'transaction')
   void toStr

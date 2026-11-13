@@ -161,6 +161,10 @@ export const PRESENTATION_CSS = `
 .modern-window .window-source-layout .window-list>.ctl,
 .modern-window .window-source-layout .window-option .ctl {
   position:static!important;inset:auto!important;width:100%!important;height:100%!important;
+  font:inherit!important;color:var(--p-text)!important;
+}
+.modern-window .window-source-layout :is(input,textarea,select).ctl:not([type=checkbox]):not([type=radio]) {
+  background:var(--p-surface)!important;border:1px solid var(--p-line)!important;border-radius:4px;
 }
 .modern-window .window-data>.modern-surface {position:relative;inset:auto;min-height:6em;}
 .modern-window .window-data:has(>.dw:not(.modern-surface)):not(.window-source-layout *) {height:20em!important;}

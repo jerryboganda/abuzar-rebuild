@@ -63,6 +63,12 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
   const clipped = def.objects.filter(clippedOf)
   const covered = def.objects.filter((object) => !clippedOf(object) && coveredOf(object))
   const live = def.objects.filter((object) => !clippedOf(object) && !coveredOf(object))
+  // A RichText presentation has exactly one input field outside the recovered bands.  Its name may be lost in
+  // recovery; the single table column names it.  Several unnamed columns are a shape this surface cannot map.
+  const richColumns = processing === 7 ? live.filter((object) => object.type === 'column' && !object.band) : []
+  if (processing === 7 && (richColumns.length !== 1 || !richColumns[0].name)) {
+    return { reason: 'RichText input field could not be identified' }
+  }
   const detailObjects = live.filter((object) => object.band === 'detail' && (object.type === 'column' || object.type === 'compute'))
   const headerTexts = live.filter((object) => object.type === 'text' && object.band === 'header')
   const detailTexts = live.filter((object) => object.type === 'text' && object.band === 'detail')

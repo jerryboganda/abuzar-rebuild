@@ -46,7 +46,10 @@ page.on('console', (m) => {
   if (/Failed to load resource/.test(m.text())) missingFiles++
   else errors.push({ win: current, text: m.text().slice(0, 220) })
 })
-await page.goto(base + '/?autologin=admin:admin' + (mode === 'modern' ? '&presentation=1' : ''))
+// CRAWL_QUERY adds parameters to the URL of the application (the mock database needs `app=1&db=mock`: without a
+// data server the application only starts when the page asks for it).
+const extraQuery = process.env.CRAWL_QUERY ? '&' + process.env.CRAWL_QUERY : ''
+await page.goto(base + '/?autologin=admin:admin' + (mode === 'modern' ? '&presentation=1' : '') + extraQuery)
 console.log(`interface: ${mode}`)
 try {
   await page.waitForFunction(() => window.__open && window.rt && window.rt.windowInstances.get('w_main'), null, { timeout: 150000, polling: 500 })

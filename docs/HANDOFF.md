@@ -13,6 +13,70 @@ and do not pause for repeated questions. Required safety/permission approvals
 still apply. Older test commands below are reference material, not instructions
 to run browser checks per slice. Historical evidence does not verify new code.
 
+**Classic completeness (measured 2026-11-12).** The Classic interface was measured
+end to end and the defects that stopped windows from opening were fixed:
+
+- **Every window class opens.** The headless run with the mock database
+  (`node tools/smoke-windows.ts public/data -`) opens **2,062 of 2,062** window classes without a
+  runtime error (before this pass: 2,046 of 2,062; `docs/PARITY.md` is generated from that run).
+- The windows the application opens with an argument are opened with **that argument**
+  (`web/src/app/window-arguments.ts`): the Find dialog and the print dialog get the grid, the column
+  picker and the graph dialogs get their structure, the entry and response windows get the structure
+  the caller builds. Without it a window read a null object and stopped, exactly as the original would.
+- A DataWindow **without a definition** (no DataObject yet, or the base class of an entry window) now
+  behaves like the empty DataWindow of the original: no columns, no objects, no null reference. The
+  entry windows read `object.datawindow.column.count` in their Open event to fill their column lists.
+- The definitions of the DataWindow controls are **loaded before the window's Open event runs**
+  (`awaitDataWindowDefinitions`), as PowerBuilder loads them when the control is created; the column
+  lists of the entry windows are therefore filled with the real columns.
+- The **graph control** of the graph viewer exists (`web/src/runtime/native/graph.ts`): the series and
+  data the scripts add, the two axis labels, the type, the colours, the rotation and the spacing; the
+  Classic view draws the chart as SVG (`renderChartSvg` in `web/src/dw/chart.ts`).
+- **A real Classic browser sweep** (`web/e2e/classic-window-sweep.mjs`) opens every window class in the
+  Classic DOM of the running application (mock database) and records the runtime errors, the page errors
+  and the message boxes of each window: **2,062 of 2,062 windows open**, with no page error and no
+  console error in the whole sweep (59 minutes, 1,366 px viewport).
+- **The Classic interface was also launched against the real database** (the deployment's data server on
+  127.0.0.1:8787 and the migrated PostgreSQL data, with the current sources served by the development
+  server): the sign-in works, the main window shows the deployment's 264 menu commands, the Cash Sale
+  picks a real item out of the 27,818-item catalogue, computes the line and footer totals, **posts the
+  invoice into the database** (the app asks the operator for the password; 588872/588873 were written to
+  `saleledger` with their lines in `saledetail`), the Customer form opens and the Net Cash report prints
+  the real figures (Total Sales 17,777,449.00). No page error, no console error. The write test ran
+  against the rehearsal copy of the migrated data, so the migrated copy stayed untouched.
+- **The Classic application was also driven by hand in the user's own Chrome** (through the Browse Chrome
+  extension) against the real database, the way an operator uses it: the sign-in through the original login
+  window, the Cash Sale (click an item in the catalogue on the right → the line fills, 1,000.00 + the 1.00
+  FBR POS fee = 1,001.00), **File | Save** (the app asks the operator for the password → the document is
+  posted: **invoice 588874** in `saleledger`, 13/11/2026 20:58:59, cash customer 19, 36.00, its line in
+  `saledetail`, the counter table advanced), the Customer form (list page: 19 ****CASH SALES CUSTOMER,
+  22 CREDIT SALES-WALKING CUSTOMER A/C), the Item form (the real catalogue) and the Net Cash report
+  (Total Sales 1,777,749.00). No page error, no console error.
+- **An operational finding for the live deployment** (read-only check of the live SQL Server): the
+  invoice counter `_tabmaxkey` holds 588,861 for `SaleLedger` while the highest invoice is 588,871, so
+  the next invoice number (588,862) is already used and the application refuses the posting ("Sale invoice
+  588862 already exists. Please Try Again.."). The rebuild reproduces the application's own behaviour
+  exactly. The live system and the migrated copy were not changed.
+- **A second finding on the same rule**: the application only accepts an invoice dated within
+  `MaxAllowDate` (4 days by default) after `serverdate.lasttransdate`, and that row holds **2025-01-04**
+  in the migrated copy and in the live SQL Server. A sale of today is therefore refused with
+  "Date Violation: Forward Date Invoice Check violates" until the operator brings the row up to date
+  (`Set Last Transaction Date`). The rule and the message are reproduced faithfully.
+- One decompiler defect was corrected in the rebuild (`w_visitprescription`: the decompiler printed
+  `.name` for the `object` namespace of the DataWindow, the same defect it printed as `.borderstyle` in
+  dozens of windows). It is a scoped correction in `web/src/runtime/class-fixes.ts`, not a change of the
+  recovered source.
+- Two more defects of the recovered scripts are corrected the same way: the barcode label popup
+  re-triggered its own `ue_postopen` event (an endless recursion), and `SQL stop` on a transaction that
+  was never connected raised a null reference.
+- **The direct event calls now run.** `event ue_xxx()` and `post event ue_xxx()` (the compiler's event call
+  modifier, used by the sale, purchase, entry and About windows) were noted as missing functions and did
+  nothing: the Cash Sale alone calls `event ue_deleteitem()` 26 times. The interpreter now runs the event
+  script of the object the statement belongs to (the queued variant after the current script).
+- Still open for Classic: the menu crawl of the observed menu of the original (265 leaves) needs the
+  rights of the deployment and therefore the real database (the CI end-to-end job), and the OLE
+  controls the deployment uses (fingerprint reader, ActiveX viewers) are stubs.
+
 **Generated Modern layouts (2026-11-08, not browser-verified):** 1,958 of 2,062 windows
 now have a Modern layout, 170 hand-reviewed and 1,788 generated from `data/src` by
 `web/tools/derive-data-surfaces.ts`, `derive-entry-windows.ts` and `derive-modal-windows.ts`
