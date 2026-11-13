@@ -1,0 +1,48 @@
+# pharmacy.polytronx.com - Waseela/Trader rebuild (jerryboganda/abuzar-rebuild)
+# proxy: /opt/docker/nginx-proxy-manager/data/nginx/proxy_host/pharmacy-manual.conf (basic-auth gate)
+name: pharmacy
+services:
+  db:
+    image: postgres:17-bookworm
+    container_name: pharmacy-db
+    restart: unless-stopped
+    shm_size: 256m
+    environment:
+      POSTGRES_PASSWORD: ${PG_SUPER_PASSWORD}
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=en_US.utf8
+      TZ: Asia/Karachi
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./restore:/restore:ro
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      retries: 10
+  app:
+    image: pharmacy-app:${APP_TAG}
+    container_name: pharmacy-app
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgres://waseela:${PG_APP_PASSWORD}@pharmacy-db:5432/waseela
+      # the shared API token is not used (owner decision 2026-11-14): the proxy's login gate protects the whole site;
+      # the container port is not published, only the proxy reaches it
+      ALLOW_INSECURE_LAN: "1"
+      MAX_SESSIONS: "80"
+      TZ: Asia/Karachi
+      RUST_LOG: info
+    volumes:
+      - files:/srv/files
+      # generated class/DataWindow/SQL data (web/public/data is not in git), copied from the PC deployment C:/Waseela/web/data
+      - ./web-data:/srv/web/data:ro
+    networks: [internal, polytronx-edge]
+volumes:
+  pgdata:
+  files:
+networks:
+  internal:
+    internal: true
+  polytronx-edge:
+    external: true

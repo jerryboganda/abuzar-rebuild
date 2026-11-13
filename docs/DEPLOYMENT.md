@@ -128,3 +128,32 @@ Each PC needs the browser only; nothing else to install. Add the token page to t
   put the server behind a reverse proxy with TLS first.
 * The local PostgreSQL superuser password and test ADMIN password are public by the owner's accepted
   decision (test-only credentials, localhost).
+
+# Internet deployment — pharmacy.polytronx.com (VPS 185.252.233.186)
+
+Installed 2026-11-14 at the owner's request, from commit `394a40fa` (CI green). The files live in `deploy/pharmacy/`
+(copies of what runs on the server, without secrets).
+
+| Piece | Where / how |
+|---|---|
+| Host | Ubuntu 24.04, shared with the owner's other sites; `ssh vps` (key `~/.ssh/id_ed25519`) |
+| Stack | `/opt/pharmacy/compose.yml` (project `pharmacy`): `pharmacy-db` (postgres:17, volume `pharmacy_pgdata`, internal network only) and `pharmacy-app` (image `pharmacy-app:394a40fa`, built on the server from `deploy/pharmacy/Dockerfile` with the repo clone `/opt/pharmacy/src`; port 8787 not published) |
+| Secrets | `/opt/pharmacy/.env` (root only): image tag, PostgreSQL superuser and app-role passwords (random) |
+| Web data | `web/public/data` is not in git, so `/opt/pharmacy/web-data` (copy of `C:\Waseela\web\data`, 2,938 files) is mounted read-only at `/srv/web/data` |
+| Database | `waseela`, restored 2026-11-14 from a `pg_dump` of the PC's live database (`/opt/pharmacy/restore/`); all 764 tables have the same row count as the PC (9,636,343 rows). App role `waseela` (DML + execute, no DDL), database time zone Asia/Karachi (the server's sessions use UTC, as on the PC). `fk_purledger_taxcategory_taxcategorycode` re-added `NOT VALID` (one purchase row with tax category 87, same on the PC) |
+| Proxy | Nginx Proxy Manager container, hand-written host `/opt/docker/nginx-proxy-manager/data/nginx/proxy_host/pharmacy-manual.conf` (not in the NPM database); Let's Encrypt certificate `pharmacy.polytronx.com` (webroot, renewed by the server's existing root cron `certbot renew`) |
+| Access | Owner decision 2026-11-14: no API token; the whole site sits behind one basic-auth login (`/opt/docker/nginx-proxy-manager/data/access/pharmacy.htpasswd`, credentials chosen by the owner), then the application's own user login |
+| Backup | `/etc/cron.d/pharmacy-backup` runs `/opt/pharmacy/backup.sh` daily 22:40 UTC: `pg_dump -Fc` to `/opt/pharmacy/backups`, 14 days kept; log `/var/log/pharmacy-backup.log` |
+
+Verified 2026-11-14: without or with a wrong login every path answers 401; with the login `/api/health` is `db:true`, a session
+opens and queries `dbo.users` (9 rows); http redirects to https; the Modern sign-in page loads from the server (through an SSH
+tunnel) with no console errors. Not checked: signing in as a staff user and working screens (needs a staff login), printers
+(raw/thermal printing is sent by the server, which has no printers) and FBR (the fiscal service is not on the VPS).
+
+**Two databases.** The PC (`C:\Waseela`, 192.168.18.39) and the VPS each have their own copy since 2026-11-14; entries made in one
+do not appear in the other. Decide which one the staff use.
+
+Operate (on the server): `cd /opt/pharmacy && docker compose ps | logs app | restart app`. Update the app: `git -C src fetch &&
+git -C src checkout <commit>`, `docker build -f Dockerfile -t pharmacy-app:<commit> src`, set `APP_TAG` in `.env`,
+`docker compose up -d app`; refresh `web-data` when the generated data changes. Restore: `docker exec -i pharmacy-db pg_restore
+-U postgres -d <new db> --no-owner --no-acl < dump`, then the grants from this section.
