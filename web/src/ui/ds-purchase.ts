@@ -51,7 +51,13 @@ export function purchaseState(ctx: PurchaseContext, onAsync: () => void): Purcha
 const ringSvg = (p: number) => { const r = 22, c = 2 * Math.PI * r; return `<svg viewBox="0 0 54 54" aria-hidden="true"><circle class="bgc" cx="27" cy="27" r="${r}"/><circle class="fgc" cx="27" cy="27" r="${r}" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${(c * (1 - p)).toFixed(1)}"/></svg>` }
 
 /** Inserts or updates the companion elements; `toolbar(stock)` returns the window's toolbar button for a stock picture. */
-export function decoratePurchase(ctx: PurchaseContext, state: PurchaseState, toolbar: (stock: string) => HTMLButtonElement | null, onAsync: () => void): void {
+/** The window's own menu commands the companion runs (null when the menu does not offer one to this user). */
+export type PurchaseMenu = (key: 'slip' | 'labels' | 'history' | 'expenses' | 'supplier') => (() => void) | null
+export const PURCHASE_MENU: Record<Parameters<PurchaseMenu>[0], RegExp> = {
+  slip: /^purchase slip$/i, labels: /^print purchase labels$/i, history: /^item purchase history$/i, expenses: /^show purchase expenses window$/i, supplier: /^supplier info\.?$/i,
+}
+
+export function decoratePurchase(ctx: PurchaseContext, state: PurchaseState, toolbar: (stock: string) => HTMLButtonElement | null, onAsync: () => void, menu: PurchaseMenu = () => null): void {
   const detail = ctx.root.querySelector<HTMLElement>('.entry-detail')
   if (!detail) return
   // progress steps
@@ -72,7 +78,14 @@ export function decoratePurchase(ctx: PurchaseContext, state: PurchaseState, too
   const supp = str(header.getItem(1, 'suppcode'))
   let card = headerCtl?.querySelector<HTMLElement>(':scope > .ds-supp') ?? null
   if (headerCtl && supp) {
-    if (!card) { card = document.createElement('div'); card.className = 'ds-supp'; headerCtl.append(card) }
+    if (!card) {
+      card = document.createElement('div')
+      card.className = 'ds-supp'
+      headerCtl.append(card)
+      // Ledger of the approved design: the window's own Supplier Info. (F12)
+      card.addEventListener('click', (event) => { if ((event.target as HTMLElement).closest('[data-ledger]')) (card as HTMLElement & { _ledger?: () => void })._ledger?.() })
+    }
+    ;(card as HTMLElement & { _ledger?: () => void })._ledger = menu('supplier') ?? undefined
     let info = supplierCache.get(supp)
     if (info === undefined) {
       supplierCache.set(supp, 'loading')
@@ -92,7 +105,8 @@ export function decoratePurchase(ctx: PurchaseContext, state: PurchaseState, too
     const balance = numv(header.getItem(1, 'suppbalance'))
     const html = `<span class="av">${esc(initials)}</span><div class="ds-supp-body"><b>${esc(name)}</b><div class="meta"><span>NTN <b class="num">${esc(ntn)}</b></span>
       <span>Balance payable <b class="num">Rs ${balance.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></span>
-      <span>Terms <b>${info === 'loading' ? '…' : esc(info?.terms ?? '—')}</b></span><span>Last purchase <b>${info === 'loading' ? '…' : esc(info?.last ?? '—')}</b></span></div></div>`
+      <span>Terms <b>${info === 'loading' ? '…' : esc(info?.terms ?? '—')}</b></span><span>Last purchase <b>${info === 'loading' ? '…' : esc(info?.last ?? '—')}</b></span></div></div>
+      <button type="button" class="ds-btn ds-btn-ghost" data-ledger title="Supplier Info. (F12)" ${menu('supplier') ? '' : 'disabled'}><svg class="ds-i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>Ledger</button>`
     if (card.dataset.html !== html) { card.innerHTML = html; card.dataset.html = html }
   } else card?.remove()
   // quick-add bar of the approved design at the top of the lines card.  It sits outside the DataWindow (the grid's own markup is
@@ -175,11 +189,17 @@ export function decoratePurchase(ctx: PurchaseContext, state: PurchaseState, too
       panel.setAttribute('aria-label', 'Before you can post')
       summaryCtl.append(panel)
       panel.addEventListener('click', (event) => {
+        const run = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-menu]')
+        if (run && !run.disabled) { (panel as HTMLElement & { _menu?: PurchaseMenu })._menu?.(run.dataset.menu as Parameters<PurchaseMenu>[0])?.(); return }
         const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-stock]')
         if (!button || button.disabled) return
         toolbar(button.dataset.stock!)?.click()
       })
     }
+    ;(panel as HTMLElement & { _menu?: PurchaseMenu })._menu = menu
+    const ICONS = { labels: '<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>', history: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+      expenses: '<rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20M16 15h2"/>' }
+    const extra = (key: 'labels' | 'history' | 'expenses', label: string) => `<button type="button" class="ds-btn ds-btn-ghost" data-menu="${key}" ${menu(key) ? '' : 'disabled'}><svg class="ds-i s" viewBox="0 0 24 24" aria-hidden="true">${ICONS[key]}</svg>${label}</button>`
     const checks: [keyof PurchaseState, string][] = [['supp', 'Supplier chosen'], ['bill', 'Supplier bill # entered'], ['items', 'At least one item'], ['price', 'Every item has qty and price']]
     const done = checks.filter(([k]) => state[k]).length
     const ready = done === 4
@@ -189,7 +209,8 @@ export function decoratePurchase(ctx: PurchaseContext, state: PurchaseState, too
       <div class="help">${state.posted ? 'Stock and supplier balance were updated' : 'Complete each check below'}</div></div></div>
       <ul class="checks">${checks.map(([k, t]) => `<li class="${state[k] || state.posted ? 'y' : ''}"><span class="c">✓</span>${t}</li>`).join('')}</ul>
       <div class="acts"><button type="button" class="ds-btn primary block" data-stock="dbadmin!" ${dis('dbadmin!', !ready || state.posted)}>Save &amp; post to stock</button>
-      <div class="row2"><button type="button" class="ds-btn" data-stock="save!" ${dis('save!')}>Save draft</button><button type="button" class="ds-btn" data-stock="print!" ${dis('print!')}>Print slip</button></div></div>`
+      <div class="row2"><button type="button" class="ds-btn" data-stock="save!" ${dis('save!')}>Save draft</button><button type="button" class="ds-btn" data-menu="slip" ${menu('slip') ? '' : 'disabled'}>Print slip</button></div>
+      <div class="extra-acts">${extra('labels', 'Barcode labels')}${extra('history', 'Item history')}${extra('expenses', 'Pur. expenses')}</div></div>`
     if (panel.dataset.html !== html) { panel.innerHTML = html; panel.dataset.html = html }
   }
   // command-bar status and record position
@@ -200,6 +221,21 @@ export function decoratePurchase(ctx: PurchaseContext, state: PurchaseState, too
     const text = state.posted ? 'Posted' : state.dirty ? 'Draft · not saved' : 'Draft · saved'
     if (pill.textContent !== text) pill.textContent = text
     pill.classList.toggle('ok', state.posted)
+    // Print of the approved design's command bar: the window's own Purchase Slip (Ctrl+M)
+    let print = bar.querySelector<HTMLButtonElement>(':scope .ds-print-slip')
+    if (!print) {
+      print = document.createElement('button')
+      print.type = 'button'
+      print.className = 'tb ds-print-slip'
+      print.setAttribute('aria-label', 'Print · Purchase Slip')
+      print.title = 'Purchase Slip (Ctrl+M)'
+      print.innerHTML = '<svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg><span class="mh-label">Print</span>'
+      print.addEventListener('click', () => (print as HTMLButtonElement & { _run?: () => void })._run?.())
+      const list = bar.querySelector('button[data-stock="find!"]')
+      if (list) list.after(print); else bar.querySelector('.mh-group-exit')?.before(print)
+    }
+    ;(print as HTMLButtonElement & { _run?: () => void })._run = menu('slip') ?? undefined
+    print.disabled = !menu('slip')
     const browse = bar.querySelector<HTMLElement>('.mh-group-browse')
     if (browse) {
       let pos = browse.querySelector<HTMLElement>('.mh-pos')
@@ -274,5 +310,8 @@ export const PURCHASE_CSS = `
 .ds-post .row2 {display:flex;gap:8px;} .ds-post .row2 .ds-btn {flex:1;justify-content:center;}
 .ds-post .ds-btn.block {width:100%;justify-content:center;}
 .ds-post .ds-btn:disabled {opacity:.5;cursor:not-allowed;}
+.ds-post .extra-acts {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;}
+.ds-post .extra-acts .ds-btn {flex-direction:column;gap:4px;min-height:58px;padding:6px;font-size:12px;white-space:normal;text-align:center;justify-content:center;}
+.ds-supp .ds-btn {flex:none;}
 .ds-post .ds-btn.primary:disabled {background:var(--p-sunk);border-color:var(--p-line);color:var(--p-muted);box-shadow:none;opacity:1;}
 `

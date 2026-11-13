@@ -42,7 +42,11 @@ async function openCell(cell: HTMLElement): Promise<HTMLInputElement | null> {
   return null
 }
 
-export function decorateSale(root: HTMLElement, query: Query, toolbar: (stock: string) => HTMLButtonElement | null, onAsync: () => void, openOther: (() => void) | null = null, credit = false): void {
+/** The sale window's own File › Print (saves the sale when needed, then prints the invoice), and whether this deployment fiscalizes. */
+export interface SaleExtras { print: { run(): void; shortcut?: string; disabled: boolean; label: string } | null; fiscal: boolean }
+
+export function decorateSale(root: HTMLElement, query: Query, toolbar: (stock: string) => HTMLButtonElement | null, onAsync: () => void, openOther: (() => void) | null = null, credit = false,
+  extras: SaleExtras = { print: null, fiscal: false }): void {
   const detail = root.querySelector<HTMLElement>('.entry-detail.ds-transaction[data-win=w_sale]')
   if (!detail) return
   const gridCtl = detail.querySelector<HTMLElement>(':scope > .entry-control:not(.entry-auxiliary):has(.simplified-grid)')
@@ -138,7 +142,7 @@ export function decorateSale(root: HTMLElement, query: Query, toolbar: (stock: s
   if (!pay) {
     pay = document.createElement('section')
     pay.className = 'ds-change'
-    pay.innerHTML = `<div class="row"><span>Sale type</span><span class="ds-seg" role="group" aria-label="Sale type"><button type="button" data-mode="cash">Cash</button><button type="button" data-mode="credit">Credit</button></span></div>
+    pay.innerHTML = `<div class="row"><span>Pay by</span><span class="ds-seg" role="group" aria-label="Payment method"><button type="button" data-mode="cash">Cash</button><button type="button" data-card disabled aria-pressed="false" title="Card payment is not part of this application">Card</button><button type="button" data-mode="credit">Credit</button></span></div>
       <div class="ds-cash-only"><div class="row"><label for="ds-cash">Cash received</label><input id="ds-cash" type="text" inputmode="decimal" placeholder="0" autocomplete="off"></div>
       <div class="quick">${[500, 1000, 5000].map((n) => `<button type="button" data-add="${n}">+${n}</button>`).join('')}</div>
       <div class="row ch"><span>Change to return</span><b class="num" aria-live="polite">0.00</b></div>
@@ -161,6 +165,23 @@ export function decorateSale(root: HTMLElement, query: Query, toolbar: (stock: s
     button.title = current ? '' : `Opens Sales › ${button.dataset.mode === 'credit' ? 'Credit Sale' : 'Cash Sale'}`
   }
   pay.querySelector<HTMLElement>('.ds-cash-only')!.hidden = credit
+  // FBR note and the big Pay & print button of the approved design, under the payment card
+  let after = footer.querySelector<HTMLElement>(':scope > .ds-pay-after')
+  if (!after) {
+    after = document.createElement('div')
+    after.className = 'ds-pay-after'
+    after.innerHTML = `<p class="ds-fbr" hidden><svg class="ds-i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg><span>Each posted sale gets an FBR fiscal invoice number and QR code on the slip.</span></p>
+      <button type="button" class="ds-btn primary ds-pay-btn"><svg class="ds-i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span></span></button>`
+    after.querySelector('button')!.addEventListener('click', () => (after as HTMLElement & { _print?: () => void })._print?.())
+    footer.append(after)
+  }
+  after.querySelector<HTMLElement>('.ds-fbr')!.hidden = !extras.fiscal
+  const payButton = after.querySelector<HTMLButtonElement>('.ds-pay-btn')!
+  const payText = `${extras.print?.label ?? 'Pay & print'}${extras.print?.shortcut ? ` · ${extras.print.shortcut}` : ''}`
+  if (payButton.lastElementChild!.textContent !== payText) payButton.lastElementChild!.textContent = payText
+  payButton.disabled = !extras.print || extras.print.disabled
+  payButton.title = extras.print?.label === 'Save & post' ? 'File › Save And Post' : 'File › Print: saves the sale if needed, then prints the invoice'
+  ;(after as HTMLElement & { _print?: () => void })._print = extras.print?.run
   ;(pay as HTMLElement & { _credit?: () => void })._credit = openOther ?? undefined
   if (!pay.dataset.creditWired) { pay.dataset.creditWired = '1'; pay.addEventListener('ds-credit', () => (pay as HTMLElement & { _credit?: () => void })._credit?.()) }
   // the amount the customer pays: the window's own grand total (rounded, with its charges)
@@ -215,5 +236,32 @@ export const SALE_CSS = `
 .ds-change .ds-seg button {border:0;background:none;padding:5px 14px;border-radius:7px;cursor:pointer;color:var(--p-muted);font:500 13px var(--p-font);}
 .ds-change .ds-seg button[aria-pressed=true] {background:var(--p-surface);color:var(--p-text);box-shadow:0 1px 3px rgb(0 0 0 / .12);}
 .ds-change .ds-seg button:disabled {opacity:.5;cursor:not-allowed;}
+.ds-pay-after {margin:0 18px 18px;display:grid;gap:12px;}
+/* the payment card's grouped totals (Sales, S/R, Net) and the "Item figures" disclosure read as summary rows too */
+.modern-surface .simplified-summary .simplified-row :is(.surface-group, .simplified-more-fields) > .surface-field:not([hidden]) {display:grid!important;align-self:stretch!important;grid-template-columns:max-content auto minmax(0,1fr)!important;grid-area:auto!important;position:static!important;align-items:center;gap:12px;padding:3px 0;width:auto!important;height:auto!important;}
+.modern-surface .simplified-summary .simplified-row :is(.surface-group, .simplified-more-fields) > .surface-field > .surface-label {grid-column:1;}
+.modern-surface .simplified-summary .simplified-row :is(.surface-group, .simplified-more-fields) > .surface-field > .surface-required {grid-column:2;}
+.modern-surface .simplified-summary .simplified-row :is(.surface-group, .simplified-more-fields) > .surface-field > :not(.surface-label):not(.surface-required) {grid-column:3!important;justify-self:end;width:9.5em!important;max-width:100%;position:static!important;}
+.modern-surface .simplified-summary .simplified-row > .surface-group {order:0;}
+.modern-surface .simplified-summary .simplified-more {order:250;margin:8px 0 0;padding-top:8px;border-top:1px dashed var(--p-hair);}
+.modern-surface .simplified-summary .simplified-more > summary {cursor:pointer;color:var(--p-accent);font-size:13px;font-weight:600;}
+.modern-surface .simplified-summary .simplified-more-fields {display:flex;flex-direction:column;gap:2px;margin-top:6px;}
+/* the current item's figures have no caption of their own in the original (they sit beside "%" and "Stock:"): readable captions are
+   drawn for them here; the accessible name stays the original's */
+.modern-surface[aria-label=Salefooter2] .simplified-more-fields > .surface-field > .surface-label {position:static!important;width:auto!important;height:auto!important;clip:auto!important;clip-path:none!important;overflow:visible!important;margin:0!important;white-space:nowrap;font-size:0!important;color:var(--p-muted);}
+.modern-surface[aria-label=Salefooter2] .simplified-more-fields > .surface-field > .surface-label::before {font-size:13px;}
+.modern-surface[aria-label=Salefooter2] [data-field=rppmargin] > .surface-label::before {content:"RPP margin %";}
+.modern-surface[aria-label=Salefooter2] [data-field=purprice] > .surface-label::before {content:"Purchase price";}
+.modern-surface[aria-label=Salefooter2] [data-field=rpp] > .surface-label::before {content:"RPP";}
+.modern-surface[aria-label=Salefooter2] [data-field=avgprice] > .surface-label::before {content:"Avg. price";}
+.modern-surface[aria-label=Salefooter2] [data-field=retailprice] > .surface-label::before {content:"Retail price";}
+.modern-surface[aria-label=Salefooter2] [data-field=itemtotalval] > .surface-label::before {content:"Item value";}
+.modern-surface[aria-label=Salefooter2] [data-field=stock] > .surface-label::before {content:"Stock";}
+.modern-surface[aria-label=Salefooter2] [data-field=totalstock] > .surface-label::before {content:"T/Stock";}
+.modern-surface[aria-label=Salefooter2] .surface-field[data-field=invdiscperc] {grid-template-columns:max-content auto minmax(0,1fr)!important;}
+.ds-fbr {display:flex;align-items:center;gap:10px;margin:0;padding:10px 12px;border-radius:10px;background:var(--p-info-soft);color:var(--p-info);font-size:12.5px;}
+.ds-fbr[hidden] {display:none;}
+.ds-pay-btn {width:100%;min-height:52px!important;font-size:16px!important;justify-content:center;background:linear-gradient(180deg,var(--p-accent-2),var(--p-accent))!important;border-color:var(--p-accent)!important;color:var(--p-on-accent)!important;box-shadow:0 6px 18px var(--p-glow);}
+.ds-pay-btn:disabled {background:var(--p-sunk)!important;border-color:var(--p-line)!important;color:var(--p-muted)!important;box-shadow:none;cursor:not-allowed;}
 @media (max-width:1000px){.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale]{grid-template-columns:minmax(0,1fr)}.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > *{grid-column:1!important;grid-row:auto!important}.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-auxiliary:not(.hidden){grid-row:2!important}}
 `

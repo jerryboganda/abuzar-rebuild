@@ -75,19 +75,76 @@ export async function loadItems(query: Query, state: ItemsState): Promise<void> 
   const [counts, rows] = await Promise.all([
     query(`with s as (${STOCK}) select count(*), count(*) filter (where ${FILTER.low}), count(*) filter (where ${FILTER.out}), count(*) filter (where ${FILTER.exp}), ${ANCHOR}
       from dbo.item i left join s on s.icode = i.icode where i.active = 1`),
-    query(`with s as (${STOCK}) select i.icode, coalesce(i.customicode::text, i.icode::text), i.name::text, coalesce(p.name::text, ''), coalesce(m.name::text, ''), coalesce(c.name::text, ''),
-        coalesce(s.qty, 0), coalesce(i.reorderlevel, 0), coalesce(i.purprice, 0), coalesce(i.saleprice, 0), s.exp
-      from dbo.item i left join s on s.icode = i.icode left join dbo.manufacturer m on m.manfcode = i.manfcode
-      left join dbo.itemcategory c on c.icatcode = i.icatcode left join dbo.itempacking p on p.packcode = i.packcode
-      where i.active = 1 and ${FILTER[state.filter]} and ($1 = '' or i.name::text ilike '%' || $1 || '%' or coalesce(i.customicode::text, '') ilike $1 || '%' or m.name::text ilike '%' || $1 || '%')
-      order by i.name::text limit 200`, [q]),
+    query(itemsSql(state, 200), [q]),
   ])
   if (seq !== state.seq) return
   const c = counts[0] ?? []
   state.counts = { all: Number(c[0] ?? 0), low: Number(c[1] ?? 0), out: Number(c[2] ?? 0), exp: Number(c[3] ?? 0) }
   state.anchor = c[4] ? new Date(String(c[4])) : null
-  state.rows = rows.map((r) => ({ icode: Number(r[0]), code: String(r[1] ?? ''), name: String(r[2] ?? ''), pack: String(r[3] ?? ''), mfr: String(r[4] ?? ''), cat: String(r[5] ?? ''),
-    stock: Number(r[6] ?? 0), reorder: Number(r[7] ?? 0), pur: Number(r[8] ?? 0), sale: Number(r[9] ?? 0), exp: r[10] ? new Date(String(r[10])) : null }))
+  state.rows = rows.map(itemRow)
+}
+
+function itemsSql(state: ItemsState, limit: number | null): string {
+  return `with s as (${STOCK}) select i.icode, coalesce(i.customicode::text, i.icode::text), i.name::text, coalesce(p.name::text, ''), coalesce(m.name::text, ''), coalesce(c.name::text, ''),
+        coalesce(s.qty, 0), coalesce(i.reorderlevel, 0), coalesce(i.purprice, 0), coalesce(i.saleprice, 0), s.exp
+      from dbo.item i left join s on s.icode = i.icode left join dbo.manufacturer m on m.manfcode = i.manfcode
+      left join dbo.itemcategory c on c.icatcode = i.icatcode left join dbo.itempacking p on p.packcode = i.packcode
+      where i.active = 1 and ${FILTER[state.filter]} and ($1 = '' or i.name::text ilike '%' || $1 || '%' or coalesce(i.customicode::text, '') ilike $1 || '%' or m.name::text ilike '%' || $1 || '%')
+      order by i.name::text${limit ? ` limit ${limit}` : ''}`
+}
+
+const itemRow = (r: unknown[]): ItemRow => ({ icode: Number(r[0]), code: String(r[1] ?? ''), name: String(r[2] ?? ''), pack: String(r[3] ?? ''), mfr: String(r[4] ?? ''), cat: String(r[5] ?? ''),
+  stock: Number(r[6] ?? 0), reorder: Number(r[7] ?? 0), pur: Number(r[8] ?? 0), sale: Number(r[9] ?? 0), exp: r[10] ? new Date(String(r[10])) : null })
+
+/** One item by its code (the search palette opens it), whatever the list's search and filter are. */
+export async function loadItem(query: Query, icode: number): Promise<ItemRow | null> {
+  const rows = await query(itemsSql({ q: '', filter: 'all', rows: [], counts: {}, anchor: null, seq: 0 }, null).replace(" and ($1 = ''", " and i.icode = $2 and ($1 = ''"), ['', icode])
+  return rows[0] ? itemRow(rows[0]) : null
+}
+
+const ITEM_COLUMNS = ['Code', 'Item', 'Packing', 'Manufacturer', 'Category', 'Stock', 'Reorder level', 'Pur. price', 'Sale price', 'Nearest expiry']
+const itemCells = (it: ItemRow) => [it.code, it.name, it.pack, it.mfr, it.cat, String(it.stock), String(it.reorder), it.pur.toFixed(2), it.sale.toFixed(2),
+  it.exp ? `${String(it.exp.getMonth() + 1).padStart(2, '0')}/${it.exp.getFullYear()}` : '']
+
+/** Every item of the current search and filter (not only the rows on screen). */
+async function allItems(query: Query, state: ItemsState): Promise<ItemRow[]> {
+  return (await query(itemsSql(state, null), [state.q.trim()])).map(itemRow)
+}
+
+/** Export of the approved design ("Export to Excel"): the current list as a CSV file Excel opens. */
+export async function exportItems(query: Query, state: ItemsState): Promise<number> {
+  const rows = await allItems(query, state)
+  const cell = (v: string) => /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
+  const csv = '﻿' + [ITEM_COLUMNS, ...rows.map(itemCells)].map((r) => r.map(cell).join(',')).join('\n')
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `items-${new Date().toISOString().slice(0, 10)}.csv`
+  document.body.append(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  return rows.length
+}
+
+/** Print of the approved design ("Print list"): the current list as a plain table on paper. */
+export async function printItems(query: Query, state: ItemsState, company: string): Promise<number> {
+  const rows = await allItems(query, state)
+  const frame = document.createElement('iframe')
+  frame.style.cssText = 'position:fixed;width:0;height:0;border:0;right:0;bottom:0'
+  document.body.append(frame)
+  const doc = frame.contentDocument!
+  doc.open()
+  doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>Items</title><style>body{font:11px Arial,sans-serif;margin:12mm}h1{font-size:15px;margin:0 0 2px}p{margin:0 0 8px;color:#555}
+    table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #ccc;padding:3px 5px;text-align:left}th{background:#eee}td.r,th.r{text-align:right}</style></head><body>
+    <h1>${esc(company)} · Items</h1><p>${rows.length.toLocaleString('en-PK')} items · printed ${esc(new Date().toLocaleString('en-GB'))}</p>
+    <table><thead><tr>${ITEM_COLUMNS.map((c, i) => `<th${i >= 5 && i <= 8 ? ' class="r"' : ''}>${c}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map((it) => `<tr>${itemCells(it).map((v, i) => `<td${i >= 5 && i <= 8 ? ' class="r"' : ''}>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></body></html>`)
+  doc.close()
+  frame.contentWindow!.focus()
+  frame.contentWindow!.print()
+  setTimeout(() => frame.remove(), 1000)
+  return rows.length
 }
 
 const months = (e: Date, from: Date) => (e.getFullYear() - from.getFullYear()) * 12 + e.getMonth() - from.getMonth()
@@ -343,6 +400,7 @@ dialog.presentation-compatibility-dialog[open]:has(.pbwin[data-win^=w_arg_]) .mo
 .ds-switch[aria-checked=true]::after {transform:translateX(16px);}
 .ds-set-more summary {cursor:pointer;font-weight:600;padding:10px 0;color:var(--p-accent);}
 .ds-set-more fieldset {border:0;padding:0;margin:0;}
+.presentation-settings footer .ds-restore {margin-right:auto;}
 .presentation-settings .ds-sr {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
 .ds-no-motion *,.ds-no-motion *::before,.ds-no-motion *::after {animation:none!important;transition:none!important;}
 @media (max-width:620px){.ds-theme-cards{grid-template-columns:minmax(0,1fr)}.ds-tprev{height:56px}}

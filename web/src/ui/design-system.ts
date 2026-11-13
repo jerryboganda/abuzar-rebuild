@@ -130,6 +130,36 @@ export const DESIGN_CSS = `
 .mh-popover .mh-note small {display:block;color:var(--p-muted);font-size:12px;}
 .mh-popover .mh-note-dot {width:8px;height:8px;border-radius:50%;margin-top:6px;flex:none;background:var(--p-info);}
 .mh-popover .mh-note-dot.bad {background:var(--p-danger);} .mh-popover .mh-note-dot.warn {background:var(--p-warn);} .mh-popover .mh-note-dot.ok {background:var(--p-ok);}
+.mh-context button.mh-brand {border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:2px 6px 2px 0;border-radius:9px;}
+.mh-context button.mh-brand:disabled {cursor:default;}
+.mh-popover {padding:8px;min-width:250px;border-radius:12px;box-shadow:var(--p-shadow-lg);}
+.mh-popover button {display:flex!important;align-items:center;gap:10px;padding:8px!important;border-radius:7px!important;cursor:pointer;color:var(--p-text);font:inherit;}
+.mh-popover button .mh-i {flex:none;color:var(--p-muted);}
+.mh-popover button:hover:not(:disabled) {background:var(--p-selected)!important;}
+.mh-popover .mh-check {margin-left:auto;color:var(--p-accent);}
+.mh-popover .mh-danger-item, .mh-popover .mh-danger-item .mh-i {color:var(--p-danger)!important;}
+.mh-popover .mh-pop-sec {border-top:1px solid var(--p-hair);margin:6px 0 0;padding-top:6px;}
+.mh-popover .mh-pop-row {padding:5px 8px!important;font-size:13px;}
+.mh-popover .mh-pop-row b.ok {color:var(--p-ok);} .mh-popover .mh-pop-row b.bad {color:var(--p-danger);}
+.mh-popover .mh-pop-row b.num {font-family:var(--p-mono);}
+.mh-popover .mh-pop-user {display:flex;gap:10px;align-items:center;margin:4px 8px 8px;font-size:13px;}
+.mh-popover .mh-pop-user .mh-avatar {width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none;background:linear-gradient(135deg,#0f6b6f,#1d5f80);color:#fff;font-size:11px;font-weight:600;}
+.mh-popover .mh-pop-user b {display:block;font-weight:600;}
+.mh-popover .mh-pop-user small {display:block;color:var(--p-faint);font-size:12px;font-weight:400;}
+.mh-palette {width:min(680px,calc(100vw - 32px));border-radius:16px;}
+.mh-palette .mh-q {padding:14px 16px;}
+.mh-palette input {font-size:17px;}
+.mh-palette .mh-scopes {display:flex;gap:6px;padding:9px 16px;border-bottom:1px solid var(--p-hair);flex-wrap:wrap;}
+.mh-palette .mh-scope {border:1px solid var(--p-line);background:var(--p-surface);border-radius:999px;padding:5px 12px;font:12.5px var(--p-font);cursor:pointer;color:var(--p-muted);transition:all .2s;}
+.mh-palette .mh-scope[aria-pressed=true] {background:var(--p-text);color:var(--p-canvas);border-color:var(--p-text);}
+.mh-palette [role=option] {padding:9px 10px;border-radius:9px;}
+.mh-palette [role=option] .mh-kind {width:30px;height:30px;border-radius:8px;background:var(--p-sunk);display:grid;place-items:center;color:var(--p-muted);flex:none;}
+.mh-palette [role=option] .mh-text {flex:1;min-width:0;}
+.mh-palette [role=option] small {display:block;color:var(--p-muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mh-palette [role=option].mh-hot {background:var(--p-selected);}
+.mh-palette [role=option] > kbd {margin-left:auto;}
+.mh-palette mark {background:none;color:var(--p-accent);font-weight:600;}
+.mh-palette .mh-palette-foot {gap:14px;flex-wrap:wrap;}
 .mh-shortcuts {padding:0;}
 .mh-shortcuts h2 {font-size:17px;margin:0;padding:18px 20px 6px;}
 .mh-shortcuts .mh-keys {display:grid;grid-template-columns:auto 1fr;gap:8px 18px;padding:12px 20px;max-height:60vh;overflow:auto;font-size:13px;}

@@ -4,7 +4,7 @@ import { NWindow } from '../runtime/native/controls.ts'
 import { PBObject } from '../runtime/object.ts'
 import type { NDwBase } from '../runtime/native/dwctrl.ts'
 import type { InterfaceMode, PresentationSession } from '../app/ui-preferences.ts'
-import { validatePreferences } from '../app/ui-preferences.ts'
+import { validatePreferences, DEFAULT_UI_PREFERENCES } from '../app/ui-preferences.ts'
 import { printDw } from './print.ts'
 import { readableText } from './pb.ts'
 import { printFamilies, printTemplateFor, resolvePrintPresentation } from './print-templates.ts'
@@ -15,9 +15,12 @@ import { HOME_CSS, HOME_ICONS, loadHome, renderHome, homeNotes, syncHomeActions 
 import type { HomeData, HomeAction } from './ds-home.ts'
 import { inetRequest } from '../runtime/native/fiscal.ts'
 import { SALE_CSS, decorateSale } from './ds-sale.ts'
-import { PAGES_CSS, renderReports, renderItems, loadItems, openItemDrawer } from './ds-pages.ts'
+import { PAGES_CSS, renderReports, renderItems, loadItems, openItemDrawer, loadItem, exportItems, printItems } from './ds-pages.ts'
+import { USERS_CSS, newUsersState, loadUsers, loadRights, renderUsers } from './ds-users.ts'
+import { FX_CSS, installRipple, toast, confetti } from './ds-fx.ts'
+import { saveLoginFigures } from './design-boot.ts'
 import type { ItemsState, ReportEntry } from './ds-pages.ts'
-import { PURCHASE_CSS, purchaseState, decoratePurchase, forgetPurchaseFacts } from './ds-purchase.ts'
+import { PURCHASE_CSS, PURCHASE_MENU, purchaseState, decoratePurchase, forgetPurchaseFacts } from './ds-purchase.ts'
 import { containDialogFocus, messageDialog, promptDialog } from './presentation-dialogs.ts'
 import type { PresentationDialog } from './presentation-dialogs.ts'
 import { ModernDwView } from './modern-dwview.ts'
@@ -64,8 +67,11 @@ export class PresentationUi extends DomUi {
   private homeLoaded = 0
   private homeRendered = false
   // Approved design: Reports and Items pages open as tabs beside Home (the Home panel shows the active page).
-  private page: 'home' | 'reports' | 'items' = 'home'
-  private pageTabs = new Map<'reports' | 'items', HTMLElement>()
+  private page: 'home' | Page = 'home'
+  private pageTabs = new Map<Page, HTMLElement>()
+  private usersState = newUsersState()
+  /** Connection, FBR and godown as the status bar last saw them (the header's clock and user popovers show them too). */
+  private statusInfo: { serverOk: boolean | null; fbr?: boolean; godown?: string } = { serverOk: null }
   private reportState: { group?: string } = {}
   private itemsState: ItemsState = { q: '', filter: 'all', rows: [], counts: {}, anchor: null, seq: 0 }
   private itemsLoaded = false
@@ -75,6 +81,7 @@ export class PresentationUi extends DomUi {
   private windowPaths = new Map<NWindow, string[]>()
   private freshTabs = new Set<NWindow>()
   private purchaseDirty = false
+  private lastPost: { code: string; posted: boolean } | null = null
 
   constructor(rt: Runtime, desktop: HTMLElement, session: PresentationSession, appearance: NativeAppearance = nativeAppearance) {
     super(rt, desktop)
@@ -82,10 +89,11 @@ export class PresentationUi extends DomUi {
     this.nativeAppearance = appearance
     this.presentationStyle = document.createElement('style')
     // The approved design system layers on the Modern styles (Classic never loads either).
-    this.presentationStyle.textContent = PRESENTATION_CSS + DESIGN_CSS + HOME_CSS + PURCHASE_CSS + PAGES_CSS + SALE_CSS
+    this.presentationStyle.textContent = PRESENTATION_CSS + DESIGN_CSS + HOME_CSS + PURCHASE_CSS + PAGES_CSS + SALE_CSS + USERS_CSS + FX_CSS
     document.head.append(this.presentationStyle)
     this.settings = this.buildSettings()
     if (session.activeMode === 'modern') {
+      installRipple()
       this.shell = document.createElement('section')
       this.shell.className = 'presentation-ui'
       this.shell.setAttribute('aria-label', 'Modern workspace preview')
@@ -122,7 +130,7 @@ export class PresentationUi extends DomUi {
     if (!this.shell || this.homeActive || !this.selected || this.hasModal()) return
     const view = this.views.get(this.selected)
     this.decorateReport()
-    if (!view || !view.el.classList.contains('modern-entry-window')) return
+    if (!view || !view.el.classList.contains('modern-entry-window')) { this.mdi?.el.querySelector('.mh-toolbar .ds-print-slip')?.remove(); return }
     this.decorateListToggle(view.el)
     const byName = (name: string) => [...view.ctlViews.keys()].find((control) => control.name === name)
     const transaction = this.rt.globals.get('sqlca') as { db?: { query(sql: string, params: unknown[]): Promise<{ rows: unknown[][] }> } } | undefined
@@ -137,13 +145,34 @@ export class PresentationUi extends DomUi {
       const pattern = creditSale ? /^Sales \/ Cash ?Sale$/i : /^Sales \/ Credit Sale$/i
       return root ? menuCommands(root).find((command) => pattern.test(command.label)) : undefined
     })()
+    const printCommand = (() => {
+      const root = this.commandRoot()
+      // File › Print (saves when needed, then prints) where the deployment shows it, otherwise File › Save And Post
+      const all = root ? menuCommands(root, { includeDisabled: true }) : []
+      const named = (pattern: RegExp) => all.find((command) => pattern.test(command.label.replace(/\s*\.{3,}\s*$/, '').trim()))
+      return named(/^File \/ Print$/i) ?? named(/^File \/ Save And Post$/i)
+    })()
     decorateSale(view.el, ctx.query, (stock) => this.mdi?.el.querySelector<HTMLButtonElement>(`.mh-toolbar button[data-stock="${stock}"]`) ?? null, () => this.decorateActive(),
-      other ? () => void this.runCommand(other) : null, creditSale)
+      other ? () => void this.runCommand(other) : null, creditSale,
+      { print: printCommand ? { run: () => void this.runCommand(printCommand), shortcut: printCommand.shortcut, disabled: !!printCommand.disabled, label: /print$/i.test(printCommand.label) ? 'Pay & print' : 'Save & post' } : null, fiscal: this.statusInfo.fbr !== undefined })
     const state = purchaseState(ctx, () => this.decorateActive())
-    if (!state) return
+    if (!state) { this.mdi?.el.querySelector('.mh-toolbar .ds-print-slip')?.remove(); return }
     if (this.purchaseDirty && !state.dirty) { forgetPurchaseFacts(); this.purchaseDirty = false; return void this.decorateActive() }
+    // the approved design celebrates a posted invoice: the same invoice turning from not posted to posted
+    const code = String((ctx.model('dw_detail') as { getItem(row: number, column: string): unknown } | null)?.getItem(1, 'code') ?? '')
+    if (code && this.lastPost?.code === code && !this.lastPost.posted && state.posted) {
+      const panel = view.el.querySelector('.ds-post')?.getBoundingClientRect()
+      if (panel) confetti(panel.left + panel.width / 2, panel.top)
+      toast(`Posted purchase ${code} · stock updated`)
+    }
+    this.lastPost = code ? { code, posted: state.posted } : null
     this.purchaseDirty = state.dirty
-    decoratePurchase(ctx, state, (stock) => this.mdi?.el.querySelector<HTMLButtonElement>(`.mh-toolbar button[data-stock="${stock}"]`) ?? null, () => this.decorateActive())
+    const menu = (key: keyof typeof PURCHASE_MENU) => {
+      const root = this.commandRoot()
+      const command = root ? menuCommands(root).find((item) => PURCHASE_MENU[key].test((item.label.split(' / ').at(-1) ?? '').replace(/\s*\.{3,}\s*$/, '').trim())) : undefined
+      return command ? () => void this.runCommand(command) : null
+    }
+    decoratePurchase(ctx, state, (stock) => this.mdi?.el.querySelector<HTMLButtonElement>(`.mh-toolbar button[data-stock="${stock}"]`) ?? null, () => this.decorateActive(), menu)
   }
 
   protected override shortcutsEnabled(): boolean {
@@ -515,7 +544,7 @@ export class PresentationUi extends DomUi {
       })),
       frameTitle: () => this.mdi?.ttlEl?.textContent || String(this.mdi?.w.props.get('title') ?? ''),
       windowTitle: () => this.selected && !this.homeActive ? String(this.selected.props.get('title') || this.selected.name) : this.pageTitle(),
-      windowPath: () => this.selected && !this.homeActive ? this.windowPaths.get(this.selected) ?? [] : [],
+      windowPath: () => this.selected && !this.homeActive ? this.windowPaths.get(this.selected) ?? [] : this.page === 'home' ? [] : [PAGES[this.page].path],
       openMenu: (caption) => {
         const mi = [...this.mdi?.el.querySelectorAll<HTMLElement>('.menubar .mi') ?? []].find((item) => item.textContent?.trim() === caption)
         mi?.click()
@@ -534,6 +563,18 @@ export class PresentationUi extends DomUi {
       },
       openSettings: () => this.openSettings(),
       busy: () => this.executing || this.hasModal() || this.settings.open,
+      query: () => this.pageQuery(),
+      status: () => this.statusInfo,
+      openItem: (code) => void this.openItemByCode(code),
+      openPurchases: () => {
+        const root = this.commandRoot()
+        const command = root ? menuCommands(root).find((item) => /^Purchase \/ Purchases$/i.test(item.label)) : undefined
+        if (command) void this.runCommand(command)
+      },
+      toolbarCommands: () => this.homeActive ? [] : [...this.mdi?.el.querySelectorAll<HTMLButtonElement>('.mh-toolbar button.tb[data-stock]') ?? []].map((button) => {
+        const [label, shortcut] = (button.dataset.label || button.title || '').split('\t')
+        return { label: label.trim(), shortcut: shortcut?.trim() || undefined, disabled: button.disabled, run: () => button.click() }
+      }).filter((command) => command.label),
     })
     const apply = (hidden: boolean) => this.shell?.classList.toggle('mh-commands-hidden', hidden)
     // Hidden by default, as in the approved header design; the header button shows it.
@@ -582,10 +623,24 @@ export class PresentationUi extends DomUi {
       <button type="button" class="tb" data-ds="refresh" aria-label="Refresh figures" title="Refresh figures"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
       <button type="button" class="tb mh-primary" data-ds="sale"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${HOME_ICONS.cart}</svg><span class="mh-label">New sale</span></button>`
     bar.insertAdjacentHTML('beforeend', `<button type="button" class="tb" data-ds="items-refresh" data-page="items" aria-label="Refresh items"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg><span class="mh-label">Refresh</span></button>
-      <button type="button" class="tb mh-primary" data-ds="item-form" data-page="items"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${HOME_ICONS.box}</svg><span class="mh-label">Item form</span></button>`)
+      <button type="button" class="tb" data-ds="items-export" data-page="items" aria-label="Export to Excel" title="Export to Excel"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span class="mh-label">Export</span></button>
+      <button type="button" class="tb" data-ds="items-print" data-page="items" aria-label="Print list" title="Print list"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg><span class="mh-label">Print</span></button>
+      <button type="button" class="tb mh-primary" data-ds="item-form" data-page="items"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${HOME_ICONS.box}</svg><span class="mh-label">New item</span></button>
+      <button type="button" class="tb" data-ds="users-refresh" data-page="users" aria-label="Refresh users"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg><span class="mh-label">Refresh</span></button>`)
     bar.querySelector('[data-ds=refresh]')!.addEventListener('click', () => { this.homeLoaded = 0; void this.showHome(true) })
     bar.querySelector('[data-ds=items-refresh]')!.addEventListener('click', () => { this.itemsLoaded = false; void this.showPage() })
     bar.querySelector('[data-ds=item-form]')!.addEventListener('click', () => this.itemFormCommand()?.())
+    bar.querySelector('[data-ds=users-refresh]')!.addEventListener('click', () => { this.usersState = newUsersState(); this.homeHost!.dataset.page = ''; void this.showPage() })
+    const listOut = async (kind: 'export' | 'print') => {
+      const query = this.pageQuery()
+      if (!query) return
+      try {
+        const count = kind === 'export' ? await exportItems(query, this.itemsState) : await printItems(query, this.itemsState, parseFrameTitle(this.mdi?.ttlEl?.textContent || '').company || 'Trader')
+        toast(kind === 'export' ? `Saved ${count.toLocaleString('en-PK')} items as a spreadsheet (CSV)` : `Sent ${count.toLocaleString('en-PK')} items to the printer`, kind === 'export' ? 'dl' : 'print')
+      } catch (error) { this.rt.onError(error) }
+    }
+    bar.querySelector('[data-ds=items-export]')!.addEventListener('click', () => void listOut('export'))
+    bar.querySelector('[data-ds=items-print]')!.addEventListener('click', () => void listOut('print'))
     bar.querySelector('[data-ds=sale]')!.addEventListener('click', () => this.homeActions()[0]?.run())
     const toolbar = mdi.parentElement?.querySelector<HTMLElement>(':scope > .toolbar')
     ;(toolbar ?? tabs).after(bar)
@@ -636,6 +691,7 @@ export class PresentationUi extends DomUi {
     bar.append(status, right)
     status.setAttribute('role', 'status')
     const draw = (connected: boolean | null) => {
+      this.statusInfo.serverOk = connected
       server.innerHTML = `<span class="ds-live${connected === false ? ' ds-off' : ''}" aria-hidden="true"></span>${connected === false ? 'Server not reachable' : connected ? 'Server connected' : 'Connecting…'}`
       const appVersion = Number(this.rt.globals.get('gl_appversion') ?? 0)
       const database = String(this.rt.globals.get('gs_dbname') ?? '')
@@ -654,6 +710,7 @@ export class PresentationUi extends DomUi {
           const reply = await inetRequest('http://localhost:8524/api/IMSFiscal/Get', 'GET')
           fbr.hidden = false
           fbr.innerHTML = `<span class="ds-live${reply.ok ? '' : ' ds-off'}" aria-hidden="true"></span>FBR IMS: ${reply.ok ? 'online' : 'offline'}`
+          this.statusInfo.fbr = reply.ok
           this.setHomeContext(1, reply.ok ? 'FBR fiscal invoicing online' : 'FBR fiscal invoicing offline')
         }
       } catch { /* the preference table is not readable: no FBR status shown */ }
@@ -668,6 +725,7 @@ export class PresentationUi extends DomUi {
           const name = String((await query('SELECT name FROM dbo.godown WHERE gcode = $1', [Number(code)]))[0]?.[0] ?? '').trim()
           godown.hidden = !name
           godown.textContent = `Godown: ${name}`
+          this.statusInfo.godown = name || undefined
           if (name) this.setHomeContext(0, name)
         } catch { godown.hidden = true }
       }
@@ -740,10 +798,10 @@ export class PresentationUi extends DomUi {
     if (span) span.textContent = this.homeContext.filter(Boolean).map((part) => ` · ${part}`).join('')
   }
 
-  private pageTitle(): string { return this.page === 'reports' ? 'Reports' : this.page === 'items' ? 'Items' : 'Home' }
+  private pageTitle(): string { return this.page === 'home' ? 'Home' : PAGES[this.page].title }
 
   /** Opens (or returns to) the Reports or Items page tab. */
-  private openPage(page: 'reports' | 'items'): void {
+  private openPage(page: Page): void {
     if (this.hasModal() || !this.homeTab) return
     if (!this.pageTabs.has(page)) {
       const container = document.createElement('div')
@@ -754,8 +812,8 @@ export class PresentationUi extends DomUi {
       tab.id = `workspace-${page}-tab`
       tab.setAttribute('role', 'tab')
       tab.setAttribute('aria-controls', 'workspace-home')
-      const title = page === 'reports' ? 'Reports' : 'Items'
-      tab.innerHTML = `<svg class="ds-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${HOME_ICONS[page === 'reports' ? 'chart' : 'box']}</svg>${title}`
+      const title = PAGES[page].title
+      tab.innerHTML = `<svg class="ds-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${HOME_ICONS[PAGES[page].icon]}</svg>${title}`
       tab.onclick = () => this.openPage(page)
       const close = document.createElement('button')
       close.type = 'button'
@@ -799,6 +857,7 @@ export class PresentationUi extends DomUi {
       return
     }
     const query = this.pageQuery()
+    if (this.page === 'users') return this.showUsers(host, query)
     const draw = () => { if (this.page === 'items' && this.homeActive) renderItems(host, this.itemsState, () => { this.itemsLoaded = false; void this.showPage() }, (row) => void this.openItem(row)) }
     if (host.dataset.page !== 'items') { host.dataset.page = 'items'; draw() }
     if (!query) { host.innerHTML = '<div class="ds-home"><p class="ds-empty">Items are shown once the database session is ready.</p></div>'; return }
@@ -811,6 +870,34 @@ export class PresentationUi extends DomUi {
       console.warn('Items could not be read.', error)
       this.itemsLoaded = false
       host.innerHTML = '<div class="ds-home"><p class="ds-empty">The items could not be read from the database. Use Refresh to try again.</p></div>'
+    }
+  }
+
+  /** Users & rights page: the accounts and their groups' rights, read from the database. */
+  private async showUsers(host: HTMLElement, query: ((sql: string, params?: unknown[]) => Promise<unknown[][]>) | null): Promise<void> {
+    const command = (pattern: RegExp) => { const root = this.commandRoot(); return root ? menuCommands(root).find((item) => pattern.test(item.label.replace(/\s*\.{3,}\s*/g, ' '))) : undefined }
+    const users = command(/^Manage \/ Users$/i), groups = command(/^Manage \/ Groups$/i)
+    const draw = () => {
+      if (this.page !== 'users' || !this.homeActive) return
+      renderUsers(host, this.usersState, {
+        addUser: users ? () => void this.runCommand(users) : null,
+        editUsers: users ? () => void this.runCommand(users) : null,
+        editRights: groups ? () => void this.runCommand(groups) : null,
+        select: (code) => { this.usersState.selected = code; draw(); if (query) void loadRights(query, this.usersState).then(draw).catch(() => {}) },
+      })
+    }
+    if (host.dataset.page !== 'users') { host.dataset.page = 'users'; draw() }
+    if (!query) { host.innerHTML = '<div class="ds-home"><p class="ds-empty">Users are shown once the database session is ready.</p></div>'; return }
+    if (this.usersState.loaded) return
+    try {
+      await loadUsers(query, this.usersState, parseFrameTitle(this.mdi?.ttlEl?.textContent || '').user ?? '')
+      draw()
+      await loadRights(query, this.usersState)
+      draw()
+    } catch (error) {
+      console.warn('Users could not be read.', error)
+      this.usersState.loaded = false
+      host.innerHTML = '<div class="ds-home"><p class="ds-empty">The users could not be read from the database. Use Refresh to try again.</p></div>'
     }
   }
 
@@ -835,6 +922,15 @@ export class PresentationUi extends DomUi {
     const root = this.commandRoot()
     const command = root ? menuCommands(root).find((item) => /^Basic Data \/ Item ?\/ Item$/i.test(item.label.replace(/\s*\.{3,}\s*/g, ' '))) : undefined
     return command ? () => void this.runCommand(command) : null
+  }
+
+  /** The search palette's item result: the Items page with that item's card open. */
+  private async openItemByCode(code: number): Promise<void> {
+    const query = this.pageQuery()
+    if (!query) return
+    this.openPage('items')
+    const row = await loadItem(query, code).catch(() => null)
+    if (row) await this.openItem(row)
   }
 
   private async openItem(row: ItemsState['rows'][number]): Promise<void> {
@@ -865,7 +961,7 @@ export class PresentationUi extends DomUi {
       action('Pack purchase', 'Purchase › Purchases', 'truck', /^Purchase \/ Purchases$/i),
       { ...action('Items', 'Stock, prices, expiry', 'box', /^Basic Data \/ Item ?\/ Item$/i), run: () => this.openPage('items') },
       { ...action('Reports', 'Daily, stock, sales', 'chart', /^Reports \/ /i), run: () => this.openPage('reports') },
-      action('Users', 'Manage › Users', 'users', /^Manage \/ Users$/i),
+      { ...action('Users', 'Users & rights', 'users', /^Manage \/ (Users|Groups)$/i), run: () => this.openPage('users') },
       { label: 'Settings', hint: 'Theme, size, print', icon: 'gear', run: () => this.openSettings() },
     ]
   }
@@ -904,6 +1000,7 @@ export class PresentationUi extends DomUi {
       this.homeLoaded = Date.now()
       try {
         this.homeData = await loadHome(async (sql) => (await transaction.db!.query(sql, [])).rows)
+        void saveLoginFigures(async (sql) => (await transaction.db!.query(sql, [])).rows)
         draw(true)
         this.header?.refresh()
       } catch (error) {
@@ -942,7 +1039,7 @@ export class PresentationUi extends DomUi {
         <div class="ds-set-row" data-cmd-row="backup" hidden><div><b>Back up the database</b><p>Runs the application's own backup.</p></div><button type="button" data-run="backup">Back up now</button></div>
         <div class="ds-set-row" data-cmd-row="lasttx" hidden><div><b>Last transaction date</b><p>Changing it is in Maintenance › Modify Last Transaction Date.</p></div><button type="button" data-run="lasttx">Open</button></div>
         <p class="ds-help" data-cmd-none>Backup and the last transaction date are in the Maintenance menu.</p></section>
-      <p class="presentation-error" role="alert" hidden></p><footer><button type="button">Cancel</button><button type="submit">Save settings</button></footer></form>`
+      <p class="presentation-error" role="alert" hidden></p><footer><button type="button" class="ds-restore" data-restore>Restore defaults</button><button type="button">Cancel</button><button type="submit">Save settings</button></footer></form>`
     const form = () => dialog.querySelector('form')!
     const sync = () => {
       const value = (name: string) => form().querySelector<HTMLSelectElement>(`select[name="${name}"]`)!.value
@@ -959,11 +1056,17 @@ export class PresentationUi extends DomUi {
       if (segment) set(segment.dataset.seg!, segment.dataset.value!)
       const motion = target.closest<HTMLElement>('[data-motion]')
       if (motion) motion.setAttribute('aria-checked', String(motion.getAttribute('aria-checked') !== 'true'))
+      // Restore defaults of the approved design: theme, density and text size go back to the defaults and animations on (saved with Save)
+      if (target.closest('[data-restore]')) {
+        for (const key of ['theme', 'density', 'textSize'] as const) set(key, String(DEFAULT_UI_PREFERENCES[key]))
+        dialog.querySelector('[data-motion]')!.setAttribute('aria-checked', 'true')
+        toast('Default appearance restored · Save settings to keep it', 'undo')
+      }
       const run = target.closest<HTMLElement>('[data-run]')
       if (run) { const command = this.settingsCommand(run.dataset.run!); if (command) { dialog.close(); void this.runCommand(command) } }
     })
     dialog.addEventListener('ds-sync', sync)
-    dialog.querySelector('button[type=button]')!.addEventListener('click', () => dialog.close())
+    dialog.querySelector('footer button[type=button]:not([data-restore])')!.addEventListener('click', () => dialog.close())
     containDialogFocus(dialog)
     dialog.querySelector('form')!.addEventListener('submit', (event) => {
       event.preventDefault()
@@ -1103,7 +1206,7 @@ export class PresentationUi extends DomUi {
   /** A non-blocking notice: the command status line of the Modern workspace, or the console in the Classic interface. */
   private notify(text: string): void {
     const status = this.shell?.querySelector<HTMLElement>('.command-status')
-    if (status) status.textContent = text
+    if (status) { status.textContent = text; toast(text, 'print') }
     else console.warn(text)
   }
 
@@ -1166,4 +1269,12 @@ function moduleIcon(module: string): string {
   const m = module.toLowerCase()
   return m.startsWith('purchase') ? 'truck' : m.startsWith('sale') ? 'cart' : m.startsWith('report') ? 'chart' : m.startsWith('basic') || m.startsWith('item') ? 'box'
     : m.startsWith('manage') ? 'users' : m.startsWith('maint') ? 'gear' : 'doc'
+}
+
+type Page = 'reports' | 'items' | 'users'
+/** The approved design's pages beside Home: title, tab icon and the menu they belong to (breadcrumbs). */
+const PAGES: Record<Page, { title: string; icon: string; path: string }> = {
+  reports: { title: 'Reports', icon: 'chart', path: 'Reports' },
+  items: { title: 'Item', icon: 'box', path: 'Basic Data' },
+  users: { title: 'Users & rights', icon: 'users', path: 'Manage' },
 }

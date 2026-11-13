@@ -49,6 +49,13 @@ export const SIMPLIFIED_LAYOUTS: readonly SimplifiedLayout[] = [
     order: ['itemtotalval', 'discperc', 'flatdisc', 'misccharges', 'invgstperc1', 'advancetaxamt', 'stock', 'totalstock', 'totalexp', 'total'],
     primary: ['stock', 'discperc', 'flatdisc', 'misccharges', 'invgstperc1', 'advancetaxamt', 'totalstock', 'totalexp', 'itemtotalval', 'total'],
   },
+  {
+    // Cash Sale payment card: the sale's figures as the mockup's summary rows, the total in the dark "To pay" band; the figures of the
+    // current line's item (prices, margin, stock) stay one click away under "Item figures".
+    surface: 'd_salefooter2', kind: 'form', moreLabel: 'Item figures', emphasis: 'total', heading: 'Payment', summary: true,
+    order: ['c_big_grandtotal', 'salereturnamt', 'c_nettotal', 'invdiscperc', 'flatdisc', 'misccharges', 'total'],
+    primary: ['c_big_grandtotal', 'salereturnamt', 'c_nettotal', 'invdiscperc', 'flatdisc', 'misccharges', 'total'],
+  },
 ]
 
 /** Section headings of the approved design for transaction windows (header form, line grid, footer form). */
@@ -87,7 +94,8 @@ export function applySimplifiedLayout(layout: SimplifiedLayout, body: HTMLElemen
   const primary = new Set(layout.primary)
   const moved = 'column' in state && current !== state.column
   state.column = current
-  if (moved && current && !primary.has(current)) state.open = true
+  // (a summary panel's secondary fields are display-only figures, so a script's move there does not unfold them)
+  if (moved && current && !primary.has(current) && !layout.summary) state.open = true
   body.classList.add('simplified-surface', `simplified-${layout.kind}`)
   if (layout.summary) body.classList.add('simplified-summary')
   if (layout.heading) {
