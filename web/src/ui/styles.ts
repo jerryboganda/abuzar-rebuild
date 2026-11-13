@@ -130,7 +130,8 @@ label.ctl { display:flex; align-items:center; gap:4px; white-space:nowrap; }
 .menu-drop .it .hk { padding-left:24px; color:#000; }
 .menu-drop .it .ar { width:14px; text-align:right; }
 .menu-drop .it .ar::after { content:''; display:inline-block; width:5px; height:5px; border-top:1px solid #000; border-right:1px solid #000; transform:rotate(45deg); margin-right:3px; }
-.menu-drop .it:hover { background:#ebebeb; }
+.menu-drop .it:hover, .menu-drop .it.hl { background:#ebebeb; }
+.menu-drop .it.sub-open > .sub { display:block; }
 .menu-drop .it.dis { color:#8a8a8a; }
 .menu-drop .it.dis .hk { color:#8a8a8a; }
 .menu-drop .sep { height:1px; background:#d0d0d0; margin:3px 2px 3px 32px; }

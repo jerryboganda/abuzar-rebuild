@@ -123,9 +123,22 @@ export function fontSize(height: number): number {
   return height < 0 ? -height : Math.round((height * 72) / 96)
 }
 
+/** the underlined accelerator character of a PowerBuilder caption (`&Ok` -> `o`), or null */
+export function mnemonicKey(text: string): string | null {
+  for (let i = 0; i < text.length - 1; i++) {
+    if (text[i] !== '&') continue
+    if (text[i + 1] === '&') { i++; continue }
+    const key = text[i + 1]
+    return key === ' ' ? null : key.toLowerCase()
+  }
+  return null
+}
+
 /** text with a PowerBuilder mnemonic: `&Ok` underlines the O, `&&` is a literal ampersand (Windows shows the underline because "always underline accelerators" is on) */
 export function setMnemonic(el: HTMLElement, text: string): void {
   el.textContent = ''
+  const key = mnemonicKey(text)
+  if (key) el.dataset.mnemonic = key
   for (const part of text.split(/(&&|&[^&])/)) {
     if (part === '&&') el.append('&')
     else if (part.length === 2 && part[0] === '&') {

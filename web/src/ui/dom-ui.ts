@@ -6,13 +6,13 @@ import type { PBStruct } from '../runtime/object.ts'
 import { NControl, NWindow } from '../runtime/native/controls.ts'
 import { NDwBase } from '../runtime/native/dwctrl.ts'
 import { PBArray, toNum, toStr } from '../runtime/values.ts'
-import { cssFont, fontSize, pbColor, toPx, setMnemonic } from './pb.ts'
+import { cssFont, fontSize, mnemonicKey, pbColor, toPx, setMnemonic } from './pb.ts'
 import { DwView } from './dwview.ts'
 import { printDw, printPlainText } from './print.ts'
 import { exportDw } from '../dw/export.ts'
 import { writeFileBytes } from '../runtime/sysfiles.ts'
 import { CSS } from './styles.ts'
-import { keyEnum, keyFlags } from './keys.ts'
+import { keyEnum, keyFlags, shortcutCode } from './keys.ts'
 import { messageButtons } from './message-buttons.ts'
 import { TabSelection, tabAvailable } from './tab-selection.ts'
 import { DropdownView } from './dropdown.ts'
@@ -47,6 +47,9 @@ function caption(t: string): string {
   return t.replace(/&&/g, '\u0001').replace(/&/g, '').replace(/\u0001/g, '&')
 }
 
+/** Ctrl chords that belong to the browser, not to the PowerBuilder application. */
+const BROWSER_KEYS = new Set(['b', 'd', 'f', 'g', 'h', 'j', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'w'])
+
 /** Tauri shell: the native window owns the title bar; push the app title there. */
 function setNativeTitle(title: string): void {
   const invoke = (globalThis as { __TAURI_INTERNALS__?: { invoke?: (cmd: string, args: unknown) => Promise<unknown> } }).__TAURI_INTERNALS__?.invoke
@@ -75,14 +78,28 @@ export class DomUi implements UiHost {
     st.textContent = CSS
     document.head.appendChild(st)
     document.addEventListener('keydown', (e) => {
+      const fkey = e.keyCode >= 112 && e.keyCode <= 123
+      // The original is a desktop window: browser reload/close/new-tab/back-forward
+      // defaults must never fire while an operator is entering a transaction.
+      const ctrl = e.ctrlKey && !e.altKey && !e.metaKey
+      if (fkey || ctrl && BROWSER_KEYS.has(e.key.toLowerCase()) ||
+        e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) e.preventDefault()
       if (!this.shortcutsEnabled()) return
       const k = keyEnum(e)
       if (k) this.down.add(k)
+      // PowerBuilder access keys: Alt+letter on a dialog button, a menu caption or a menu bar caption.
+      if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && /^[a-z0-9]$/i.test(e.key) && this.activateMnemonic(e.key)) {
+        e.preventDefault()
+        return
+      }
+      // An open menu is keyboard-navigable (arrows, Home/End, Enter, Escape, letter mnemonics).
+      if (this.navigateMenu(e)) {
+        e.preventDefault()
+        return
+      }
       // accelerators of the menu of the active sheet: `shortcut` = virtual key + 256 (Ctrl) + 512 (Alt) + 1024 (Shift)
-      const fkey = e.keyCode >= 112 && e.keyCode <= 123
       if (this.menuShortcutsEnabled() && (e.ctrlKey || e.altKey || fkey || e.keyCode === 45 || e.keyCode === 46) && !(e.ctrlKey && e.altKey && e.key === 'AltGraph')) {
-        const code = e.keyCode + (e.ctrlKey ? 256 : 0) + (e.altKey ? 512 : 0) + (e.shiftKey ? 1024 : 0)
-        if (this.mdi?.fireShortcut(code)) e.preventDefault()
+        if (this.mdi?.fireShortcut(shortcutCode(e))) e.preventDefault()
       }
     }, { signal: this.lifetime.signal })
     document.addEventListener('keyup', (e) => {
@@ -124,6 +141,136 @@ export class DomUi implements UiHost {
   protected menuShortcutsEnabled(): boolean {
     return ![...this.views.values()].some((view) => view.modal && !view.sheet && view.w.isOpen) && !this.desktop.querySelector('.msgbox')
   }
+  /** Alt+letter: dialog buttons first, then the open menu, the active window, and finally the menu bar. */
+  private activateMnemonic(raw: string): boolean {
+    const letter = raw.toLowerCase()
+    const visible = (el: HTMLElement): boolean => el.getClientRects().length > 0 && !el.classList.contains('hidden')
+    for (const box of document.querySelectorAll<HTMLElement>('.msgbox')) {
+      const button = [...box.querySelectorAll<HTMLButtonElement>('button')].find((b) => visible(b) && !b.disabled && b.dataset.mnemonic === letter)
+      if (button) { button.click(); return true }
+    }
+    const open = document.querySelector<HTMLElement>('.menubar .mi.open')
+    if (open) {
+      const item = this.menuItems(open).find((it) => it.dataset.mnemonic === letter)
+      if (item) { this.invokeMenuItem(item); return true }
+    }
+    const control = (win: HTMLElement): HTMLElement | null => {
+      const button = [...win.querySelectorAll<HTMLButtonElement>('button')].find((b) => visible(b) && !b.disabled && b.dataset.mnemonic === letter)
+      if (button) return button
+      const label = [...win.querySelectorAll<HTMLElement>('label[data-mnemonic]')].find((l) => visible(l) && l.dataset.mnemonic === letter)
+      const input = label?.querySelector<HTMLInputElement>('input')
+      if (input && visible(input) && !input.disabled) return input
+      const tab = [...win.querySelectorAll<HTMLElement>('.tabctl .t[data-mnemonic]')].find((t) => visible(t) && t.dataset.mnemonic === letter)
+      return tab ?? null
+    }
+    const windows = [...document.querySelectorAll<HTMLElement>('.pbwin')].filter((w) => w.classList.contains('active') && visible(w))
+    for (const win of windows.reverse()) {
+      const target = control(win)
+      if (target) { target.click(); return true }
+    }
+    const bar = document.querySelector<HTMLElement>('.menubar .mi[data-mnemonic="' + letter + '"]')
+    if (bar && visible(bar)) { bar.click(); return true }
+    for (const win of [...document.querySelectorAll<HTMLElement>('.pbwin')].reverse()) {
+      if (!visible(win)) continue
+      const target = control(win)
+      if (target) { target.click(); return true }
+    }
+    return false
+  }
+
+  menuItems(top: HTMLElement): HTMLElement[] {
+    const drops = [...top.querySelectorAll<HTMLElement>('.menu-drop')].filter((drop) => drop.getClientRects().length > 0)
+    const drop = drops.at(-1) ?? top.querySelector<HTMLElement>(':scope > .menu-drop')
+    if (!drop) return []
+    return [...drop.children].filter((child): child is HTMLElement =>
+      child instanceof HTMLElement && child.classList.contains('it') && !child.classList.contains('dis') && child.getClientRects().length > 0)
+  }
+
+  highlightMenuItem(item: HTMLElement): void {
+    document.querySelectorAll('.menu-drop .it.hl').forEach((el) => el.classList.remove('hl'))
+    item.classList.add('hl')
+  }
+
+  private invokeMenuItem(item: HTMLElement): void {
+    const sub = item.querySelector<HTMLElement>(':scope > .menu-drop.sub')
+    if (sub) {
+      item.classList.add('sub-open')
+      const first = [...sub.children].find((child): child is HTMLElement =>
+        child instanceof HTMLElement && child.classList.contains('it') && !child.classList.contains('dis') && child.getClientRects().length > 0)
+      if (first) this.highlightMenuItem(first)
+      return
+    }
+    item.click()
+  }
+
+  private closeMenus(): void {
+    document.querySelectorAll('.menubar .mi.open').forEach((el) => el.classList.remove('open'))
+    document.querySelectorAll('.menubar .menu-drop').forEach((el) => el.remove())
+  }
+
+  /** Keyboard navigation of an open menu: the original PowerBuilder menu bar/drop-downs are fully keyboard driven. */
+  private navigateMenu(e: KeyboardEvent): boolean {
+    const top = document.querySelector<HTMLElement>('.menubar .mi.open')
+    if (!top) return false
+    if (e.ctrlKey || e.altKey || e.metaKey) return false
+    const drops = [...document.querySelectorAll<HTMLElement>('.menubar .menu-drop')].filter((drop) => drop.getClientRects().length > 0)
+    const drop = drops.at(-1)
+    if (!drop) return false
+    const items = this.menuItems(top)
+    if (!items.length) return false
+    const current = drop.querySelector<HTMLElement>(':scope > .it.hl') ?? items[0]
+    if (!current.classList.contains('hl')) this.highlightMenuItem(current)
+    const index = Math.max(0, items.indexOf(current))
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      const next = e.key === 'ArrowDown' ? Math.min(items.length - 1, index + 1) : Math.max(0, index - 1)
+      this.highlightMenuItem(items[next])
+      return true
+    }
+    if (e.key === 'Home' || e.key === 'End') {
+      this.highlightMenuItem(e.key === 'Home' ? items[0] : items[items.length - 1])
+      return true
+    }
+    if (e.key === 'ArrowRight') {
+      const sub = current.querySelector<HTMLElement>(':scope > .menu-drop.sub')
+      if (sub) {
+        this.invokeMenuItem(current)
+        return true
+      }
+      const bars = [...document.querySelectorAll<HTMLElement>('.menubar .mi')]
+      const at = bars.findIndex((bar) => bar.classList.contains('open'))
+      if (at >= 0) { this.closeMenus(); bars[(at + 1) % bars.length].click() }
+      return true
+    }
+    if (e.key === 'ArrowLeft') {
+      if (drop.classList.contains('sub')) {
+        const parent = drop.parentElement
+        drop.parentElement?.classList.remove('sub-open')
+        if (parent instanceof HTMLElement) this.highlightMenuItem(parent)
+      } else {
+        this.closeMenus()
+      }
+      return true
+    }
+    if (e.key === 'Escape') {
+      this.closeMenus()
+      return true
+    }
+    if (e.key === 'Enter' || e.key === ' ') {
+      this.invokeMenuItem(current)
+      return true
+    }
+    if (e.key.length === 1) {
+      const letter = e.key.toLowerCase()
+      const item = items.find((it) => it.dataset.mnemonic === letter)
+      if (item) {
+        this.highlightMenuItem(item)
+        this.invokeMenuItem(item)
+        return true
+      }
+    }
+    return false
+  }
+
   windowActivated(_window: NWindow): void {}
   menuRendered(_bar: HTMLElement): void {}
   /** A menu item was chosen in the menu bar (the Modern workspace remembers which menu opened a window). */
@@ -398,6 +545,8 @@ export class DomUi implements UiHost {
       list.forEach(([label, code], i) => {
         const b = document.createElement('button')
         b.textContent = label
+        const key = label.charAt(0).toLowerCase()
+        if (/^[a-z0-9]$/.test(key)) b.dataset.mnemonic = key
         b.onclick = () => done(code)
         btns.appendChild(b)
         // the Windows message box focuses the first button when the default is out of range
@@ -863,6 +1012,8 @@ export class WinView {
         mi.classList.toggle('open')
         if (mi.classList.contains('open')) {
           mi.appendChild(this.dropdown(item))
+          const first = this.ui.menuItems(mi)[0]
+          if (first) this.ui.highlightMenuItem(first)
         }
       }
       bar.appendChild(mi)
@@ -901,6 +1052,7 @@ export class WinView {
       const l = document.createElement('span')
       l.className = 'lb'
       setMnemonic(l, rawLabel.trim())
+      if (l.dataset.mnemonic) it.dataset.mnemonic = l.dataset.mnemonic
       const r = document.createElement('span')
       r.className = sub.children.size ? 'ar' : 'hk'
       r.textContent = sub.children.size ? '' : (hot ?? '').trim()
@@ -1392,7 +1544,8 @@ export class WinView {
           }
           const label = document.createElement('span')
           label.className = 'lb'
-          label.textContent = caption(str(po, 'text'))
+          setMnemonic(label, str(po, 'text'))
+          if (label.dataset.mnemonic) tabEl.dataset.mnemonic = label.dataset.mnemonic
           tabEl.appendChild(label)
           const page = document.createElement('div')
           page.className = 'page'

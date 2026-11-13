@@ -33,3 +33,8 @@ export function keyEnum(ev: KeyboardEvent): string | null {
 export function keyFlags(ev: KeyboardEvent): number {
   return (ev.shiftKey ? 1 : 0) | (ev.ctrlKey ? 2 : 0)
 }
+
+/** The numeric `shortcut` PowerBuilder stores on a menu item for this key chord. */
+export function shortcutCode(ev: KeyboardEvent): number {
+  return ev.keyCode + (ev.ctrlKey ? 256 : 0) + (ev.altKey ? 512 : 0) + (ev.shiftKey ? 1024 : 0)
+}

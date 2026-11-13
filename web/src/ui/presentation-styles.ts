@@ -549,7 +549,8 @@ export const PRESENTATION_CSS = `
 .presentation-ui .menu-drop {top:calc(100% + 4px);min-width:240px;padding:6px;border:1px solid var(--p-hair);border-radius:10px;background:var(--p-surface);color:var(--p-text);box-shadow:0 12px 32px #0000002e;font:400 calc(14px * var(--p-scale))/1.45 "IBM Plex Sans","Segoe UI",Tahoma,Arial,sans-serif;}
 .presentation-ui .menubar .mi .menu-drop {color:var(--p-text);}
 .presentation-ui .menu-drop .it {height:auto;min-height:34px;line-height:1.45;margin:0;padding:7px 10px;gap:10px;border-radius:6px;color:var(--p-text);font-weight:400;cursor:pointer;}
-.presentation-ui .menu-drop .it:hover,.presentation-ui .menu-drop .it:focus-visible {background:var(--p-selected);color:var(--p-text);outline:none;}
+.presentation-ui .menu-drop .it:hover,.presentation-ui .menu-drop .it.hl,.presentation-ui .menu-drop .it:focus-visible {background:var(--p-selected);color:var(--p-text);outline:none;}
+.presentation-ui .menu-drop .it.sub-open > .sub {display:block;}
 .presentation-ui .menu-drop .it .ck {flex:0 0 14px;font-size:.8em;color:var(--p-accent);}
 .presentation-ui .menu-drop .it .ck:empty {flex-basis:0;margin-right:-10px;}
 .presentation-ui .menu-drop .it .lb {flex:1;padding-right:12px;}
