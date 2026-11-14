@@ -2,30 +2,15 @@
 import type { Db, QueryResult, CallResult, QueryOptions } from '../runtime/wire.ts'
 import { askForToken, authHeaders } from '../runtime/apiauth.ts'
 import { Dec } from '../runtime/values.ts'
+import { RECENT_MS, forget, procedureWrites, recall, remember, rememberable, tableWritten, withTriggers } from './query-memory.ts'
+
+export { rememberable }
 
 /** application user of the audit trail: every open session (and every later one) carries it as the setting `app.user` */
 let appUser = ''
 const open = new Set<HttpDb>()
 const SESSION_TZ_NAME = 'Asia/Karachi'
 const SESSION_TZ = `SET TIME ZONE '${SESSION_TZ_NAME}'`
-
-/**
- * Identical read-only SELECTs of one session within a few seconds are answered from memory.  Over the internet every query is a
- * round trip (~150 ms from the shop to the server); the login alone retrieves the same 27,818-row item list twice in a row.
- * Any write, procedure call, commit or rollback in this client forgets every remembered result, so a session never sees
- * its own data older than its last change; another user's change can show up to RECENT_MS late, as if the query had run
- * that much earlier.  Statements whose result depends on the moment or that change state are never remembered.
- */
-const RECENT_MS = 5000
-const RECENT_MAX = 64
-const recent = new Map<string, { until: number; result: QueryResult }>()
-const VOLATILE = /\b(set_config|nextval|setval|currval|lastval|now|getdate|sysdatetime|current_timestamp|current_date|current_time|localtimestamp|clock_timestamp|statement_timestamp|timeofday|random|newid|uuid_generate_v4|gen_random_uuid|serverdate|txid_current|pg_sleep|pg_advisory_\w*)\b|\bfor\s+(update|share)\b|\binto\b|\bsp_\w+/i
-export function rememberable(sql: string): boolean {
-  return /^\s*select\b/i.test(sql) && !VOLATILE.test(sql)
-}
-export function forgetRecentQueries(): void {
-  recent.clear()
-}
 
 export async function setAppUser(user: string): Promise<void> {
   appUser = user
@@ -139,14 +124,43 @@ export class HttpDb implements Db {
     const text = await this.jobs(sql, params)
     const wire = wireParams(params)
     if (!rememberable(text)) return this.post('/api/query', { sid: this.sid, sql: text, params: wire })
-    const key = this.sid + '\u0000' + text + '\u0000' + JSON.stringify(wire)
-    const hit = recent.get(key)
-    if (hit && Date.now() <= hit.until) return structuredClone(hit.result)
+    const args = '\u0000' + text + '\u0000' + JSON.stringify(wire)
+    // drop-down lists are shared by the windows (sessions) of this browser; anything else only by the same session
+    const listKey = options?.rememberMs ? 'list' + args : ''
+    const ownKey = this.sid + args
+    const hit = (listKey && recall(listKey)) || recall(ownKey)
+    if (hit) return hit
     const result = await this.post<QueryResult>('/api/query', { sid: this.sid, sql: text, params: wire })
-    recent.delete(key)
-    if (recent.size >= RECENT_MAX) recent.delete(recent.keys().next().value!)
-    recent.set(key, { until: Date.now() + Math.max(RECENT_MS, options?.rememberMs ?? 0), result: structuredClone(result) })
+    // a list read inside an unfinished change of this session could show that change to other windows: kept by this session only
+    if (listKey && !this.written.size) remember(listKey, text, result, Math.max(RECENT_MS, options?.rememberMs ?? 0))
+    else remember(ownKey, text, result, RECENT_MS)
     return result
+  }
+
+  /** tables this session changed since its last COMMIT / ROLLBACK ('*': cannot be told); see app/query-memory.ts */
+  private written = new Set<string>()
+  /** a read-only catalogue query for query-memory.ts, through this session */
+  private readonly run = (sql: string, params: unknown[]): Promise<QueryResult> => this.post<QueryResult>('/api/query', { sid: this.sid, sql, params })
+
+  /** what a write changes, worked out before it is sent (the first write of a page reads the catalogue: one more round trip, once) */
+  private async changes(kind: 'exec' | 'call', sql: string): Promise<Set<string> | '*'> {
+    try {
+      if (kind === 'call') return await procedureWrites(this.run, sql)
+      const target = tableWritten(sql)
+      return target === null ? new Set() : target === '*' ? '*' : await withTriggers(this.run, [target])
+    } catch {
+      return '*'
+    }
+  }
+  private wrote(tables: Set<string> | '*'): void {
+    forget(tables)
+    if (tables === '*') this.written.add('*')
+    else for (const t of tables) this.written.add(t)
+  }
+  /** at COMMIT / ROLLBACK: what was remembered while this session's change was open is forgotten too */
+  private ended(): void {
+    forget(this.written.has('*') ? '*' : this.written)
+    this.written.clear()
   }
   /** `Backup Database <db> To <device> With INIT ...` (SQL Server): a pg_dump of the database into that file; the system databases have nothing to dump */
   private async backup(sql: string): Promise<boolean> {
@@ -170,22 +184,30 @@ export class HttpDb implements Db {
     return true
   }
   async exec(sql: string, params: unknown[]): Promise<{ rowcount: number }> {
-    forgetRecentQueries()
     if (await this.backup(sql)) return { rowcount: 0 }
-    return this.post('/api/exec', { sid: this.sid, sql, params: wireParams(params) })
+    const changes = await this.changes('exec', sql)
+    try {
+      return await this.post('/api/exec', { sid: this.sid, sql, params: wireParams(params) })
+    } finally {
+      this.wrote(changes)
+    }
   }
-  call(sql: string, params: unknown[]): Promise<CallResult> {
-    forgetRecentQueries()
-    return this.post('/api/call', { sid: this.sid, sql, params: wireParams(params) })
+  async call(sql: string, params: unknown[]): Promise<CallResult> {
+    const changes = await this.changes('call', sql)
+    try {
+      return await this.post('/api/call', { sid: this.sid, sql, params: wireParams(params) })
+    } finally {
+      this.wrote(changes)
+    }
   }
   async commit(): Promise<void> {
-    forgetRecentQueries()
+    this.ended()
     if (!this.touched) return
     await this.post('/api/commit', { sid: this.sid })
     this.touched = false
   }
   async rollback(): Promise<void> {
-    forgetRecentQueries()
+    this.ended()
     if (!this.touched) return
     await this.post('/api/rollback', { sid: this.sid })
     this.touched = false
