@@ -136,11 +136,20 @@ export class DwCatalog {
     if (!lib) return undefined
     let b = this.bundles.get(lib)
     if (!b) {
-      const t = await this.read(`dw/${lib}.json`)
-      b = t ? (JSON.parse(t) as Record<string, DwDef>) : {}
-      for (const definition of Object.values(b)) recoverObjectNames(definition)
-      this.bundles.set(lib, b)
+      // the DataWindows of a window ask for their bundle at the same moment: read and parse it once
+      let loading = this.loading.get(lib)
+      if (!loading) {
+        loading = this.read(`dw/${lib}.json`).then((t) => {
+          const parsed = t ? (JSON.parse(t) as Record<string, DwDef>) : {}
+          for (const definition of Object.values(parsed)) recoverObjectNames(definition)
+          this.bundles.set(lib, parsed)
+          return parsed
+        }).finally(() => this.loading.delete(lib))
+        this.loading.set(lib, loading)
+      }
+      b = await loading
     }
     return b[key]
   }
+  private loading = new Map<string, Promise<Record<string, DwDef>>>()
 }

@@ -62,7 +62,14 @@ export class HttpDb implements Db {
     this.autocommit = autocommit
   }
 
+  /**
+   * Whether a statement ran since the session opened or last committed / rolled back.  Without one, COMMIT and ROLLBACK change
+   * nothing on the server, so they are not sent (PowerScript issues them freely; each was a round trip over the internet).
+   */
+  private touched = false
+
   private async send(path: string, body: unknown): Promise<{ status: number; ok: boolean; json: ApiBody & Record<string, unknown> }> {
+    if (path === '/api/query' || path === '/api/exec' || path === '/api/call') this.touched = true
     const go = () => fetch(this.base + path, { method: 'POST', headers: { 'content-type': 'application/json', ...authHeaders() }, body: JSON.stringify(body) })
     let r = await go()
     let json = (await r.json().catch(() => ({}))) as ApiBody & Record<string, unknown>
@@ -111,6 +118,7 @@ export class HttpDb implements Db {
     const j = await this.post<{ sid: string; init?: { timezone?: string; user?: string } }>('/api/session', { autocommit: this.autocommit, timezone: SESSION_TZ_NAME, ...(appUser ? { user: appUser } : {}) })
     this.sid = j.sid
     this.zoneAtOpen = !!j.init?.timezone
+    this.touched = false
     return j
   }
 
@@ -171,11 +179,15 @@ export class HttpDb implements Db {
   }
   async commit(): Promise<void> {
     forgetRecentQueries()
+    if (!this.touched) return
     await this.post('/api/commit', { sid: this.sid })
+    this.touched = false
   }
   async rollback(): Promise<void> {
     forgetRecentQueries()
+    if (!this.touched) return
     await this.post('/api/rollback', { sid: this.sid })
+    this.touched = false
     // SET TIME ZONE is transactional: a rollback restores the server's UTC default (unless the server set it when the session opened).
     if (!this.zoneAtOpen) await this.setSessionTimeZone()
   }

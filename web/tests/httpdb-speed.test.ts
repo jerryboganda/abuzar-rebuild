@@ -27,7 +27,12 @@ test('a session opens in one round trip when the server applies the time zone', 
   assert.deepEqual(calls.map((c) => c.path), ['/api/session'])
   assert.equal(calls[0].body.timezone, 'Asia/Karachi')
   await db.rollback()
-  assert.deepEqual(calls.map((c) => c.path), ['/api/session', '/api/rollback'], 'no SET TIME ZONE after a rollback')
+  assert.deepEqual(calls.map((c) => c.path), ['/api/session'], 'nothing ran: the rollback is not sent')
+  await db.exec('UPDATE dbo.item SET active = 1 WHERE icode = $1', [5])
+  await db.rollback()
+  assert.deepEqual(calls.map((c) => c.path), ['/api/session', '/api/exec', '/api/rollback'], 'no SET TIME ZONE after a rollback')
+  await db.commit()
+  assert.equal(calls.length, 3, 'nothing ran since the rollback: the commit is not sent')
 })
 
 test('an older server still gets the time zone as a query', async () => {
