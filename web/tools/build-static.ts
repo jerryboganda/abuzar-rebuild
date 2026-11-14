@@ -44,6 +44,12 @@ while (todo.length) {
   const code = readFileSync(join(out, m), 'utf8')
   for (const [, spec] of code.matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)['"](\.{1,2}\/[^'"]+)['"]/g)) todo.push(new URL(spec, 'http://x' + m).pathname)
 }
-const preload = [...reached].sort().map((m) => `<link rel="modulepreload" href="${m}">`).join('\n')
+// The data every start reads (main.ts PRELOAD_ALWAYS; the 19 MB SQL catalogue among them) is requested by the page itself,
+// alongside the code, instead of after main.js has run; main.ts's fetch of the same address takes over the response.
+const startData = ['names.json', 'classes/_index.json', 'sql.json', 'dw/_index.json']
+const preload = [
+  ...[...reached].sort().map((m) => `<link rel="modulepreload" href="${m}">`),
+  ...startData.map((d) => `<link rel="preload" as="fetch" crossorigin="anonymous" href="/data/${d}">`),
+].join('\n')
 writeFileSync(join(out, 'index.html'), readFileSync(join(root, 'public', 'index.html'), 'utf8').replace('/src/main.ts', '/src/main.js').replace('</head>', preload + '\n</head>'))
 console.log(`built ${n} modules into ${out} (${reached.size} preloaded)`)
