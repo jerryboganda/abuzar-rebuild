@@ -173,3 +173,19 @@ gzips responses and sets browser caching: the page loads its code from `/v/<vers
 the version in the `sub_filter` line to the new APP_TAG**), `data/`, fonts and images are kept a day, everything is `private` so
 Cloudflare never stores content from behind the login. All 92 modules load from the versioned path. What stays: the ~25 queries of
 a login still cost one round trip each (~4-5 s); only a server closer to Pakistan or fewer round trips in the client remove that.
+
+**Speed work 2026-11-15 (owner: "lightning fast"; architecture choices asked: keep France and Cloudflare, bundle/lazy-load yes,
+lookup cache 2 minutes).** Measured on production through an SSH tunnel and through Cloudflare (HTTP/2) with the test user
+`CLAUDE TEST` (usercode 99, admin group; created for the tests, to be removed). Changes (commits `231a84ff` .. `f1195064`):
+server sessions open with time zone and audit user in one round trip and keep them through rollbacks; no-op COMMIT/ROLLBACK
+are not sent; the page announces all 92 modules (`modulepreload`) and the start data (`preload`), data files live under the
+versioned path `/v/<commit>-<data hash>/` and are kept by the browser until the next deploy, the files a browser used are
+requested in parallel at the next start, concurrent reads of one file share a request and each DataWindow bundle is parsed once;
+identical SELECTs of a session are reused for 5 s and drop-down lists for 2 minutes by every window of the browser, forgotten per
+table on any write (targets, called procedures and triggers from pg_proc/pg_trigger; dynamic SQL forgets all); database
+`jit = off`, `parallel_tuple_cost = 0.5`, `shared_buffers` 1GB, `work_mem` 16MB.
+Results: first visit / after an update, code and start data 2.7 MB in 2.0-2.8 s over HTTP/2 (was ~45 MB, ~12 s); repeat visits
+from the browser cache; login 5.9-6.2 s with no file requests (was 11.8 s; floor: 23 sequential queries x ~145 ms to France);
+item list 0.83 s end to end (was 2.5-3 s). Deploy now with `/opt/pharmacy/deploy.sh <commit>` (builds, switches, sets the
+version in the proxy). Temporary for testing: proxy listener `zz-pharmacy-test.conf` (internal port 8099, no login, reachable
+only by SSH tunnel) and the test user; both to be removed when testing ends.
