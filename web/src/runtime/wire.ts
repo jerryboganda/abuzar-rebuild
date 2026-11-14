@@ -25,9 +25,14 @@ export interface CallResult {
   resultsets: { column: string; columns: ColumnInfo[]; rows: unknown[][] }[]
 }
 
+export interface QueryOptions {
+  /** the result may be reused for this long (milliseconds) by the same session, until this client writes anything */
+  rememberMs?: number
+}
+
 /** one database session (the server keeps a dedicated connection and transaction state per session) */
 export interface Db {
-  query(sql: string, params: unknown[]): Promise<QueryResult>
+  query(sql: string, params: unknown[], options?: QueryOptions): Promise<QueryResult>
   exec(sql: string, params: unknown[]): Promise<{ rowcount: number }>
   /** stored procedure call (`SELECT * FROM dbo.sp(...)`) including its result sets */
   call(sql: string, params: unknown[]): Promise<CallResult>

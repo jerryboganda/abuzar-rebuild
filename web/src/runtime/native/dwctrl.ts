@@ -4,7 +4,7 @@ import type { Member } from '../object.ts'
 import type { Runtime } from '../interp.ts'
 import { Dec, PBDate, PBDateTime, PBTime, PBArray, PBRuntimeError, toNum, toStr, coerce } from '../values.ts'
 import { compileDw } from '../../dw/expr.ts'
-import { DwModel, DATA_MODIFIED, NEW, NEW_MODIFIED, NOT_MODIFIED } from '../../dw/model.ts'
+import { DwModel, DATA_MODIFIED, NEW, NEW_MODIFIED, NOT_MODIFIED, lookupDataWindows } from '../../dw/model.ts'
 import type { DwRow } from '../../dw/model.ts'
 import { splitExpr } from '../../dw/def.ts'
 import type { DwDef } from '../../dw/def.ts'
@@ -818,6 +818,7 @@ export class NDwBase extends PBObject {
       }
       ch = new NDwBase(this.rt, 'datawindowchild', 'datawindowchild')
       ch.dwName = dddw.toLowerCase()
+      lookupDataWindows.add(ch.dwName)
       ch.ready = ch.loadDef(ch.dwName)
       if (this.trans) ch.trans = this.trans
       // a script that retrieves the child (`idc_category.retrieve()`) changes what the column shows: the parent repaints

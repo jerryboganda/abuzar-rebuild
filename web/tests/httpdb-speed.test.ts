@@ -75,3 +75,22 @@ test('statements that depend on the moment or change state are never remembered'
     "SET TIME ZONE 'Asia/Karachi'",
   ]) assert.equal(rememberable(sql), false, sql)
 })
+
+test('a drop-down list is remembered for its longer time, until this client writes', async (t) => {
+  const { calls } = fakeServer(true)
+  const db = await new HttpDb('', false).open()
+  const now = Date.now()
+  t.mock.method(Date, 'now', () => now)
+  await db.query('SELECT accode, name FROM dbo.accounts', [], { rememberMs: 120_000 })
+  await db.query('SELECT gcode FROM dbo.godown', [])
+  t.mock.method(Date, 'now', () => now + 60_000)
+  await db.query('SELECT accode, name FROM dbo.accounts', [], { rememberMs: 120_000 })
+  await db.query('SELECT gcode FROM dbo.godown', [])
+  assert.equal(calls.filter((c) => c.path === '/api/query').length, 3, 'the list after a minute comes from memory, the plain query does not')
+  t.mock.method(Date, 'now', () => now + 121_000)
+  await db.query('SELECT accode, name FROM dbo.accounts', [], { rememberMs: 120_000 })
+  assert.equal(calls.filter((c) => c.path === '/api/query').length, 4, 'after its time the list is asked again')
+  await db.exec('INSERT INTO dbo.accounts (accode) VALUES ($1)', [9])
+  await db.query('SELECT accode, name FROM dbo.accounts', [], { rememberMs: 120_000 })
+  assert.equal(calls.filter((c) => c.path === '/api/query').length, 5, 'a write of this client shows at once')
+})

@@ -10,6 +10,15 @@ import { compileDw, evalDw, newCtx, reduceAgg } from './expr.ts'
 import { crosstabSpec, pivot } from './crosstab.ts'
 import type { EvalCtx, EvalHost } from './expr.ts'
 
+/**
+ * DataWindows used as drop-down lists (customers, accounts, godowns ...): their retrieves may be reused for two minutes by the same
+ * session, so reopening a screen does not ask the server for every list again (owner decision 2026-11-15; each request is a round
+ * trip over the internet).  Any write from this browser forgets them at once (see app/httpdb.ts); another PC's new record shows up
+ * here within LOOKUP_MEMORY_MS.  Filled by GetChild (runtime/native/dwctrl.ts).
+ */
+export const lookupDataWindows = new Set<string>()
+export const LOOKUP_MEMORY_MS = 120_000
+
 export const NOT_MODIFIED = 0
 export const DATA_MODIFIED = 1
 export const NEW = 2
@@ -387,7 +396,7 @@ export class DwModel implements EvalHost {
         if (proc) {
           const c = await this.trans.db.call(sql, wireParams)
           res = c.resultsets[0] ? { columns: c.resultsets[0].columns, rows: c.resultsets[0].rows } : { columns: [], rows: [] }
-        } else res = await this.trans.db.query(sql, wireParams)
+        } else res = await this.trans.db.query(sql, wireParams, lookupDataWindows.has(this.name.toLowerCase()) ? { rememberMs: LOOKUP_MEMORY_MS } : undefined)
         if (cacheKey) this.rt.retrieveCache.set(cacheKey, res)
       }
       this.clearBuffers()

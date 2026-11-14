@@ -1,5 +1,5 @@
 // Database session over the Rust server's HTTP API (see server/src/lib.rs).
-import type { Db, QueryResult, CallResult } from '../runtime/wire.ts'
+import type { Db, QueryResult, CallResult, QueryOptions } from '../runtime/wire.ts'
 import { askForToken, authHeaders } from '../runtime/apiauth.ts'
 import { Dec } from '../runtime/values.ts'
 
@@ -17,8 +17,8 @@ const SESSION_TZ = `SET TIME ZONE '${SESSION_TZ_NAME}'`
  * that much earlier.  Statements whose result depends on the moment or that change state are never remembered.
  */
 const RECENT_MS = 5000
-const RECENT_MAX = 16
-const recent = new Map<string, { at: number; result: QueryResult }>()
+const RECENT_MAX = 64
+const recent = new Map<string, { until: number; result: QueryResult }>()
 const VOLATILE = /\b(set_config|nextval|setval|currval|lastval|now|getdate|sysdatetime|current_timestamp|current_date|current_time|localtimestamp|clock_timestamp|statement_timestamp|timeofday|random|newid|uuid_generate_v4|gen_random_uuid|serverdate|txid_current|pg_sleep|pg_advisory_\w*)\b|\bfor\s+(update|share)\b|\binto\b|\bsp_\w+/i
 export function rememberable(sql: string): boolean {
   return /^\s*select\b/i.test(sql) && !VOLATILE.test(sql)
@@ -135,16 +135,17 @@ export class HttpDb implements Db {
     if (typeof params[0] === 'string') await this.post('/api/exec', { sid: this.sid, sql: 'INSERT INTO dbo.sysjobs (name) VALUES ($1) ON CONFLICT DO NOTHING', params: [params[0]] })
     return sql.replace(/\bsysjobs\b/i, 'dbo.sysjobs')
   }
-  async query(sql: string, params: unknown[]): Promise<QueryResult> {
+  async query(sql: string, params: unknown[], options?: QueryOptions): Promise<QueryResult> {
     const text = await this.jobs(sql, params)
     const wire = wireParams(params)
     if (!rememberable(text)) return this.post('/api/query', { sid: this.sid, sql: text, params: wire })
     const key = this.sid + '\u0000' + text + '\u0000' + JSON.stringify(wire)
     const hit = recent.get(key)
-    if (hit && Date.now() - hit.at <= RECENT_MS) return structuredClone(hit.result)
+    if (hit && Date.now() <= hit.until) return structuredClone(hit.result)
     const result = await this.post<QueryResult>('/api/query', { sid: this.sid, sql: text, params: wire })
+    recent.delete(key)
     if (recent.size >= RECENT_MAX) recent.delete(recent.keys().next().value!)
-    recent.set(key, { at: Date.now(), result: structuredClone(result) })
+    recent.set(key, { until: Date.now() + Math.max(RECENT_MS, options?.rememberMs ?? 0), result: structuredClone(result) })
     return result
   }
   /** `Backup Database <db> To <device> With INIT ...` (SQL Server): a pg_dump of the database into that file; the system databases have nothing to dump */
