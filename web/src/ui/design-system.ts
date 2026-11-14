@@ -123,6 +123,9 @@ export const DESIGN_CSS = `
 .presentation-ui .ds-home-bar .tb.mh-primary {background:linear-gradient(180deg,var(--p-accent-2),var(--p-accent));color:var(--p-on-accent);box-shadow:0 4px 14px var(--p-glow);}
 .presentation-ui.ds-home-on .toolbar.mh-toolbar {display:none!important;}
 .presentation-ui .mdi-client > .ds-home-host {z-index:100000;}
+/* the frame's menus open over the Home page and over every sheet (sheets climb in z-index each time one is activated) */
+.presentation-ui .menubar .mi.open {z-index:1000000;}
+.presentation-ui .menu-drop {z-index:1000000;}
 /* ---------- notifications and shortcuts ---------- */
 .mh-popover .mh-pop-title {margin:4px 8px 8px;font-weight:600;font-size:13px;}
 .mh-popover .mh-note {display:flex!important;gap:10px;align-items:flex-start;padding:10px 8px!important;border-radius:8px;}
@@ -263,6 +266,18 @@ export const DESIGN_CSS = `
   min-height:40px;border:1px solid var(--p-line)!important;border-radius:8px!important;background:var(--p-surface)!important;padding:0 12px;transition:border-color .15s,box-shadow .2s;
 }
 .modern-window :is(input,select,textarea).ctl:focus:not(.window-embedded *) {outline:none;border-color:var(--p-accent)!important;box-shadow:0 0 0 4px var(--p-glow);}
+/* a dialog taller than the screen scrolls its content; its Ok / Cancel row stays in view at the bottom */
+dialog .modern-window.pbwin > .client {flex:1 1 auto;min-height:0;overflow:auto!important;padding-bottom:0!important;}
+dialog .modern-window.pbwin > .client > .window-actions {position:sticky;bottom:0;z-index:2;margin-inline:-20px;padding-inline:20px;background:var(--p-surface);border-top:1px solid var(--p-hair);}
+/* a field labelled by a caption outside its DataWindow ("Format:" beside the format list) has no label of its own: its required
+   mark is not drawn alone above it (it stays for assistive technology, the field keeps aria-required) */
+.modern-window .surface-field:not(:has(> .surface-label)) > .surface-required {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+/* a DataWindow inside a groupbox: the groupbox is its frame, the panel draws no second border inside it */
+.modern-window .window-fields.has-grid > .window-data[data-window-frame-member]:has(> .modern-surface) {border-color:transparent;}
+/* a list box (ListBox / multi-select) shows its rows: it keeps a list's height, not a one-line field's */
+.modern-window select.ctl:is([size]:not([size="0"]):not([size="1"]),[multiple]):not(.window-embedded *) {min-height:10em;padding:6px;}
+.modern-window .window-list:has(> select.ctl) {display:flex;flex-direction:column;}
+.modern-window .window-list > select.ctl:not(.window-embedded *) {flex:1 1 auto;}
 .modern-window .window-field label,.modern-window .window-caption {font-size:12.5px;font-weight:500;color:var(--p-muted);}
 
 /* ---------- dialogs and response windows (mockup .modal) ---------- */

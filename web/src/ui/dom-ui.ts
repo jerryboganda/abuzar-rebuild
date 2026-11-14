@@ -1059,12 +1059,25 @@ export class WinView {
       r.className = sub.children.size ? 'ar' : 'hk'
       r.textContent = sub.children.size ? '' : (hot ?? '').trim()
       it.append(ck, l, r)
-      it.onmouseenter = () => this.statusText(str(sub, 'microhelp') || label.trim())
+      it.onmouseenter = () => {
+        this.statusText(str(sub, 'microhelp') || label.trim())
+        // the pointer and the keyboard share one highlight (the first item no longer stays lit while another is under the pointer)
+        if (!it.classList.contains('dis')) this.ui.highlightMenuItem(it)
+      }
       it.onmouseleave = () => this.statusText('Ready')
       if (sub.children.size) {
         const subDrop = this.dropdown(sub)
         subDrop.classList.add('sub')
         it.appendChild(subDrop)
+        // a click on an item with a submenu opens that submenu (Windows menus); it must not reach the menu title, which would close the menu
+        it.onclick = (e) => {
+          e.stopPropagation()
+          if (e.target instanceof Element && e.target.closest('.menu-drop.sub') && e.target.closest('.it') !== it) return
+          if (sub.props.get('enabled') === false) return
+          for (const sibling of d.querySelectorAll<HTMLElement>(':scope > .it.sub-open')) if (sibling !== it) sibling.classList.remove('sub-open')
+          it.classList.add('sub-open')
+          this.ui.highlightMenuItem(it)
+        }
       } else {
         it.onclick = (e) => {
           e.stopPropagation()

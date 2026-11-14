@@ -322,6 +322,9 @@ export class PresentationUi extends DomUi {
     this.freshTabs.add(window)
     this.tabs.set(window, { container, tab, changed })
     window.listeners.add(changed)
+    // OpenSheet activates the new sheet: it comes in front of the Home page (its activation may run before the tab exists)
+    this.selected = window
+    this.homeActive = false
     this.updateTabs()
   }
 
@@ -774,8 +777,10 @@ export class PresentationUi extends DomUi {
     let back = bar.querySelector<HTMLButtonElement>(':scope > .ds-rep-back')
     let pill = bar.querySelector<HTMLElement>(':scope > .ds-rep-pill')
     if (!isReport) { back?.remove(); pill?.remove(); return }
-    // the report's criteria dialog docks just under this header
-    document.documentElement.style.setProperty('--ds-report-top', `${Math.round(bar.getBoundingClientRect().bottom + 8)}px`)
+    // the report's criteria dialog docks just under this header and the window tabs (it must not hide the tab of its own report)
+    const tabs = this.shell?.querySelector<HTMLElement>('.presentation-tabs')
+    const below = Math.max(bar.getBoundingClientRect().bottom, tabs && tabs.getClientRects().length ? tabs.getBoundingClientRect().bottom : 0)
+    document.documentElement.style.setProperty('--ds-report-top', `${Math.round(below + 8)}px`)
     if (!back) {
       back = document.createElement('button')
       back.type = 'button'

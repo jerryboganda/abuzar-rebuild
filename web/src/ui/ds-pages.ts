@@ -325,7 +325,9 @@ export const PAGES_CSS = `
 .modern-window .window-embedded .strip {border-bottom:1px solid var(--p-hair);background:none!important;}
 .modern-window .window-embedded .strip .t {border:0!important;border-bottom:2px solid transparent!important;background:none!important;color:var(--p-muted)!important;font:500 13.5px var(--p-font)!important;padding:6px 12px!important;border-radius:0!important;}
 .modern-window .window-embedded .strip .t.on {color:var(--p-accent)!important;border-bottom-color:var(--p-accent)!important;}
-.modern-window .window-embedded .page {background:var(--p-surface)!important;}
+/* print preview: paper in either theme (the report keeps the colours of its print layout) */
+.modern-window .window-embedded .page {background:#fff!important;color:#000;color-scheme:light;box-shadow:0 2px 14px rgb(0 0 0 / .25);}
+.modern-window .dw:has(> .dw-preview),.modern-window .dw-preview {background:var(--p-canvas)!important;}
 .modern-window .window-embedded fieldset.ctl {border:1px solid var(--p-hair)!important;border-radius:10px;background:none!important;}
 .modern-window .window-embedded fieldset.ctl legend {color:var(--p-muted)!important;font:600 12px var(--p-font)!important;padding:0 6px;}
 .modern-window .window-embedded .ctl.st,.modern-window .window-embedded label.ctl {color:var(--p-text)!important;background:none!important;}
@@ -336,27 +338,21 @@ export const PAGES_CSS = `
 .modern-window .window-embedded .pb-dropdown .dropdown-toggle {background:none!important;border:0!important;color:var(--p-muted)!important;}
 .modern-window .window-embedded :is(input,select,textarea):focus {outline:0!important;border-color:var(--p-accent)!important;box-shadow:0 0 0 3px var(--p-glow)!important;}
 .modern-window .window-embedded .pb-dropdown .dropdown-list {background:var(--p-surface)!important;color:var(--p-text)!important;border:1px solid var(--p-hair)!important;border-radius:10px;box-shadow:var(--p-shadow-lg);}
-.modern-window .dw:not(.modern-surface) {background:var(--p-surface)!important;color:var(--p-text);border-color:var(--p-hair)!important;}
-.modern-window .dw:not(.modern-surface) > .dw-inner:is([style*="background: rgb(240, 240, 240)"],[style*="background: rgb(255, 255, 255)"],[style*="background-color: rgb(240, 240, 240)"],[style*="background-color: rgb(255, 255, 255)"]) {background:var(--p-surface)!important;}
-.modern-window .dw:not(.modern-surface) .band.hdr .o {background:var(--p-sunk)!important;color:var(--p-muted)!important;border-color:var(--p-hair)!important;font-weight:600!important;}
-.modern-window .dw:not(.modern-surface) .band.row .o:is([style*="background: rgb(255, 255, 255)"],[style*="background: rgb(240, 240, 240)"],[style*="background: rgb(236, 233, 216)"]) {background:transparent!important;}
-.modern-window .dw:not(.modern-surface) .o[style*="; color: rgb(0, 0, 0)"] {color:var(--p-text)!important;}
-.modern-window .dw:not(.modern-surface) .band.row {border-bottom:1px solid var(--p-hair);box-sizing:border-box;}
-.modern-window .dw:not(.modern-surface) .band.row.cur {background:var(--p-selected)!important;box-shadow:inset 3px 0 0 var(--p-accent);}
-.modern-window .dw:not(.modern-surface) .band.row:hover {background:var(--p-sunk);}
-.modern-window .dw:not(.modern-surface) .band.row.cur:hover {background:var(--p-selected)!important;}
-.modern-window .dw:not(.modern-surface) :is(input,textarea,select).dw-edit {background:var(--p-surface)!important;color:var(--p-text)!important;}
+.modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) {background:var(--p-surface)!important;color:var(--p-text);border-color:var(--p-hair)!important;}
+.modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) > .dw-inner:is([style*="background: rgb(240, 240, 240)"],[style*="background: rgb(255, 255, 255)"],[style*="background-color: rgb(240, 240, 240)"],[style*="background-color: rgb(255, 255, 255)"]) {background:var(--p-surface)!important;}
+.modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) .band.hdr .o {background:var(--p-sunk)!important;color:var(--p-muted)!important;border-color:var(--p-hair)!important;font-weight:600!important;}
+.modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) .band.row .o:is([style*="background: rgb(255, 255, 255)"],[style*="background: rgb(240, 240, 240)"],[style*="background: rgb(236, 233, 216)"]) {background:transparent!important;}
+.modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) .o[style*="; color: rgb(0, 0, 0)"] {color:var(--p-text)!important;}
+.modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) .band.row {border-bottom:1px solid var(--p-hair);box-sizing:border-box;}
+.modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) .band.row.cur {background:var(--p-selected)!important;box-shadow:inset 3px 0 0 var(--p-accent);}
+.modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) .band.row:hover {background:var(--p-sunk);}
+.modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) .band.row.cur:hover {background:var(--p-selected)!important;}
+.modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) :is(input,textarea,select).dw-edit {background:var(--p-surface)!important;color:var(--p-text)!important;}
 /* ---------- Report criteria (the original w_arg_* dialogs) docked under the report header as the mockup's filter card: same
    window, fields and Ok/Cancel; it only sits in the page instead of floating over a dimmed screen ---------- */
 dialog.presentation-compatibility-dialog[open]:has(.pbwin[data-win^=w_arg_]) {position:fixed;inset:var(--ds-report-top,150px) 16px auto 16px;margin:0;width:auto;max-width:none;max-height:calc(100vh - var(--ds-report-top,150px) - 48px);animation:ds-drop .2s var(--p-ease);}
 dialog.presentation-compatibility-dialog:has(.pbwin[data-win^=w_arg_])::backdrop {background:transparent;backdrop-filter:none;}
 dialog.presentation-compatibility-dialog[open]:has(.pbwin[data-win^=w_arg_]) .modern-window.pbwin {width:100%!important;max-width:none!important;box-shadow:var(--p-shadow-lg);}
-@media (min-width:900px){
-  dialog.presentation-compatibility-dialog[open]:has(.pbwin[data-win^=w_arg_]) .window-fields.has-grid {display:flex!important;flex-wrap:wrap;align-items:flex-end;gap:12px 18px;}
-  dialog.presentation-compatibility-dialog[open]:has(.pbwin[data-win^=w_arg_]) .window-fields.has-grid > * {flex:1 1 220px;grid-column:auto!important;grid-row:auto!important;}
-  dialog.presentation-compatibility-dialog[open]:has(.pbwin[data-win^=w_arg_]) .window-fields.has-grid > .window-frame {flex:1 1 100%;}
-  dialog.presentation-compatibility-dialog[open]:has(.pbwin[data-win^=w_arg_]) .window-fields.has-grid > .window-option {flex:0 1 auto;}
-}
 /* ---------- Group Rights (Manage › Groups): the original rights grid as the mockup's matrix — level shown by weight and a
    tint instead of the source's blue bands, permissions as switches (the cell, its click handling and the saved value are unchanged) */
 .pbwin[data-win=w_groups_form] .dw:has(.o[data-obj=checked]) {background:var(--p-surface)!important;}

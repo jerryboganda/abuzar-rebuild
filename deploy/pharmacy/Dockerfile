@@ -1,7 +1,10 @@
 # Waseela / Trader rebuild: server binary + static web, served by trader-server on 8787
 FROM rust:1-bookworm AS server
 WORKDIR /src
-COPY . .
+# only the Rust workspace: a change of the web code does not rebuild the server
+COPY Cargo.toml Cargo.lock ./
+COPY server server
+COPY src-tauri src-tauri
 RUN cargo build --release -p trader-server -j 4
 
 FROM node:22-bookworm-slim AS web
