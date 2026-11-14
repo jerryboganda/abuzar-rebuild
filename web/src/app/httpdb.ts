@@ -6,7 +6,26 @@ import { Dec } from '../runtime/values.ts'
 /** application user of the audit trail: every open session (and every later one) carries it as the setting `app.user` */
 let appUser = ''
 const open = new Set<HttpDb>()
-const SESSION_TZ = "SET TIME ZONE 'Asia/Karachi'"
+const SESSION_TZ_NAME = 'Asia/Karachi'
+const SESSION_TZ = `SET TIME ZONE '${SESSION_TZ_NAME}'`
+
+/**
+ * Identical read-only SELECTs of one session within a few seconds are answered from memory.  Over the internet every query is a
+ * round trip (~150 ms from the shop to the server); the login alone retrieves the same 27,818-row item list twice in a row.
+ * Any write, procedure call, commit or rollback in this client forgets every remembered result, so a session never sees
+ * its own data older than its last change; another user's change can show up to RECENT_MS late, as if the query had run
+ * that much earlier.  Statements whose result depends on the moment or that change state are never remembered.
+ */
+const RECENT_MS = 5000
+const RECENT_MAX = 16
+const recent = new Map<string, { at: number; result: QueryResult }>()
+const VOLATILE = /\b(set_config|nextval|setval|currval|lastval|now|getdate|sysdatetime|current_timestamp|current_date|current_time|localtimestamp|clock_timestamp|statement_timestamp|timeofday|random|newid|uuid_generate_v4|gen_random_uuid|serverdate|txid_current|pg_sleep|pg_advisory_\w*)\b|\bfor\s+(update|share)\b|\binto\b|\bsp_\w+/i
+export function rememberable(sql: string): boolean {
+  return /^\s*select\b/i.test(sql) && !VOLATILE.test(sql)
+}
+export function forgetRecentQueries(): void {
+  recent.clear()
+}
 
 export async function setAppUser(user: string): Promise<void> {
   appUser = user
@@ -36,6 +55,8 @@ export class HttpDb implements Db {
   private autocommit: boolean
   /** concurrent requests that all see NOSESSION must share one new session */
   private reopening: Promise<void> | null = null
+  /** the server applied the time zone when the session opened (outside any transaction, so a rollback keeps it) */
+  private zoneAtOpen = false
   constructor(base = '', autocommit = false) {
     this.base = base
     this.autocommit = autocommit
@@ -73,10 +94,9 @@ export class HttpDb implements Db {
   private async reopen(): Promise<void> {
     if (this.reopening) return this.reopening
     this.reopening = (async () => {
-      const j = await this.post<{ sid: string }>('/api/session', { autocommit: this.autocommit })
-      this.sid = j.sid
-      await this.setSessionTimeZone()
-      if (appUser) await this.send('/api/query', { sid: this.sid, sql: "SELECT set_config('app.user', $1, false)", params: [appUser] })
+      const j = await this.startSession()
+      if (!j.init?.timezone) await this.setSessionTimeZone()
+      if (appUser && !j.init?.user) await this.send('/api/query', { sid: this.sid, sql: "SELECT set_config('app.user', $1, false)", params: [appUser] })
     })().finally(() => { this.reopening = null })
     return this.reopening
   }
@@ -86,12 +106,19 @@ export class HttpDb implements Db {
     await this.query(SESSION_TZ, []).catch(() => undefined)
   }
 
-  async open(): Promise<this> {
-    const j = await this.post<{ sid: string }>('/api/session', { autocommit: this.autocommit })
+  /** one round trip: the server sets the time zone and the audit user itself (an older server ignores both and says nothing) */
+  private async startSession(): Promise<{ sid: string; init?: { timezone?: string; user?: string } }> {
+    const j = await this.post<{ sid: string; init?: { timezone?: string; user?: string } }>('/api/session', { autocommit: this.autocommit, timezone: SESSION_TZ_NAME, ...(appUser ? { user: appUser } : {}) })
     this.sid = j.sid
+    this.zoneAtOpen = !!j.init?.timezone
+    return j
+  }
+
+  async open(): Promise<this> {
+    const j = await this.startSession()
     open.add(this)
-    await this.setSessionTimeZone()
-    if (appUser) await this.query("SELECT set_config('app.user', $1, false)", [appUser]).catch(() => undefined)
+    if (!j.init?.timezone) await this.setSessionTimeZone()
+    if (appUser && !j.init?.user) await this.query("SELECT set_config('app.user', $1, false)", [appUser]).catch(() => undefined)
     return this
   }
   /** `Select enabled From SysJobs Where Name = :job` (SQL Server Agent): every job is known by name and disabled until it is enabled, see db/pg/86_jobs.sql */
@@ -101,7 +128,16 @@ export class HttpDb implements Db {
     return sql.replace(/\bsysjobs\b/i, 'dbo.sysjobs')
   }
   async query(sql: string, params: unknown[]): Promise<QueryResult> {
-    return this.post('/api/query', { sid: this.sid, sql: await this.jobs(sql, params), params: wireParams(params) })
+    const text = await this.jobs(sql, params)
+    const wire = wireParams(params)
+    if (!rememberable(text)) return this.post('/api/query', { sid: this.sid, sql: text, params: wire })
+    const key = this.sid + '\u0000' + text + '\u0000' + JSON.stringify(wire)
+    const hit = recent.get(key)
+    if (hit && Date.now() - hit.at <= RECENT_MS) return structuredClone(hit.result)
+    const result = await this.post<QueryResult>('/api/query', { sid: this.sid, sql: text, params: wire })
+    if (recent.size >= RECENT_MAX) recent.delete(recent.keys().next().value!)
+    recent.set(key, { at: Date.now(), result: structuredClone(result) })
+    return result
   }
   /** `Backup Database <db> To <device> With INIT ...` (SQL Server): a pg_dump of the database into that file; the system databases have nothing to dump */
   private async backup(sql: string): Promise<boolean> {
@@ -125,19 +161,23 @@ export class HttpDb implements Db {
     return true
   }
   async exec(sql: string, params: unknown[]): Promise<{ rowcount: number }> {
+    forgetRecentQueries()
     if (await this.backup(sql)) return { rowcount: 0 }
     return this.post('/api/exec', { sid: this.sid, sql, params: wireParams(params) })
   }
   call(sql: string, params: unknown[]): Promise<CallResult> {
+    forgetRecentQueries()
     return this.post('/api/call', { sid: this.sid, sql, params: wireParams(params) })
   }
   async commit(): Promise<void> {
+    forgetRecentQueries()
     await this.post('/api/commit', { sid: this.sid })
   }
   async rollback(): Promise<void> {
+    forgetRecentQueries()
     await this.post('/api/rollback', { sid: this.sid })
-    // SET TIME ZONE is transactional: a rollback restores the server's UTC default.
-    await this.setSessionTimeZone()
+    // SET TIME ZONE is transactional: a rollback restores the server's UTC default (unless the server set it when the session opened).
+    if (!this.zoneAtOpen) await this.setSessionTimeZone()
   }
   async close(): Promise<void> {
     open.delete(this)

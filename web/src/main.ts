@@ -42,16 +42,71 @@ async function setNativeIcon(): Promise<void> {
   }
 }
 
+/**
+ * Data files live next to the code: `/data/` in the plain build, `/v/<version>/data/` when the web server versions the code and
+ * data (the browser then keeps them until the next deploy, see deploy/pharmacy/pharmacy-manual.conf).
+ */
+const DATA_BASE = new URL('../data/', import.meta.url).pathname
+function dataUrl(path: string): string {
+  return DATA_BASE + (/^dw\/(?!_index).*\.json$/.test(path) ? path + '.gz' : path)
+}
+
+/**
+ * Startup files are requested together instead of one after another: over the internet each request is a round trip, and the
+ * class files of the login and the main window used to arrive one by one.  The list is what the last start in this browser
+ * read (localStorage), plus the files every start needs.
+ */
+const PRELOAD_KEY = 'trader.preload.v1'
+const PRELOAD_ALWAYS = ['names.json', 'classes/_index.json', 'sql.json', 'dw/_index.json']
+const preloaded = new Map<string, Promise<Response>>()
+const readPaths: string[] = []
+function preload(path: string): void {
+  if (!preloaded.has(path)) preloaded.set(path, fetch(dataUrl(path)))
+}
+function startPreload(): void {
+  let learned: string[] = []
+  try {
+    const raw: unknown = JSON.parse(localStorage.getItem(PRELOAD_KEY) || '[]')
+    if (Array.isArray(raw)) learned = raw.filter((x): x is string => typeof x === 'string' && /^[\w./-]+$/.test(x)).slice(0, 200)
+  } catch {
+    // no storage (private window): only the fixed list
+  }
+  for (const p of [...PRELOAD_ALWAYS, ...learned]) preload(p)
+  // remember what this start read (the login and the main window) for the next one
+  setTimeout(() => {
+    try {
+      localStorage.setItem(PRELOAD_KEY, JSON.stringify([...new Set(readPaths)].slice(0, 200)))
+    } catch {
+      // storage full or blocked
+    }
+  }, 60_000)
+}
+startPreload()
+
+async function get(path: string): Promise<Response> {
+  if (readPaths.length < 400) readPaths.push(path)
+  const early = preloaded.get(path)
+  if (early) {
+    preloaded.delete(path) // a response body can be read once; a second read of the same file goes to the browser cache
+    try {
+      return await early
+    } catch {
+      // the early request failed: ask again
+    }
+  }
+  return fetch(dataUrl(path))
+}
+
 /** data files; DataWindow bundles are stored gzip-compressed */
 async function text(path: string): Promise<string | undefined> {
   if (/^dw\/(?!_index).*\.json$/.test(path)) {
-    const r = await fetch('/data/' + path + '.gz')
+    const r = await get(path)
     if (!r.ok || !r.body) return undefined
     const type = (r.headers.get('content-type') || '').toLowerCase()
     if (type.includes('text/html')) return undefined
     return await new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).text()
   }
-  const r = await fetch('/data/' + path)
+  const r = await get(path)
   if (!r.ok) return undefined
   // Tauri's asset protocol answers unknown paths with index.html (status 200);
   // treat that as a missing data file instead of parsing HTML as JSON.

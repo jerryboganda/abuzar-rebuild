@@ -126,6 +126,17 @@ fn db_err(e: sqlx::Error) -> ApiError {
 struct OpenReq {
     #[serde(default)]
     autocommit: bool,
+    /// session time zone (`SET TIME ZONE`), applied when the connection opens, outside any transaction, so a rollback keeps it
+    #[serde(default)]
+    timezone: Option<String>,
+    /// application user of the audit trail (`set_config('app.user', ...)`), applied the same way
+    #[serde(default)]
+    user: Option<String>,
+}
+
+/// an IANA time zone name or offset such as `Asia/Karachi`, `UTC`, `+05:00` (it is spliced into `SET TIME ZONE`)
+fn valid_timezone(tz: &str) -> bool {
+    !tz.is_empty() && tz.len() <= 64 && tz.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '/' | '_' | '+' | '-' | ':'))
 }
 
 #[derive(Deserialize)]
@@ -165,10 +176,23 @@ async fn open_session(State(st): State<AppState>, Json(req): Json<OpenReq>) -> R
     // DateStyle MDY: the original's logins are all us_english (dateformat mdy), so date text such as the dashboard's
     // `CAST('11/09/2026' AS DATETIME)` is month first there; PostgreSQL would otherwise follow the cluster's locale.
     conn.execute("SET standard_conforming_strings = on; SET search_path TO dbo, public; SET DateStyle = 'ISO, MDY';").await.map_err(db_err)?;
+    // one round trip instead of three for every session the client opens (the client used to send both as queries afterwards)
+    let mut init = serde_json::Map::new();
+    if let Some(tz) = req.timezone.as_deref() {
+        if !valid_timezone(tz) {
+            return Err(ApiError::Bad(format!("invalid time zone {tz:?}")));
+        }
+        conn.execute(format!("SET TIME ZONE '{tz}'").as_str()).await.map_err(db_err)?;
+        init.insert("timezone".into(), json!(tz));
+    }
+    if let Some(user) = req.user.as_deref() {
+        sqlx::query("SELECT set_config('app.user', $1, false)").bind(user).execute(&mut conn).await.map_err(db_err)?;
+        init.insert("user".into(), json!(user));
+    }
     let sid = uuid::Uuid::new_v4().to_string();
     let s = Session { conn, autocommit: req.autocommit, in_tx: false, dirty: false, last_used: Instant::now() };
     st.sessions.lock().await.insert(sid.clone(), Arc::new(Mutex::new(s)));
-    Ok(Json(json!({ "sid": sid })))
+    Ok(Json(json!({ "sid": sid, "init": init })))
 }
 
 async fn session(st: &AppState, sid: &str) -> Result<Arc<Mutex<Session>>, ApiError> {

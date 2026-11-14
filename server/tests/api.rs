@@ -75,3 +75,18 @@ async fn autocommit_session_commits_each_statement() {
     let (_, r) = call(&app, "/api/query", json!({"sid": sid, "sql": "select count(*) from u"})).await;
     assert_eq!(r["rows"], json!([["1"]]), "{r}");
 }
+
+#[tokio::test]
+async fn session_init_keeps_timezone_and_user_through_rollback() {
+    let Some(app) = app() else { return };
+    let (_, s) = call(&app, "/api/session", json!({"timezone": "Asia/Karachi", "user": "ADMIN"})).await;
+    assert_eq!(s["init"]["timezone"], "Asia/Karachi", "{s}");
+    let sid = s["sid"].as_str().unwrap().to_string();
+    call(&app, "/api/query", json!({"sid": sid, "sql": "select 1"})).await;
+    call(&app, "/api/rollback", json!({"sid": sid})).await;
+    let (_, r) = call(&app, "/api/query", json!({"sid": sid, "sql": "select current_setting('TimeZone'), current_setting('app.user')"})).await;
+    assert_eq!(r["rows"], json!([["Asia/Karachi", "ADMIN"]]), "{r}");
+    call(&app, "/api/close", json!({"sid": sid})).await;
+    let (st, r) = call(&app, "/api/session", json!({"timezone": "UTC'; drop table x; --"})).await;
+    assert_eq!(st, StatusCode::BAD_REQUEST, "{r}");
+}
