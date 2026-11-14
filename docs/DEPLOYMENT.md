@@ -162,3 +162,14 @@ Operate (on the server): `cd /opt/pharmacy && docker compose ps | logs app | res
 git -C src checkout <commit>`, `docker build -f Dockerfile -t pharmacy-app:<commit> src`, set `APP_TAG` in `.env`,
 `docker compose up -d app`; refresh `web-data` when the generated data changes. Restore: `docker exec -i pharmacy-db pg_restore
 -U postgres -d <new db> --no-owner --no-acl < dump`, then the grants from this section.
+
+**Speed (2026-11-14, after the first real login took about 40 s).** Measured: every query is one round trip Pakistan -> Cloudflare -> France
+(~180 ms; the server itself answers a small query in 3 ms), the browser downloaded about 45 MB of code and data on every visit
+(nothing was cached), and the item list (27,818 rows, loaded twice per login) took 1.8 s in PostgreSQL because the Linux server
+JIT-compiles it (Windows PostgreSQL on the PC has no JIT). Changes: `jit = off` for `waseela` (item list 1.24 s -> 0.45 s; about 1 s
+end to end instead of 2.5-3 s), `work_mem` 16MB, `effective_cache_size` 6GB, `shared_buffers` 1GB (takes effect at the next
+database restart); the proxy (`deploy/pharmacy/pharmacy-manual.conf` + `proxy.conf` -> `/data/nginx/pharmacy/proxy.conf`)
+gzips responses and sets browser caching: the page loads its code from `/v/<version>/src/...` (kept a year; **on every deploy change
+the version in the `sub_filter` line to the new APP_TAG**), `data/`, fonts and images are kept a day, everything is `private` so
+Cloudflare never stores content from behind the login. All 92 modules load from the versioned path. What stays: the ~25 queries of
+a login still cost one round trip each (~4-5 s); only a server closer to Pakistan or fewer round trips in the client remove that.
