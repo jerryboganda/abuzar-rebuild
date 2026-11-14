@@ -72,19 +72,22 @@ function startPreload(): void {
     // no storage (private window): only the fixed list
   }
   for (const p of [...PRELOAD_ALWAYS, ...learned]) preload(p)
-  // remember what this start read (the login and the main window) for the next one
-  setTimeout(() => {
+  // Remember what this browser reads, in the order it first read it (the login and main window first, then the screens
+  // opened), for the next start; saved once a minute so the screens of a long working day are included.
+  const save = () => {
     try {
-      localStorage.setItem(PRELOAD_KEY, JSON.stringify([...new Set(readPaths)].slice(0, 200)))
+      localStorage.setItem(PRELOAD_KEY, JSON.stringify([...new Set([...readPaths, ...learned])].slice(0, 200)))
     } catch {
       // storage full or blocked
     }
-  }, 60_000)
+  }
+  setTimeout(save, 30_000)
+  setInterval(save, 60_000)
 }
 startPreload()
 
 async function get(path: string): Promise<Response> {
-  if (readPaths.length < 400) readPaths.push(path)
+  if (readPaths.length < 600 && !readPaths.includes(path)) readPaths.push(path)
   const early = preloaded.get(path)
   if (early) {
     preloaded.delete(path) // a response body can be read once; a second read of the same file goes to the browser cache
@@ -97,8 +100,21 @@ async function get(path: string): Promise<Response> {
   return fetch(dataUrl(path))
 }
 
+/**
+ * Several parts of a window ask for the same DataWindow bundle at the same moment (Cash Sale requested salewin.json seven
+ * times in parallel): they share one request.
+ */
+const reading = new Map<string, Promise<string | undefined>>()
+function text(path: string): Promise<string | undefined> {
+  const pending = reading.get(path)
+  if (pending) return pending
+  const p = readText(path).finally(() => reading.delete(path))
+  reading.set(path, p)
+  return p
+}
+
 /** data files; DataWindow bundles are stored gzip-compressed */
-async function text(path: string): Promise<string | undefined> {
+async function readText(path: string): Promise<string | undefined> {
   if (/^dw\/(?!_index).*\.json$/.test(path)) {
     const r = await get(path)
     if (!r.ok || !r.body) return undefined
