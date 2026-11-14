@@ -151,7 +151,12 @@ tunnel) with no console errors. Not checked: signing in as a staff user and work
 (raw/thermal printing is sent by the server, which has no printers) and FBR (the fiscal service is not on the VPS).
 
 **Two databases.** The PC (`C:\Waseela`, 192.168.18.39) and the VPS each have their own copy since 2026-11-14; entries made in one
-do not appear in the other. Decide which one the staff use.
+do not appear in the other.
+**Cutover 2026-11-14: the owner chose the VPS.** Before the switch every table on the PC and the VPS still had the same row
+count (no entries on either since the copy). The PC's task "Waseela Data Server" was stopped and **disabled**, so port 8787 on
+the PC no longer answers; its database `waseela` is left as it was (frozen at the copy). To go back to the PC: copy the VPS
+database back first (`pg_dump` on the VPS, `pg_restore` on the PC), then `Enable-ScheduledTask` and `Start-ScheduledTask`
+"Waseela Data Server". The old PowerBuilder application and its SQL Server were not touched.
 
 Operate (on the server): `cd /opt/pharmacy && docker compose ps | logs app | restart app`. Update the app: `git -C src fetch &&
 git -C src checkout <commit>`, `docker build -f Dockerfile -t pharmacy-app:<commit> src`, set `APP_TAG` in `.env`,
