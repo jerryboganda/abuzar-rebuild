@@ -490,7 +490,7 @@ dialog.presentation-compatibility-dialog[open].ds-report-criteria {padding-inlin
 /* a dialog never grows past the screen (a long option list ran under the application header) */
 dialog.presentation-compatibility-dialog[open]:not(.ds-report-criteria) {max-height:calc(100vh - 32px)!important;}
 /* a list inside a group box ends above the group's border */
-.modern-window .window-fields.has-grid > .window-data:has(.surface-body-grid) {margin-bottom:10px;margin-inline:8px;}
+.modern-window .window-fields.has-grid > .window-data:has(.surface-body-grid) {margin-bottom:10px;margin-inline:8px;width:auto!important;justify-self:stretch;}
 /* an option's caption stays on one line ("All" broke into "Al / l" in a narrow column) */
 .modern-window .window-option {white-space:nowrap;}
 /* the chosen line of a list box reads as clearly as the others */
