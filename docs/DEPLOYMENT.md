@@ -202,8 +202,8 @@ menu object name and wrapping the header; Cash Sale panel widths, payment card a
 look; "?" micro help. Kept as the original: d_login's `*****` mask, `cbx_all` hidden on the stock register, dot leaders in menu
 texts, closequery-guarded dialogs, Confirm Changes on a new record. Not every one of the ~2,000 windows was opened: the fixes are in
 the shared renderer (menus, dialogs, groupboxes, list boxes, DataWindow editing, header) that all of them use.
-**Modern UI visual QA, second pass, 2026-11-15 (commit `695daa81`, CI green, deployed to production 2026-11-16 with
-`deploy.sh 695daa81`: version `695daa81-944d1f4b`, health 200, the served `design-system.js` holds the new rules; the screens
+**Modern UI visual QA, second pass, 2026-11-15 (commits `695daa81` and `38ba21a4`, CI green, deployed to production 2026-11-16 with
+`deploy.sh 38ba21a4`: version `38ba21a4-944d1f4b`, health 200, the served `design-system.js` holds the new rules; the screens
 were driven on the local test server, not on production: the test user's password there is not the local test one).** Driven in a real browser (Playwright
 Chromium, 1440x900, dark and light) against the local test server (`.claude/launch.json`: `trader-test-server` on the scratch copy
 `waseela_rehearsal`, `trader-web-real` on port 5174) as `CLAUDE TEST`. Tools: `web/e2e/modern-visual-qa.mjs` opens every enabled
