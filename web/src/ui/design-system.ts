@@ -50,7 +50,7 @@ export const DESIGN_CSS = `
 /* ---------- context bar: ambient glow and brand (mockup .ctx) ---------- */
 .presentation-header.mh-context {position:relative;overflow:hidden;padding:8px 16px;}
 .presentation-header.mh-context::before {content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(600px 120px at 15% -40%,rgb(79 184 178 / .25),transparent 70%),radial-gradient(500px 120px at 85% 140%,rgb(43 95 143 / .22),transparent 70%);}
-.presentation-header.mh-context > * {position:relative;}
+.presentation-header.mh-context > :not(.mh-popover) {position:relative;}
 .mh-context .mh-mark {width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#0f6b6f,#1d5f80);color:#fff;font-size:14px;box-shadow:0 6px 20px rgb(15 107 111 / .45);}
 .mh-context .mh-brand b {letter-spacing:.03em;line-height:1.2;}
 .mh-context .mh-sub {font-size:11px;}
