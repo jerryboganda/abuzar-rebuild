@@ -49,7 +49,6 @@ export const DESIGN_CSS = `
 
 /* ---------- context bar: ambient glow and brand (mockup .ctx) ---------- */
 .presentation-header.mh-context {position:relative;overflow:hidden;padding:8px 16px;}
-@media (min-width:1051px){.presentation-header.mh-context {flex-wrap:nowrap;}}
 .presentation-header.mh-context::before {content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(600px 120px at 15% -40%,rgb(79 184 178 / .25),transparent 70%),radial-gradient(500px 120px at 85% 140%,rgb(43 95 143 / .22),transparent 70%);}
 .presentation-header.mh-context > * {position:relative;}
 .mh-context .mh-mark {width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#0f6b6f,#1d5f80);color:#fff;font-size:14px;box-shadow:0 6px 20px rgb(15 107 111 / .45);}
@@ -63,7 +62,7 @@ export const DESIGN_CSS = `
 .mh-context .mh-icon {width:34px;height:32px;border-radius:9px;position:relative;}
 .mh-context .mh-badge {position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:#c9302c;color:#fff;font:700 10px/17px var(--p-font);text-align:center;border:2px solid var(--p-chrome);}
 .mh-context .mh-avatar {width:28px;height:28px;background:linear-gradient(135deg,#0f6b6f,#1d5f80);color:#fff;font-size:11px;}
-.mh-context .mh-crumbs {display:flex;align-items:center;gap:4px;font-size:13px;flex:0 1 auto;min-width:0;overflow:hidden;white-space:nowrap;}
+.mh-context .mh-crumbs {display:flex;align-items:center;gap:4px;font-size:13px;flex:0 1 auto;min-width:0;max-width:min(34vw,560px);overflow:hidden;white-space:nowrap;}
 /* a long path never pushes the header onto a second row: the earlier steps shrink first, the window title last */
 .mh-context .mh-crumbs > * {flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .mh-context .mh-crumbs > strong {flex-shrink:.2;}
