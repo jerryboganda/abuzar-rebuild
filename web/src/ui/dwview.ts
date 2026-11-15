@@ -164,6 +164,7 @@ export class DwView {
    */
   private typeAhead: string[] | null = null
   private editorFocusedAt = 0
+  private focusGuard = new AbortController()
   private typeAheadUntil = 0
   private static typeAheadOwner: DwView | null = null
   private static typeAheadBound = false
@@ -216,13 +217,15 @@ export class DwView {
     // The press that opens an editor is followed by the browser's own focus of the pressed element's focusable ancestor (this
     // DataWindow): it took the focus away from the editor just opened, and what the user typed next went nowhere (the login's
     // password after its user name).  That focus goes straight back to the editor.
-    this.root.addEventListener('focusin', (event) => {
+    // (the element that takes it is an ancestor of the editor: this DataWindow, or its window, which carries a tabindex)
+    const reclaim = (event: FocusEvent) => {
       const editor = this.editor
-      if (!editor?.isConnected || event.target === editor || editor.contains(event.target as Node)) return
+      const target = event.target
+      if (this.disposed || !editor?.isConnected || !(target instanceof HTMLElement) || target === editor || !target.contains(editor)) return
       if (performance.now() - this.editorFocusedAt > 250) return
-      if (event.target !== this.root && !(event.target instanceof Element && !event.target.closest('input,textarea,select,button,[role=listbox]'))) return
       editor.focus({ preventScroll: true })
-    })
+    }
+    document.addEventListener('focusin', reclaim, { capture: true, signal: this.focusGuard.signal })
     this.root.addEventListener('focusin', (event) => {
       if (this.editor && (event.target === this.editor || this.editor.contains(event.target as Node))) this.editorFocusedAt = performance.now()
     }, true)
@@ -364,6 +367,7 @@ export class DwView {
 
   dispose(): void {
     this.disposed = true
+    this.focusGuard.abort()
     this.renderSettled()
     this.cancelChoice()
     this.discardInputEvents()
