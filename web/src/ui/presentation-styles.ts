@@ -592,6 +592,10 @@ export const PRESENTATION_CSS = `
 .modern-surface .simplified-summary .simplified-row > .surface-field {flex-direction:row;align-items:center;justify-content:space-between;gap:12px;padding:3px 0;}
 .modern-surface .simplified-summary .simplified-row > .surface-field .surface-label {flex:1;font-size:.93em;}
 .modern-surface .simplified-summary .simplified-row > .surface-field .surface-value {width:9.5em;max-width:55%;min-width:0;text-align:right;}
+/* a summary value with a suffix (Discount% then "Disc. Value="): the group takes the value's place, the suffix a small note under it */
+.modern-surface .simplified-summary .simplified-row > .surface-field > .surface-input-group {flex:0 0 auto;width:9.5em;max-width:55%;flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:2px;}
+.modern-surface .simplified-summary .simplified-row > .surface-field > .surface-input-group > .surface-value {width:100%;max-width:none;flex:none;}
+.modern-surface .simplified-summary .simplified-row > .surface-field > .surface-input-group > .surface-suffix {font-size:.8em;color:var(--p-muted);text-align:right;}
 .modern-surface .simplified-summary .simplified-row > .surface-field[data-field="stock"] {margin-top:8px;padding-top:11px;border-top:1px solid var(--p-hair);}
 .modern-surface .simplified-summary .simplified-row > .surface-caption,.modern-surface .simplified-summary .simplified-row > .grid-cell:not(.surface-field) {order:150;font-size:.86em;color:var(--p-muted);}
 .modern-surface .simplified-summary .simplified-row > .simplified-emphasis {order:300!important;margin:12px -16px -16px;padding:14px 16px;border-radius:0 0 10px 10px;background:var(--p-text);}

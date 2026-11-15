@@ -950,7 +950,9 @@ export class WinView {
         }
         const b = document.createElement('button')
         b.className = 'tb' + (button.enabled ? '' : ' dis')
-        b.title = button.text
+        // a toolbar text "SaveAs<TAB>Ctrl+A" is the caption and its shortcut: the tooltip shows "SaveAs (Ctrl+A)", not the tab character
+        const [tipText, tipKey] = button.text.split('\t')
+        b.title = tipKey?.trim() ? `${tipText.trim()} (${tipKey.trim()})` : tipText.trim()
         b.dataset.stock = button.stock.toLowerCase()
         b.dataset.label = button.text
         const pic = document.createElement('span')

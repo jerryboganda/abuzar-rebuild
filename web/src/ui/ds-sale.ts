@@ -242,7 +242,7 @@ export function decorateSale(root: HTMLElement, query: Query, toolbar: (stock: s
 
 export const SALE_CSS = `
 /* ---------- Cash Sale (mockup point-of-sale layout) ---------- */
-.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] {display:grid!important;grid-template-columns:minmax(0,1fr) minmax(300px,360px);gap:16px;align-items:start;}
+.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] {display:grid!important;grid-template-columns:minmax(0,1fr) minmax(320px,440px);gap:16px;align-items:start;}
 .modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-form:first-of-type {grid-column:2;grid-row:1;}
 .modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-control:not(.entry-auxiliary):has(.simplified-grid) {grid-column:1;grid-row:1 / span 2;}
 .modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-form ~ .entry-form {grid-column:2;grid-row:2;}
@@ -267,7 +267,11 @@ export const SALE_CSS = `
 .ds-tile small {color:var(--p-muted);font-size:11.5px;}
 .ds-tile small.out {color:var(--p-danger);}
 .ds-tile .p {font:600 13.5px var(--p-mono);color:var(--p-accent);margin-top:4px;}
-.ds-change {margin:0 18px 18px;padding-top:12px;border-top:1px solid var(--p-hair);display:grid;gap:10px;}
+/* the payment column is one card: the totals panel and the change calculator under it share its border */
+.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-control:has(> .ds-change) {background:var(--p-surface)!important;border:1px solid var(--p-hair)!important;border-radius:14px;box-shadow:var(--p-shadow);overflow:hidden;}
+.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-control:has(> .ds-change) > .modern-surface {border:0!important;border-radius:0!important;box-shadow:none!important;}
+.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-control:has(> .ds-change) .simplified-emphasis {border-radius:0!important;}
+.ds-change {margin:0 18px 18px;padding-top:14px;border-top:1px solid var(--p-hair);display:grid;gap:10px;}
 .ds-change .row {display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13.5px;color:var(--p-muted);}
 .ds-change input {width:120px;height:38px;padding:0 10px;border:1px solid var(--p-line);border-radius:8px;background:var(--p-surface);color:var(--p-text);font:14px var(--p-mono);text-align:right;}
 .ds-change input:focus {outline:0;border-color:var(--p-accent);box-shadow:0 0 0 4px var(--p-glow);}

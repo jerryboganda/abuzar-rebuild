@@ -312,6 +312,15 @@ dialog .modern-window.pbwin > .client > .window-actions {position:sticky;bottom:
 
 /* ---------- sign-in (before the Modern workspace starts) ---------- */
 body.ds-boot {background:var(--p-canvas);}
+/* message boxes on the sign-in screen (shown before the Modern shell exists, e.g. "Please enter password"): the approved dialog look */
+body.ds-boot .modal-bg {background:var(--p-scrim);}
+body.ds-boot .msgbox {background:var(--p-surface);color:var(--p-text);border:1px solid var(--p-hair);border-radius:14px;box-shadow:var(--p-shadow-lg);min-width:320px;font:400 14px/1.5 var(--p-font);animation:ds-pop .2s var(--p-ease);}
+body.ds-boot .msgbox .tbar {background:transparent!important;height:auto;padding:16px 20px 0;color:var(--p-text);font:600 15px var(--p-font);}
+body.ds-boot .msgbox .body {padding:12px 20px 18px;}
+body.ds-boot .msgbox .btns {background:transparent;border-top:1px solid var(--p-hair);padding:12px 16px;}
+body.ds-boot .msgbox button {min-width:88px;height:38px;border-radius:9px;border:1px solid var(--p-line);background:var(--p-surface);color:var(--p-text);font:500 14px var(--p-font);cursor:pointer;}
+body.ds-boot .msgbox button:first-child {background:linear-gradient(180deg,var(--p-accent-2),var(--p-accent));border-color:var(--p-accent);color:var(--p-on-accent);}
+body.ds-boot .msgbox button:focus-visible {outline:2.5px solid var(--p-accent);outline-offset:2px;}
 body.ds-boot #desktop {background:var(--p-canvas)!important;}
 body.ds-boot .ds-login-art {position:fixed;inset:0 auto 0 0;width:52vw;background:var(--p-chrome);color:var(--p-chrome-text);display:flex;flex-direction:column;justify-content:space-between;padding:clamp(24px,5vw,56px);overflow:hidden;z-index:0;font-family:var(--p-font);}
 body.ds-boot .ds-login-art .ds-blob {position:absolute;border-radius:50%;filter:blur(60px);opacity:.55;animation:ds-blob 16s ease-in-out infinite;}

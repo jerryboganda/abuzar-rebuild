@@ -326,6 +326,7 @@ export class PresentationUi extends DomUi {
     this.selected = window
     this.homeActive = false
     this.updateTabs()
+    this.refreshCommands()
   }
 
   override showWindow(window: NWindow): void {
@@ -333,6 +334,16 @@ export class PresentationUi extends DomUi {
     if (modal && !modal.element.open) {
       this.down.clear()
       modal.element.showModal()
+      // focusing the first field must not leave a tall dialog scrolled past its first caption: start at the top while the focused
+      // field is visible from there
+      requestAnimationFrame(() => {
+        const client = modal.element.querySelector<HTMLElement>('.modern-window.pbwin > .client')
+        const focused = document.activeElement
+        if (!client || !client.scrollTop) return
+        const top = client.getBoundingClientRect().top
+        const focusBottom = focused instanceof HTMLElement && client.contains(focused) ? focused.getBoundingClientRect().bottom + client.scrollTop - top : 0
+        if (focusBottom <= client.clientHeight - 80) client.scrollTop = 0
+      })
     }
     super.showWindow(window)
   }
@@ -722,6 +733,10 @@ export class PresentationUi extends DomUi {
     right.append(server, fbr, godown, version)
     bar.append(status, right)
     status.setAttribute('role', 'status')
+    // a bare "?" (the micro help many fields of the original carry) tells nothing: the design's status line then reads "Ready"
+    const plain = () => { if (status.textContent?.trim() === '?') status.textContent = 'Ready' }
+    new MutationObserver(plain).observe(status, { childList: true, characterData: true, subtree: true })
+    plain()
     const draw = (connected: boolean | null) => {
       this.statusInfo.serverOk = connected
       server.innerHTML = `<span class="ds-live${connected === false ? ' ds-off' : ''}" aria-hidden="true"></span>${connected === false ? 'Server not reachable' : connected ? 'Server connected' : 'Connecting…'}`

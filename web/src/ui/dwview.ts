@@ -351,8 +351,22 @@ export class DwView {
       return false
     }
     if (this.pendingEdits.size) {
-      this.acceptanceBusy()
-      return false
+      // Typing fast and clicking a button (the login's Ok) leaves keystroke events still running: AcceptText waits for them, as
+      // PowerBuilder processes them before the click.  Called from inside one of them it cannot wait for itself: after a short wait
+      // it reports the entry as still busy, as before.
+      const settled = await Promise.race([
+        (async () => { while (this.pendingEdits.size) await Promise.all(this.pendingEdits); return true })(),
+        new Promise<false>((resolve) => setTimeout(() => resolve(false), 3000)),
+      ])
+      if (!settled) {
+        this.acceptanceBusy()
+        return false
+      }
+      if (this.disposed || this.ctl.model !== model) return false
+      if (this.inputFailed) {
+        this.acceptanceBusy('The input event failed. Edit the field again or press Escape to cancel before continuing.')
+        return false
+      }
     }
     if (this.retainInvalidChoice()) return false
     return this.acceptEdit ? this.acceptEdit() : true

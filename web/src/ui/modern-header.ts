@@ -98,8 +98,11 @@ const TEXT_ICONS: [RegExp, string][] = [
   [/pdf/i, '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 15h8M8 18h5"/>'],
   [/mail/i, '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>'],
   [/excel|xls|sheet/i, '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>'],
-  [/save (report )?(input|filter)/i, '<path d="M6 3h12v18l-6-4-6 4z"/>'],
-  [/retrieve.*(saved|filter)/i, '<path d="M6 3h12v18l-6-4-6 4z"/><path d="M10 9h4"/>'],
+  // each of the report's saved-criteria commands has its own picture (the original drew all four alike)
+  [/save filter/i, '<path d="M3 4h14l-6 8v6l-3 2v-8z"/><path d="M19 13v6M16 16h6"/>'],
+  [/retrieve filter/i, '<path d="M3 4h14l-6 8v6l-3 2v-8z"/><path d="M19 12v7M16.5 16.5 19 19l2.5-2.5"/>'],
+  [/save (report )?input/i, '<path d="M6 3h12v18l-6-4-6 4z"/><path d="M12 7v6M9 10h6"/>'],
+  [/saved input|retrieve.*saved/i, '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'],
   [/filter/i, '<path d="M3 4h18l-7 9v6l-4 2v-8z"/>'],
   [/ruler/i, '<path d="M3 17 17 3l4 4L7 21z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/>'],
   [/paper|page size/i, '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>'],

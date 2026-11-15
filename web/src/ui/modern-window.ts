@@ -260,10 +260,15 @@ export function applyModernWindow(view: WinView): boolean {
   actions.className = 'window-actions'
   for (const name of surface.actions) actions.append(elements.get(name)!)
   // Approved design: the window's main action is the primary button (its default button, else the first Ok / Save / Print / Run)
-  if (!actions.querySelector('.default')) {
-    const main = [...actions.querySelectorAll<HTMLButtonElement>('button')].find((button) => /^(ok|save|yes|apply|print|run|retrieve|post|search|find|generate)/i.test(button.textContent?.trim() ?? ''))
+  // (checked again once the window has painted: a caption can be set by the window's open script after the layout)
+  const markPrimary = () => {
+    if (actions.querySelector('.default, .ds-primary')) return
+    const main = [...actions.querySelectorAll<HTMLButtonElement>('button')].find((button) => /^(ok|save|yes|apply|print|run|retrieve|post|search|find|generate|show|preview|process)/i.test(button.textContent?.trim() ?? ''))
     main?.classList.add('ds-primary')
   }
+  markPrimary()
+  requestAnimationFrame(markPrimary)
+  setTimeout(markPrimary, 400)
   const auxiliary = (surface.auxiliary ?? []).map((name) => {
     const element = elements.get(name)!
     element.classList.add('window-auxiliary')
