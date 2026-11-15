@@ -157,6 +157,46 @@ export class DwView {
   private refusedClick: { row: number; object: string | undefined } | null = null
   /** mouse presses and double clicks run one after another, behind the entry being validated */
   private pointerWork: Promise<void> = Promise.resolve()
+  /**
+   * Characters typed between a click on a field and the moment its editor exists.  Over the internet the field being left first
+   * runs its ItemChanged on the server (a round trip): without this, what the user typed meanwhile (the login's password right after
+   * the user name) was lost.  They are typed into the editor when it takes the focus.
+   */
+  private typeAhead: string[] | null = null
+  private typeAheadUntil = 0
+  private static typeAheadOwner: DwView | null = null
+  private static typeAheadBound = false
+  private beginTypeAhead(): void {
+    this.typeAhead = []
+    this.typeAheadUntil = Date.now() + 5000
+    DwView.typeAheadOwner = this
+    if (DwView.typeAheadBound) return
+    DwView.typeAheadBound = true
+    document.addEventListener('keydown', (event) => {
+      const owner = DwView.typeAheadOwner
+      if (!owner?.typeAhead || owner.disposed || Date.now() > owner.typeAheadUntil) return
+      const target = event.target
+      // only keys that would otherwise reach no editor (the focus is on the page or the DataWindow itself)
+      if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input,textarea,select,[role=listbox],[role=combobox]'))) return
+      if (event.ctrlKey || event.metaKey || event.altKey) return
+      if (event.key.length === 1) owner.typeAhead.push(event.key)
+      else if (event.key === 'Backspace') owner.typeAhead.pop()
+      else return
+      event.preventDefault()
+      event.stopPropagation()
+    }, true)
+  }
+  /** the editor that just took the focus receives what was typed while it was being opened */
+  private takeTypeAhead(input: HTMLInputElement | HTMLTextAreaElement): void {
+    const typed = this.typeAhead
+    this.typeAhead = null
+    if (DwView.typeAheadOwner === this) DwView.typeAheadOwner = null
+    if (!typed?.length || Date.now() > this.typeAheadUntil) return
+    const start = input.selectionStart ?? input.value.length
+    const end = input.selectionEnd ?? input.value.length
+    input.setRangeText(typed.join(''), start, end, 'end')
+    input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: typed.join('') }))
+  }
   private pointerDropped = false
   /** a repaint is putting an existing draft back; it is not a new focus change */
   protected restoringEditor = false
@@ -1154,6 +1194,7 @@ export class DwView {
    */
   protected pointerDown(m: DwModel, row: number, ev: MouseEvent, source?: HTMLElement): void {
     if (!source) this.refusedClick = null
+    if (ev.button === 0) this.beginTypeAhead()
     this.pointerWork = this.pointerWork.then(async () => {
       this.pointerDropped = false
       while (this.pendingEdits.size) {
@@ -2275,6 +2316,7 @@ export class DwView {
     this.placeEditor(input, cell)
     this.editor = input
     this.textEditor = input
+    if (this.typeAhead) input.addEventListener('focus', () => this.takeTypeAhead(input), { once: true })
     const arrows = input instanceof HTMLInputElement ? this.spinControl(input, m, o, row) : null
     const domText = (text: string) => multiline ? dwMultilineDomText(text) : text
     const readText = () => multiline ? dwMultilineText(input.value, sourceText) : input.value
