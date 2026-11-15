@@ -163,6 +163,7 @@ export class DwView {
    * the user name) was lost.  They are typed into the editor when it takes the focus.
    */
   private typeAhead: string[] | null = null
+  private editorFocusedAt = 0
   private typeAheadUntil = 0
   private static typeAheadOwner: DwView | null = null
   private static typeAheadBound = false
@@ -212,6 +213,19 @@ export class DwView {
     this.root.className = 'dw'
     host.appendChild(this.root)
     this.root.addEventListener('scroll', this.onScroll)
+    // The press that opens an editor is followed by the browser's own focus of the pressed element's focusable ancestor (this
+    // DataWindow): it took the focus away from the editor just opened, and what the user typed next went nowhere (the login's
+    // password after its user name).  That focus goes straight back to the editor.
+    this.root.addEventListener('focusin', (event) => {
+      const editor = this.editor
+      if (!editor?.isConnected || event.target === editor || editor.contains(event.target as Node)) return
+      if (performance.now() - this.editorFocusedAt > 250) return
+      if (event.target !== this.root && !(event.target instanceof Element && !event.target.closest('input,textarea,select,button,[role=listbox]'))) return
+      editor.focus({ preventScroll: true })
+    })
+    this.root.addEventListener('focusin', (event) => {
+      if (this.editor && (event.target === this.editor || this.editor.contains(event.target as Node))) this.editorFocusedAt = performance.now()
+    }, true)
     this.root.addEventListener('keydown', (event) => {
       const target = event.target
       if (event.defaultPrevented || event.isComposing || this.disposed || this.ctl.destroyed || this.pendingEdits.size ||
