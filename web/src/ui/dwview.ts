@@ -1688,8 +1688,12 @@ export class DwView {
     if (cell && (this.editor instanceof HTMLInputElement || this.editor instanceof HTMLTextAreaElement) &&
       this.editRow === m.row && this.editObj.toLowerCase() === name) {
       this.syncFocusedText?.()
+      // AutoSelect selects the text when the focus arrives in the column.  SetFocus on the DataWindow that already has it (the item
+      // search of every entry window calls it from EditChanged, on each keystroke) leaves the text and the caret alone: selecting
+      // it made the next keystroke replace what was typed ("panadol" ended as "l").
+      const hadFocus = document.activeElement === this.editor
       this.editor.focus()
-      if (!this.choiceEdit && dwEditAutoSelect(m, o)) this.editor.select()
+      if (!hadFocus && !this.choiceEdit && dwEditAutoSelect(m, o)) this.editor.select()
       return true
     }
     if (!cell || !cell.classList.contains('editable')) {

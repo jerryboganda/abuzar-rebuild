@@ -260,11 +260,13 @@ async function main(): Promise<void> {
             let database = 'mock:' + config.database
             if (!useMock) {
               const transaction = rt.globals.get('sqlca')
-              if (!(transaction instanceof NTransaction) || !transaction.db) throw new Error('Appearance selection requires the signed-in database session.')
-              const result = await transaction.db.query('SELECT current_database() AS database_name', [])
-              const identity = result.rows[0]?.[0]
-              if (typeof identity !== 'string' || !identity.trim()) throw new Error('The active database could not be identified for appearance settings.')
-              database = identity
+              // the login may have closed its session already (the main window opens its own): the configured database names the scope then
+              if (transaction instanceof NTransaction && transaction.db) {
+                const result = await transaction.db.query('SELECT current_database() AS database_name', [])
+                const identity = result.rows[0]?.[0]
+                if (typeof identity !== 'string' || !identity.trim()) throw new Error('The active database could not be identified for appearance settings.')
+                database = identity
+              } else database = String(config.database || 'default')
             }
             return { server: server ? new URL(server, location.href).href : location.origin, database, appUser, workstation: config.computer }
           }
