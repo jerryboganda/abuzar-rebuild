@@ -189,3 +189,16 @@ from the browser cache; login 5.9-6.2 s with no file requests (was 11.8 s; floor
 item list 0.83 s end to end (was 2.5-3 s). Deploy now with `/opt/pharmacy/deploy.sh <commit>` (builds, switches, sets the
 version in the proxy). Temporary for testing: proxy listener `zz-pharmacy-test.conf` (internal port 8099, no login, reachable
 only by SSH tunnel) and the test user; both to be removed when testing ends.
+
+**Modern UI visual QA on production, 2026-11-15** (commits `62d7b4b7` .. `ce231d73`, deployed with `deploy.sh`; checked in the browser
+through the SSH tunnel as `CLAUDE TEST`, dark and light theme). Fixed: frame menus hidden behind the Home page and a click on a
+submenu closing the menu; a newly opened sheet staying behind Home; report criteria dialogs (groupboxes collapsed to a title bar by a
+flex reflow, list box one line high, lone required star, no scrolling to Ok/Cancel, dialog over the window tabs, scrolled past its
+first caption, primary button missing); print preview dark instead of paper; duplicate toolbar icons and tab characters in tooltips;
+login password lost when Ok was clicked (the browser's focus of the window took the new editor's focus: every field clicked after
+another lost its first keystrokes); item search in entry windows replacing each keystroke (SetFocus re-selected the text); appearance
+settings never saved after sign-in; list-tab Find box without a row; header pop-ups pushed into the header; breadcrumb showing a
+menu object name and wrapping the header; Cash Sale panel widths, payment card and summary suffix; sign-in message boxes in the old
+look; "?" micro help. Kept as the original: d_login's `*****` mask, `cbx_all` hidden on the stock register, dot leaders in menu
+texts, closequery-guarded dialogs, Confirm Changes on a new record. Not every one of the ~2,000 windows was opened: the fixes are in
+the shared renderer (menus, dialogs, groupboxes, list boxes, DataWindow editing, header) that all of them use.
