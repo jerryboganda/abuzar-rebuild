@@ -266,6 +266,10 @@ export const DESIGN_CSS = `
   min-height:40px;border:1px solid var(--p-line)!important;border-radius:8px!important;background:var(--p-surface)!important;padding:0 12px;transition:border-color .15s,box-shadow .2s;
 }
 .modern-window :is(input,select,textarea).ctl:focus:not(.window-embedded *) {outline:none;border-color:var(--p-accent)!important;box-shadow:0 0 0 4px var(--p-glow);}
+/* every form: a field's caption and its required mark share one line (a long caption wraps, the mark stays at its end) */
+.modern-surface .surface-field:has(> .surface-label + .surface-required) {display:grid!important;grid-template-columns:minmax(0,max-content) minmax(0,1fr);align-items:end;column-gap:0;}
+.modern-surface .surface-field:has(> .surface-label + .surface-required) > :not(.surface-label):not(.surface-required) {grid-column:1 / -1;}
+.modern-surface .surface-field:has(> .surface-label + .surface-required) > .surface-required {justify-self:start;margin-block:0 4px;}
 /* a dialog taller than the screen scrolls its content; its Ok / Cancel row stays in view at the bottom */
 dialog .modern-window.pbwin > .client {flex:1 1 auto;min-height:0;overflow:auto!important;padding-bottom:0!important;}
 dialog .modern-window.pbwin > .client > .window-actions {position:sticky;bottom:0;z-index:2;margin-inline:-20px;padding-inline:20px;background:var(--p-surface);border-top:1px solid var(--p-hair);}

@@ -325,7 +325,18 @@ export class NDwBase extends PBObject {
       this.changed()
       return
     }
-    this.attach(new DwModel(this.rt, name, def as DwDef))
+    const model = new DwModel(this.rt, name, def as DwDef)
+    this.attach(model)
+    // d_find is the one-field "Find" box of every list tab (w_multi_entry): no table, never saved.  Its scripts only ever write
+    // find[1]; nothing gives it that row, so the box could not take a keystroke.  The search popups insert their own row in their
+    // open event: once the window has had time to do so, a box still empty gets its row.
+    if (name.toLowerCase() === 'd_find') {
+      setTimeout(() => {
+        if (this.destroyed || this.model !== model || model.rowCount() > 0) return
+        model.insertRow(0)
+        this.changed()
+      }, 1500)
+    }
   }
 
   attach(model: DwModel): void {
