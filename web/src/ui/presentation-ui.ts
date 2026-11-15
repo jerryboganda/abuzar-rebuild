@@ -207,6 +207,8 @@ export class PresentationUi extends DomUi {
   override menuItemInvoked(item: PBObject): void {
     const path: string[] = []
     for (let node: PBObject | null = item; node && node.native !== 'window'; node = node.parent) {
+      // the menu object itself (a sheet's own menu, e.g. m_changeitemprice) is not an item of the path
+      if (!node.parent || node.parent.native === 'window' || String(node.props.get('text') ?? '').toLowerCase() === node.name.toLowerCase()) continue
       const text = String(node.props.get('text') ?? '').split(/<TAB>|\t/)[0].replace(/&&/g, '\0').replace(/&/g, '').replace(/\0/g, '&').replace(/\.{3,}/g, '').trim()
       if (text) path.unshift(text)
     }
