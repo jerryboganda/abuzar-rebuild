@@ -210,9 +210,9 @@ export async function openItemDrawer(parent: HTMLElement, it: ItemRow, query: Qu
   const fields: [string, string][] = [['Code', it.code], ['Name', it.name], ['Packing', it.pack], ['Manufacturer', it.mfr], ['Category', it.cat], ['Reorder level', String(d[5] ?? it.reorder)],
     ['Pur. price', money(it.pur)], ['Sale price', money(it.sale)], ['Retail price', money(Number(d[0] ?? 0))], ['GST %', String(Number(d[2] ?? 0))], ['PCT code', String(d[4] ?? '')], ['Location', String(d[3] ?? '')]]
   const body = () => tab === 'd'
-    ? `<div class="ds-fields">${fields.map(([l, v], i) => `<div class="ds-f"><label for="ds-dr${i}">${l}</label><input class="ds-in" id="ds-dr${i}" value="${esc(v)}" readonly></div>`).join('')}</div>`
+    ? `<div class="ds-fields">${fields.map(([l, v], i) => `<div class="ds-f"><label for="ds-dr${i}">${l}</label><input class="ds-in" id="ds-dr${i}" value="${esc(/^\.*$/.test(String(v).trim()) ? '' : v)}" placeholder="—" readonly></div>`).join('')}</div>`
     : tab === 'b'
-      ? `<table class="ds-table"><thead><tr><th>Batch</th><th>Expiry</th><th class="r">Stock</th><th>Godown</th></tr></thead><tbody>${batches.map((b) => `<tr><td class="num">${esc(b[0])}</td><td>${expTag(b[1] ? new Date(String(b[1])) : null, anchor)}</td><td class="r num">${Number(b[2]).toLocaleString('en-PK')}</td><td>${esc(b[3])}</td></tr>`).join('') || '<tr><td colspan="4" class="ds-empty">No stock in any batch.</td></tr>'}</tbody></table>`
+      ? `<table class="ds-table"><thead><tr><th>Batch</th><th>Expiry</th><th class="r">Stock</th><th>Godown</th></tr></thead><tbody>${batches.map((b) => `<tr><td class="num">${esc(/^\.*$/.test(String(b[0] ?? '').trim()) ? '—' : b[0])}</td><td>${expTag(b[1] ? new Date(String(b[1])) : null, anchor)}</td><td class="r num">${Number(b[2]).toLocaleString('en-PK')}</td><td>${esc(b[3])}</td></tr>`).join('') || '<tr><td colspan="4" class="ds-empty">No stock in any batch.</td></tr>'}</tbody></table>`
       : `<ul class="ds-timeline">${history.map((h) => `<li><span class="tdot">${icon('clock', 's')}</span><div>Sale price Rs ${money(Number(h[1]))}${Number(h[2]) && Number(h[2]) !== Number(h[1]) ? ` → ${money(Number(h[2]))}` : ''} · purchase Rs ${money(Number(h[3]))}<br><small>${h[0] ? new Date(String(h[0])).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</small></div></li>`).join('') || '<li>No price changes recorded.</li>'}</ul>`
   const draw = () => {
     drawer.innerHTML = `<div class="ds-drawer-h"><span class="ds-iav ds-iav-lg">${esc(it.name.slice(0, 2))}</span><div class="ds-grow"><b>${esc(it.name)}</b><div class="ds-help">${esc(it.code)} · ${esc(it.mfr)}</div></div><button class="ds-ic" type="button" data-close aria-label="Close">${icon('x')}</button></div>
@@ -328,6 +328,9 @@ export const PAGES_CSS = `
 /* print preview: paper in either theme (the report keeps the colours of its print layout) */
 .modern-window .window-embedded .page {background:#fff!important;color:#000;color-scheme:light;box-shadow:0 2px 14px rgb(0 0 0 / .25);}
 .modern-window .dw:has(> .dw-preview),.modern-window .dw-preview {background:var(--p-canvas)!important;}
+/* the paper sits in the middle of the viewer, as a sheet on a desk (it was pinned to the left edge) */
+.modern-window .dw > .dw-preview {min-width:0!important;margin-inline:auto!important;}
+.modern-window .dw > .dw-preview > .page {box-shadow:0 2px 14px rgb(0 0 0 / .35)!important;}
 .modern-window .window-embedded fieldset.ctl {border:1px solid var(--p-hair)!important;border-radius:10px;background:none!important;}
 .modern-window .window-embedded fieldset.ctl legend {color:var(--p-muted)!important;font:600 12px var(--p-font)!important;padding:0 6px;}
 .modern-window .window-embedded .ctl.st,.modern-window .window-embedded label.ctl {color:var(--p-text)!important;background:none!important;}
@@ -350,9 +353,18 @@ export const PAGES_CSS = `
 .modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) :is(input,textarea,select).dw-edit {background:var(--p-surface)!important;color:var(--p-text)!important;}
 /* ---------- Report criteria (the original w_arg_* dialogs) docked under the report header as the mockup's filter card: same
    window, fields and Ok/Cancel; it only sits in the page instead of floating over a dimmed screen ---------- */
-dialog.presentation-compatibility-dialog[open]:has(.pbwin[data-win^=w_arg_]) {position:fixed;inset:var(--ds-report-top,150px) 16px auto 16px;margin:0;width:auto;max-width:none;max-height:calc(100vh - var(--ds-report-top,150px) - 48px);animation:ds-drop .2s var(--p-ease);}
-dialog.presentation-compatibility-dialog:has(.pbwin[data-win^=w_arg_])::backdrop {background:transparent;backdrop-filter:none;}
-dialog.presentation-compatibility-dialog[open]:has(.pbwin[data-win^=w_arg_]) .modern-window.pbwin {width:100%!important;max-width:none!important;box-shadow:var(--p-shadow-lg);}
+dialog.presentation-compatibility-dialog[open].ds-report-criteria {position:fixed;inset:var(--ds-report-top,150px) 16px auto 16px;margin:0;width:auto;max-width:none;max-height:calc(100vh - var(--ds-report-top,150px) - 30px);animation:ds-drop .2s var(--p-ease);}
+dialog.presentation-compatibility-dialog.ds-report-criteria::backdrop {background:transparent;backdrop-filter:none;}
+/* the card hangs from the top of its area (a short one was centred in it, far below the header); the area keeps a definite height
+   so a long card scrolls inside it */
+dialog.presentation-compatibility-dialog[open].ds-report-criteria {display:flex!important;flex-direction:column;justify-content:flex-start;align-items:stretch;height:calc(100vh - var(--ds-report-top,150px) - 30px)!important;}
+dialog.presentation-compatibility-dialog[open].ds-report-criteria > .pbwin {margin:0!important;flex:0 1 auto;min-height:0;}
+dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin {width:100%!important;max-width:none!important;box-shadow:var(--p-shadow-lg);}
+/* the criteria keep the proportions of the original dialog inside the wide card (a 500px form is not stretched over 1,400px) */
+dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin > .client > .window-fields {max-width:64em;}
+.modern-window .window-list select.ctl {max-height:18em;}
+dialog.presentation-compatibility-dialog[open].ds-report-criteria .window-list select.ctl {min-height:7.5em;}
+dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin > .tbar {padding:12px 20px 2px;}
 /* ---------- Group Rights (Manage › Groups): the original rights grid as the mockup's matrix — level shown by weight and a
    tint instead of the source's blue bands, permissions as switches (the cell, its click handling and the saved value are unchanged) */
 .pbwin[data-win=w_groups_form] .dw:has(.o[data-obj=checked]) {background:var(--p-surface)!important;}

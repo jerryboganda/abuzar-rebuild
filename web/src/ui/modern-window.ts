@@ -180,7 +180,9 @@ export function applyModernWindow(view: WinView): boolean {
       binding.view.dw.useContextSurface(binding.surface, labels)
       content.append(binding.view.el)
       contentItems.set(binding.control, binding.view.el)
-      itemControls.set(binding.control, [binding.control, ...(binding.labels ?? []).map((label) => label.control)])
+      // The captions that name the DataWindow's fields stay grid items of their own (beside it, as the source draws them): the
+      // DataWindow keeps its own area, or it would be stretched over them and cover their text.
+      itemControls.set(binding.control, [binding.control])
     }
   }
   for (const name of surface.embedded ?? []) {
@@ -285,6 +287,9 @@ export function applyModernWindow(view: WinView): boolean {
   view.client.replaceChildren(content, actions, ...auxiliary, ...nonVisual)
   view.el.classList.add('modern-window')
   view.el.classList.toggle('modern-data-window', data.length > 0)
+  // A dialog the source drew wide (two columns of options, side-by-side lists) gets a wider card: its width follows the source width.
+  const sourceWidth = Number(view.w.props?.get('width'))
+  if (Number.isFinite(sourceWidth) && sourceWidth > 0) view.el.style.setProperty('--source-width', `${Math.round(sourceWidth * 0.21875)}px`)
   // Tab moves through the window: bring the newly focused field fully into the scroll area. A programmatic redraw
   // restores focus too, but must keep the user's scroll position.
   let tabbing = false
@@ -452,6 +457,8 @@ function arrangeSourceWindow(view: WinView, content: HTMLElement, items: Readonl
  * (controls that share a row share it, a tall list beside stacked fields spans them, columns follow the source widths).  The DOM
  * order, and so the tab order, is untouched.  A window whose controls carry no usable geometry keeps the single-column flow.
  */
+/** Height of a groupbox caption in source units (one line of the dialog font). */
+const LEGEND_BAND = 56
 function arrangeGrid(view: WinView, content: HTMLElement, items: ReadonlyMap<string, HTMLElement>, controls: ReadonlyMap<string, readonly string[]>,
   flexible: ReadonlySet<string>, frames: ReadonlyMap<string, HTMLElement> = new Map()): void {
   const read = (name: string) => {
@@ -487,6 +494,10 @@ function arrangeGrid(view: WinView, content: HTMLElement, items: ReadonlyMap<str
     if (!part) continue
     boxes.push({ key: name, left: part.x, top: part.y, right: part.x + part.width, bottom: part.y + Math.max(1, part.height), flex: true })
     areas.set(name, element)
+    // The caption of a groupbox needs a band of its own: without one its first member starts on the caption's line.
+    if (element.querySelector('legend')?.textContent?.trim()) {
+      boxes.push({ key: `${name}:legend`, left: part.x, top: part.y, right: part.x + Math.min(part.width, 1), bottom: part.y + Math.min(LEGEND_BAND, Math.max(1, part.height)) })
+    }
   }
   // One placed item has nothing to be arranged against; a groupbox around it does (a selection list inside its box).
   if (boxes.length < 2) return
@@ -494,5 +505,209 @@ function arrangeGrid(view: WinView, content: HTMLElement, items: ReadonlyMap<str
   const placed = new Set([...boxes.map((box) => items.get(box.key)), ...areas.values()])
   const unplaced = ([...content.children] as HTMLElement[]).filter((child) => !placed.has(child))
   unplaced.forEach((child, index) => { child.style.gridColumn = '1 / -1'; child.style.gridRow = String(index + 1) })
-  applyGrid(content, planGrid(boxes), new Map([...items, ...areas]), unplaced.length)
+  // A dialog of options (radio buttons, check boxes, captions) is planned on single lines; one of captioned fields on four-line cells.
+  const placedItems = boxes.flatMap((box) => { const element = items.get(box.key); return element ? [element] : [] })
+  const single = placedItems.filter((element) => element.matches('.window-option, .window-caption')).length
+  applyGrid(content, planGrid(boxes), new Map([...items, ...areas]), unplaced.length, single * 2 > placedItems.length ? 2.7 : 4)
+  // "Selectable  User(s)": a caption the source draws on the line of a list's own caption stays on that line.  The list (caption
+  // above its box) starts on the caption's row, and the caption stands beside the list's caption instead of in a row above it.
+  for (const [key, names] of controls) {
+    const list = items.get(key)
+    const label = names[1] ? read(names[1]) : null
+    const listBox = read(names[0])
+    if (!list?.classList.contains('window-list') || !label || !listBox) continue
+    for (const [other, element] of items) {
+      if (!element.classList.contains('window-caption')) continue
+      const caption = read(other)
+      if (!caption) continue
+      const overlap = Math.min(caption.y + caption.height, label.y + label.height) - Math.max(caption.y, label.y)
+      if (overlap < 0.5 * Math.min(caption.height, label.height) || caption.x < label.x || caption.x > listBox.x + listBox.width) continue
+      const captionRow = Number.parseInt(element.style.gridRowStart, 10), listRow = Number.parseInt(list.style.gridRowStart, 10)
+      if (Number.isFinite(captionRow) && Number.isFinite(listRow) && captionRow < listRow) list.style.gridRowStart = String(captionRow)
+      element.classList.add('window-caption-inline')
+      // beside the list's own caption: as far in as the source draws it
+      element.style.gridColumnStart = list.style.gridColumnStart
+      element.style.gridColumnEnd = list.style.gridColumnEnd
+      element.style.paddingInlineStart = `calc(${(Math.max(0, caption.x - label.x) / Math.max(1, listBox.width) * 100).toFixed(1)}% + 1.5em)`
+    }
+  }
+  // A form DataWindow the dialog captions itself ("Customer:" left of a one-field DataWindow, a group box named like its only
+  // field): the dialog's caption is the visible one, level with the field; the DataWindow's own caption would say it twice.
+  const plain = (text: string | null | undefined) => (text ?? '').replace(/&/g, '').replace(/[:\s]+$/g, '').replace(/\s+/g, ' ').trim().toLowerCase()
+  for (const [key, element] of items) {
+    if (!element.classList.contains('window-data')) continue
+    const data = read(key)
+    if (!data) continue
+    let captioned = false
+    for (const [other, caption] of items) {
+      if (!caption.classList.contains('window-caption')) continue
+      const box = read(other)
+      if (!box || box.x + box.width > data.x + 40 || box.y + box.height <= data.y || box.y >= data.y + data.height) continue
+      caption.classList.add('window-caption-beside')
+      captioned = true
+    }
+    const legends = [...frames].flatMap(([name, frame]) => {
+      const box = read(name)
+      return box && data.x >= box.x && data.y >= box.y && data.x + data.width <= box.x + box.width + 8 && data.y + data.height <= box.y + box.height + 8 ?
+        [plain(frame.querySelector('legend')?.textContent)] : []
+    }).filter(Boolean)
+    const settle = () => {
+      if (element.querySelector('.surface-body-grid')) return
+      const labels = [...element.querySelectorAll<HTMLElement>('.surface-field > .surface-label')].filter((label) => !label.classList.contains('presentation-visually-hidden'))
+      element.classList.toggle('window-data-captioned', captioned || (labels.length === 1 && legends.includes(plain(labels[0].textContent))))
+    }
+    settle(); setTimeout(settle, 300); setTimeout(settle, 1200)
+    // A DataWindow ends where the next control under it begins: the source lets a row of options start inside the DataWindow's
+    // area (it is drawn taller than its fields), and the Modern fields, taller than the source's, would run under those options.
+    const line = (value: string) => Number.parseInt(value, 10)
+    const rowStart = line(element.style.gridRowStart), rowEnd = line(element.style.gridRowEnd)
+    const columnStart = line(element.style.gridColumnStart), columnEnd = line(element.style.gridColumnEnd)
+    if ([rowStart, rowEnd, columnStart, columnEnd].every(Number.isFinite)) {
+      let end = rowEnd
+      for (const [other, sibling] of items) {
+        if (sibling === element || other === key || sibling.classList.contains('window-caption-beside')) continue
+        const top = line(sibling.style.gridRowStart), left = line(sibling.style.gridColumnStart), right = line(sibling.style.gridColumnEnd)
+        if (![top, left, right].every(Number.isFinite) || left >= columnEnd || right <= columnStart) continue
+        if (top > rowStart && top < end) end = top
+      }
+      if (end < rowEnd) element.style.gridRowEnd = String(end)
+    }
+  }
+  // Measured finish (the grid gives rows, not baselines).  It runs when the dialog has its content and again when it changes size.
+  const beside: [HTMLElement, HTMLElement][] = []
+  for (const [key, element] of items) {
+    if (!element.classList.contains('window-data')) continue
+    const data = read(key)
+    if (!data) continue
+    for (const [other, sibling] of items) {
+      if (sibling === element) continue
+      const box = read(other)
+      if (!box || box.y + box.height <= data.y || box.y >= data.y + data.height) continue
+      // the dialog's caption left of the DataWindow, or a button right of its field ("Retrieve" beside the Supplier drop-down)
+      if (sibling.classList.contains('window-caption-beside') && box.x + box.width <= data.x + 40) beside.push([sibling, element])
+      else if (sibling.tagName === 'BUTTON' && !sibling.classList.contains('window-embedded') && box.x >= data.x + data.width * 0.5) beside.push([sibling, element])
+    }
+  }
+  const nested: [HTMLElement, HTMLElement][] = []
+  const inside = new Map<HTMLElement, HTMLElement[]>()
+  for (const [name, frame] of frames) {
+    const box = read(name)
+    if (!box) continue
+    const within = (other: { x: number; y: number; width: number; height: number }) =>
+      other.x >= box.x - 4 && other.y >= box.y - 4 && other.x + other.width <= box.x + box.width + 8 && other.y + other.height <= box.y + box.height + 8
+    for (const [otherName, outer] of frames) {
+      const outerBox = read(otherName)
+      if (outer !== frame && outerBox && outerBox.width * outerBox.height > box.width * box.height && box.x >= outerBox.x - 4 && box.y >= outerBox.y - 4 &&
+        box.x + box.width <= outerBox.x + outerBox.width + 8 && box.y + box.height <= outerBox.y + outerBox.height + 8) nested.push([frame, outer])
+    }
+    const content: HTMLElement[] = []
+    for (const [key, element] of items) {
+      const other = read(key)
+      if (other && element !== frame && !element.classList.contains('window-frame-area') && within(other)) content.push(element)
+    }
+    inside.set(frame, content)
+  }
+  // captions that stand left of a field on its line
+  const lead: HTMLElement[] = []
+  const leadField = new Map<HTMLElement, HTMLElement>()
+  for (const [key, caption] of items) {
+    if (!caption.classList.contains('window-caption')) continue
+    const box = read(key)
+    if (!box) continue
+    for (const [other, element] of items) {
+      if (element === caption || element.classList.contains('window-caption') || element.classList.contains('window-frame-area')) continue
+      const field = read(other)
+      if (!field || field.y + field.height <= box.y || field.y >= box.y + box.height) continue
+      const gap = field.x - (box.x + box.width)
+      if (gap >= -8 && gap <= Math.max(60, box.width * 0.3)) { lead.push(caption); leadField.set(caption, element); break }
+    }
+  }
+  const tucked = new Set<HTMLElement>()
+  const finish = () => {
+    if (!content.isConnected) return
+    // captions left of their fields end at their fields when the source draws them right-aligned or starts them at different
+    // places (one caption started 130px left of the others)
+    const starts = lead.map((caption) => caption.getBoundingClientRect()).filter((rect) => rect.width > 0).map((rect) => rect.left)
+    if (lead.length > 1 && (lead.some((caption) => /right|end/.test(getComputedStyle(caption).textAlign)) || Math.max(...starts) - Math.min(...starts) > 24))
+      for (const caption of lead) {
+        if (!/right|end/.test(getComputedStyle(caption).textAlign)) caption.style.textAlign = 'end'
+        // and each ends the same distance before its field
+        if (caption.classList.contains('window-caption-beside')) continue
+        caption.style.translate = ''
+        const field = leadField.get(caption)?.getBoundingClientRect(), own = caption.getBoundingClientRect()
+        const shift = field && field.width ? field.left - 14 - own.right : 0
+        if (Math.abs(shift) >= 1.5 && Math.abs(shift) <= 48) caption.style.translate = `${shift.toFixed(1)}px 0`
+      }
+    // a caption or a button beside a DataWindow stands level with the field it belongs to
+    for (const [element, data] of beside) {
+      // a caption the DataWindow took in as its field's caption already stands over that field
+      if (data.querySelector('.surface-body-grid') || data.contains(element)) { element.style.translate = ''; continue }
+      element.style.translate = ''
+      const button = element.tagName === 'BUTTON'
+      if (!button) element.style.textAlign = 'end'
+      const own = element.getBoundingClientRect()
+      const centre = button ? own.top + own.height / 2 : own.top + Number.parseFloat(getComputedStyle(element).paddingTop) + Number.parseFloat(getComputedStyle(element).lineHeight) / 2
+      let best = Infinity, left = 0
+      for (const editor of data.querySelectorAll<HTMLElement>('.surface-field :is(.surface-value,input,select,textarea,.dw-choice)')) {
+        const rect = editor.getBoundingClientRect()
+        if (!rect.height) continue
+        const delta = rect.top + rect.height / 2 - centre
+        if (Math.abs(delta) < Math.abs(best)) { best = delta; left = rect.left }
+      }
+      // a caption also ends the same distance before that field
+      const across = button ? 0 : left - 14 - own.right
+      const dx = Math.abs(across) >= 1.5 && Math.abs(across) <= 48 ? across : 0
+      const dy = Number.isFinite(best) && Math.abs(best) >= 1.5 && Math.abs(best) <= 44 ? best : 0
+      if (dx || dy) element.style.translate = `${dx.toFixed(1)}px ${dy.toFixed(1)}px`
+    }
+    // a group box keeps air between its title, its content and its border; a box inside another ends above the outer border
+    for (const element of tucked) element.style.marginBottom = ''
+    tucked.clear()
+    for (const [frame, content] of inside) {
+      frame.style.marginTop = ''; frame.style.marginBottom = ''
+      const rect = frame.getBoundingClientRect()
+      if (!rect.height) continue
+      const rects = content.map((element) => element.getBoundingClientRect()).filter((r) => r.height > 0 && r.top >= rect.top - 2 && r.bottom <= rect.bottom + 60)
+      if (!rects.length) continue
+      const base = Number.parseFloat(getComputedStyle(frame).marginTop) || 0
+      // only options count for the lower edge: a DataWindow's area is taller than the fields it shows
+      const options = content.filter((element) => element.classList.contains('window-option')).map((element) => element.getBoundingClientRect()).filter((r) => r.height > 0)
+      const top = options.length ? Math.min(...options.map((r) => r.top)) - rect.top : Infinity
+      // the lower edge counts what is drawn: options, editors, and the fields of a DataWindow (its own area is taller than they are)
+      const drawn = content.flatMap((element) => element.classList.contains('window-data') ?
+        [...element.querySelectorAll<HTMLElement>('.surface-field,table.surface-grid,.surface-empty')].map((part) => part.getBoundingClientRect()) : [element.getBoundingClientRect()])
+        .filter((r) => r.height > 0 && r.bottom <= rect.bottom + 40)
+      const bottom = drawn.length ? rect.bottom - Math.max(...drawn.map((r) => r.bottom)) : Infinity
+      const titled = !!frame.querySelector('legend')?.textContent?.trim()
+      const need = titled ? 24 : 10
+      if (top < need) frame.style.marginTop = `${(base - (need - top)).toFixed(1)}px`
+      if (bottom < 12 && bottom > -40) {
+        // never into what stands under it (the next group box, a caption, a field): 8px stay between them
+        let room = Infinity
+        for (const other of [...inside.keys(), ...items.values()]) {
+          if (other === frame || content.includes(other) || !other.isConnected) continue
+          const below = other.getBoundingClientRect()
+          if (below.top >= rect.bottom - 2 && below.left < rect.right && below.right > rect.left) room = Math.min(room, below.top - rect.bottom - 8)
+        }
+        const grow = Math.min(12 - bottom, Math.max(0, room))
+        if (grow > 0) frame.style.marginBottom = `${(-grow).toFixed(1)}px`
+        // no room to grow (another box follows at once): the lowest field gives the air instead
+        const short = Math.min(10, 12 - bottom - grow)
+        if (short >= 2) for (const element of content) {
+          if (element.classList.contains('window-data') || element.getBoundingClientRect().bottom < rect.bottom - bottom - 1) continue
+          element.style.marginBottom = `${short.toFixed(1)}px`
+          tucked.add(element)
+        }
+      }
+    }
+    for (const [frame, outer] of nested) {
+      const gap = outer.getBoundingClientRect().bottom - frame.getBoundingClientRect().bottom
+      if (gap < 9 && !frame.style.marginBottom) frame.style.marginBottom = `${(10 - gap).toFixed(1)}px`
+    }
+  }
+  if (beside.length || inside.size || lead.length > 1) {
+    finish(); setTimeout(finish, 350); setTimeout(finish, 1300)
+    let queued = 0
+    new ResizeObserver(() => { cancelAnimationFrame(queued); queued = requestAnimationFrame(finish) }).observe(content)
+  }
 }

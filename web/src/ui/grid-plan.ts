@@ -78,8 +78,34 @@ function tracksOf(edges: readonly number[], spans: readonly [number, number][], 
  */
 export function resolveAnchors(items: readonly { editor: GridBox; anchored: GridBox }[]): GridBox[] {
   const intersects = (a: GridBox, b: GridBox) => Math.min(a.right, b.right) > Math.max(a.left, b.left) && Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top)
-  return items.map((item) => items.some((other) => other !== item && !intersects(item.editor, other.editor) && intersects(item.anchored, other.editor)) ?
-    { ...item.editor, key: item.anchored.key, ...(item.anchored.flex ? { flex: true } : {}) } : item.anchored)
+  const editorOnly = (item: { editor: GridBox; anchored: GridBox }): GridBox => ({ ...item.editor, key: item.anchored.key, ...(item.anchored.flex ? { flex: true } : {}) })
+  const narrowed = items.map((item) => items.some((other) => other !== item && !intersects(item.editor, other.editor) && intersects(item.anchored, other.editor)))
+  // Fields of one column keep one left edge: when a field had to give up the caption on its left (it would have taken another
+  // field's place), the fields whose editors start at the same edge give theirs up too.  "Start Date" then starts where "End Date"
+  // does, each under its caption, instead of one starting at its caption's edge and the other at its editor's.
+  const resolved = items.map((item, index) => {
+    if (narrowed[index]) return editorOnly(item)
+    if (item.anchored.left >= item.editor.left) return item.anchored
+    const tolerance = Math.max(4, (item.editor.right - item.editor.left) * 0.03)
+    const sibling = items.some((other, at) => at !== index && narrowed[at] && other.anchored.left < other.editor.left &&
+      Math.abs(other.editor.left - item.editor.left) <= tolerance && other.anchored.top === other.editor.top && item.anchored.top === item.editor.top)
+    return sibling ? editorOnly(item) : item.anchored
+  })
+  // Stacked fields whose editors start at one edge start at one edge with their captions too: a caption that begins a little left
+  // of its editor moved that one field left of the field under it ("Start Date" 8px left of "End Date").
+  return resolved.map((box, index) => {
+    const editor = items[index].editor
+    const tolerance = Math.max(4, (editor.right - editor.left) * 0.03)
+    let left = box.left
+    items.forEach((other, at) => {
+      if (at === index || Math.abs(other.editor.left - editor.left) > tolerance) return
+      if (Math.min(other.editor.bottom, editor.bottom) > Math.max(other.editor.top, editor.top)) return
+      if (resolved[at].left < left) left = resolved[at].left
+    })
+    if (left >= box.left) return box
+    const wider = { ...box, left }
+    return items.some((other, at) => at !== index && intersects(wider, other.editor) && !intersects(box, other.editor)) ? box : wider
+  })
 }
 
 export function planGrid(boxes: readonly GridBox[]): GridPlan {
@@ -90,11 +116,15 @@ export function planGrid(boxes: readonly GridBox[]): GridPlan {
   // The typical height is a low quantile, not the median: tall containers (a groupbox, a list) must not widen the tolerance that
   // decides whether two small fields share a row.
   const typicalHeight = heights[Math.floor(heights.length * 0.25)]
-  // Row edges snap within 5% of a typical field height (only measurement jitter), so staggered neighbours keep their stagger:
+  // Row edges snap within a fifth of a typical field height: two check boxes the source draws a few pixels apart in height are one
+  // row (they read as a pair), while a real stagger of half a field or more keeps its rows:
   // the rows are then sized in proportion to the source distances.
-  const yEdges = snapEdges(boxes.flatMap((box) => [box.top, box.bottom]), Math.max(1, typicalHeight * 0.05))
-  // Column edges snap within 1% of the span, widened until the track count is workable.
-  let xTolerance = Math.max(1, (maxX - minX) * 0.01)
+  const yEdges = snapEdges(boxes.flatMap((box) => [box.top, box.bottom]), Math.max(1, Math.min(typicalHeight * 0.2, heights[0] * 0.45)))
+  // Column edges snap within 2% of the span (two date fields the source draws a few pixels apart share their edge), widened until
+  // the track count is workable.
+  // (never as much as half the narrowest object: its own two edges stay two edges)
+  const narrowest = Math.min(...boxes.map((box) => Math.max(1, box.right - box.left)))
+  let xTolerance = Math.max(1, Math.min((maxX - minX) * 0.02, narrowest * 0.6))
   let xEdges = snapEdges(boxes.flatMap((box) => [box.left, box.right]), xTolerance)
   while (xEdges.length - 1 > MAX_COLUMNS && xTolerance < maxX - minX) {
     xTolerance *= 1.5
@@ -117,13 +147,28 @@ export function planGrid(boxes: readonly GridBox[]): GridPlan {
 }
 
 /** Applies a plan to a container: the grid tracks on the container, the placement on each element (DOM order is untouched). */
-export function applyGrid(container: HTMLElement, plan: GridPlan, elements: ReadonlyMap<string, HTMLElement>, rowOffset = 0): void {
+export function applyGrid(container: HTMLElement, plan: GridPlan, elements: ReadonlyMap<string, HTMLElement>, rowOffset = 0, lineEm = 4): void {
   if (!plan.columns.length) return
   container.classList.add('has-grid')
   container.style.setProperty('--grid-columns', plan.columns.map((size) => `minmax(0,${size}fr)`).join(' '))
   // A typical field is four lines of text high (caption above editor); every row is at least its source share of that, and grows with content.
-  container.style.setProperty('--grid-unit', `${4 / plan.unit}em`)
-  container.style.setProperty('--grid-rows', [...Array.from({ length: rowOffset }, () => 'auto'), ...plan.rowSizes.map((size) => `minmax(calc(${size} * var(--grid-unit)), auto)`)].join(' '))
+  // (`lineEm`: a plan whose typical box is one line of text - radio buttons, check boxes - asks for less than four lines.)
+  container.style.setProperty('--grid-unit', `${lineEm / plan.unit}em`)
+  // A row never demands more than a comfortable list height: a tall source list keeps a usable size instead of pushing the fields
+  // under it off the screen (the row still grows with its content).
+  container.style.setProperty('--grid-rows', [...Array.from({ length: rowOffset }, () => 'auto'), ...plan.rowSizes.map((size) => `minmax(min(calc(${size} * var(--grid-unit)), 10em), auto)`)].join(' '))
+  // A form the source draws as one column of fields (every field starts at the same edge, none beside another) is marked: the
+  // design then puts each caption beside its field instead of above it, so a long form is half as tall.
+  const starts = new Map<number, number>()
+  let stacked = 0
+  for (const [key, element] of elements) {
+    const placement = plan.place.get(key)
+    if (!placement || !element.classList.contains('surface-field')) continue
+    starts.set(placement.colStart, (starts.get(placement.colStart) ?? 0) + 1)
+    stacked++
+  }
+  // (a few fields beside another - a code and its date - do not make a form of forty stacked fields a multi-column one)
+  container.classList.toggle('grid-one-column', stacked >= 6 && (starts.get(Math.min(...starts.keys())) ?? 0) >= stacked * 0.8)
   for (const [key, element] of elements) {
     const placement = plan.place.get(key)
     if (!placement) continue

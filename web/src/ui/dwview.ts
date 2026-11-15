@@ -1430,7 +1430,9 @@ export class DwView {
     st.lineHeight = st.height
     st.padding = '0 2px'
     if (o.type === 'text') {
-      const t = await this.textOf(m, o, row, band)
+      let t = await this.textOf(m, o, row, band)
+      // a crosstab's `@column` heading stands for the values of that column; while there are none (nothing retrieved) it shows nothing
+      if (num(m.def.datawindow, 'processing', 0) === 4 && /^@\w+$/.test(t.trim())) t = ''
       setMnemonic(el, t)
       // a label wider than its box wraps at the words (the grid headers `Manufacturer Name`, `P/O Base Period (Days)` show on two lines)
       const boxW = sx(num(o, 'width')) - 4

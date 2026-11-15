@@ -140,6 +140,17 @@ export class PresentationUi extends DomUi {
       root: view.el,
       model: (name: string) => (byName(name) as unknown as { model?: never } | undefined)?.model ?? null,
       query: async (sql: string, params: unknown[]) => transaction?.db ? (await transaction.db.query(sql, params)).rows : [],
+      focusCell: async (name: string, row: number, column: string) => {
+        const control = byName(name)
+        if (!control) return false
+        try {
+          await this.rt.callMethod(control, 'setfocus', [])
+          // (the row it is already on is not set again: that would count as a change of record for an entry being typed)
+          if (Number(await this.rt.callMethod(control, 'getrow', [])) !== row) await this.rt.callMethod(control, 'setrow', [row])
+          await this.rt.callMethod(control, 'setcolumn', [column])
+          return true
+        } catch { return false }
+      },
     }
     const creditSale = /credit/i.test(String(this.selected.props.get('title') ?? ''))
     const other = (() => {
@@ -244,6 +255,27 @@ export class PresentationUi extends DomUi {
     if (options.modal) {
       const element = document.createElement('dialog')
       element.className = `presentation-compatibility-dialog${modernWindow ? ' presentation-modern-dialog' : ''}`
+      // A report's criteria dock under the report's header as a filter card; the same dialog opened from any other screen is an
+      // ordinary centred dialog.  The report viewer may come to the front only after its criteria dialog was created, so the
+      // decision is taken again shortly after.
+      if (window.name.startsWith('w_arg_')) {
+        const dock = () => {
+          if (!element.isConnected && element.classList.contains('ds-report-criteria')) return
+          const report = this.selected?.name === 'w_reviewreport' || [...this.views.values()].some((item) => item.w.name === 'w_reviewreport' && item.el.classList.contains('active'))
+          element.classList.toggle('ds-report-criteria', report)
+          if (report) this.syncReportTop()
+        }
+        dock(); requestAnimationFrame(dock); setTimeout(dock, 250); setTimeout(dock, 800)
+        // the command bar and the tab strip settle while the report opens behind the dialog: follow them until the dialog closes
+        const bar = this.mdi?.el.querySelector<HTMLElement>('.mh-toolbar')
+        const strip = this.shell.querySelector<HTMLElement>('.presentation-tabs')
+        if (typeof ResizeObserver === 'function') {
+          const follow = new ResizeObserver(() => dock())
+          if (bar) follow.observe(bar)
+          if (strip) follow.observe(strip)
+          element.addEventListener('close', () => follow.disconnect(), { once: true })
+        }
+      }
       const title = view.ttlEl
       if (title) title.id = `compatibility-dialog-${++this.nextModal}`
       const updateName = () => {
@@ -415,7 +447,7 @@ export class PresentationUi extends DomUi {
     this.mdi?.el.querySelectorAll<HTMLElement>('.menubar .mi').forEach((mi) => mi.classList.toggle('ds-current', !!module && mi.textContent?.trim() === module))
     this.header?.refresh()
     const heading = this.mdi?.el.querySelector<HTMLElement>('.mh-toolbar .mh-title')
-    if (heading) heading.textContent = this.selected && !this.homeActive ? String(this.selected.props.get('title') || this.selected.name) : ''
+    if (heading) { heading.textContent = this.selected && !this.homeActive ? String(this.selected.props.get('title') || this.selected.name) : ''; heading.title = heading.textContent }
     const notice = this.shell?.querySelector('.presentation-compatibility')
     if (notice) notice.textContent = this.selected && this.views.get(this.selected)?.el.classList.contains('modern-entry-window')
       ? 'Modern entry layout preview / Production workflow acceptance is pending'
@@ -785,6 +817,17 @@ export class PresentationUi extends DomUi {
     this.cleanup.signal.addEventListener('abort', () => clearInterval(timer))
   }
 
+  /** Where a report's criteria dialog docks: just under the command bar and the window tabs (it must not hide the tab of its own
+   * report).  Measured again when the dialog opens: the bar is hidden while Home is in front, and the strip sits higher then. */
+  private syncReportTop(): void {
+    const bar = this.mdi?.el.querySelector<HTMLElement>('.mh-toolbar')
+    if (!bar || !bar.getClientRects().length) return
+    const tabs = this.shell?.querySelector<HTMLElement>('.presentation-tabs')
+    const barBottom = bar.getBoundingClientRect().bottom
+    const stripBottom = tabs && tabs.getBoundingClientRect().height > 8 ? tabs.getBoundingClientRect().bottom : barBottom + 46
+    document.documentElement.style.setProperty('--ds-report-top', `${Math.round(Math.max(barBottom, stripBottom) + 8)}px`)
+  }
+
   /** Report windows (opened from the Reports menu) get the mockup's report-viewer header: a way back to the catalogue and a
    * Preview tag beside the title.  The window, its criteria dialog and its commands are the original's. */
   private decorateReport(): void {
@@ -794,10 +837,7 @@ export class PresentationUi extends DomUi {
     let back = bar.querySelector<HTMLButtonElement>(':scope > .ds-rep-back')
     let pill = bar.querySelector<HTMLElement>(':scope > .ds-rep-pill')
     if (!isReport) { back?.remove(); pill?.remove(); return }
-    // the report's criteria dialog docks just under this header and the window tabs (it must not hide the tab of its own report)
-    const tabs = this.shell?.querySelector<HTMLElement>('.presentation-tabs')
-    const below = Math.max(bar.getBoundingClientRect().bottom, tabs && tabs.getClientRects().length ? tabs.getBoundingClientRect().bottom : 0)
-    document.documentElement.style.setProperty('--ds-report-top', `${Math.round(below + 8)}px`)
+    this.syncReportTop()
     if (!back) {
       back = document.createElement('button')
       back.type = 'button'

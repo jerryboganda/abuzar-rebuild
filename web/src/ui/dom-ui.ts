@@ -36,6 +36,16 @@ const bool = (o: PBObject, k: string, d = true): boolean => {
 const str = (o: PBObject, k: string): string => toStr(o.props.get(k))
 
 // the Alignment of a window control as the object file stores it: 0 left, 1 center, 2 right, 3 justify (the About window of the original shows its `alignment: 1` lines centered)
+/**
+ * The text an edit control shows.  The designer's placeholder of an EditMask ("none") is no value: with a numeric mask the original
+ * shows an empty field for it (the property itself is left as the scripts wrote it).
+ */
+const editText = (c: PBObject): string => {
+  const text = str(c, 'text')
+  if (c.native !== 'editmask' || !/^none$/i.test(text.trim())) return text
+  const mask = str(c, 'mask')
+  return /[#0]/.test(mask) && /^[#0,.\-+()\[\] $%]*$/.test(mask) ? '' : text
+}
 const ALIGN = ['left', 'center', 'right', 'justify']
 
 function fontOf(o: PBObject): string {
@@ -1225,7 +1235,7 @@ export class WinView {
       case 'editmask': {
         const i = document.createElement('input')
         i.className = 'ctl'
-        i.value = str(c, 'text')
+        i.value = editText(c)
         this.style(c, i)
         // Border = false: the text sits on the form (the About window's company and licence lines)
         if (!bool(c, 'border', true)) i.style.border = 'none'
@@ -1690,7 +1700,7 @@ export class WinView {
     }
     else if (c.native === 'singlelineedit' || c.native === 'editmask') {
       const i = el as HTMLInputElement
-      if (i.value !== str(c, 'text')) i.value = str(c, 'text')
+      if (i.value !== editText(c)) i.value = editText(c)
       if (c.native === 'editmask') {
         if (c.props.get('_invaliddata') === true) i.setAttribute('aria-invalid', 'true')
         else i.removeAttribute('aria-invalid')

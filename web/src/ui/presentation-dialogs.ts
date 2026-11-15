@@ -68,6 +68,7 @@ export function messageDialog(title: string, text: string, icon: string, buttons
   if (severity) {
     const marker = document.createElement('span')
     marker.className = 'presentation-message-icon'
+    marker.dataset.severity = severity.label.toLowerCase()
     marker.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${severity.shape}</svg><span class="presentation-visually-hidden">${severity.label}: </span>`
     heading.prepend(marker)
     if (icon === 'stopsign!' || icon === 'exclamation!') element.setAttribute('role', 'alertdialog')

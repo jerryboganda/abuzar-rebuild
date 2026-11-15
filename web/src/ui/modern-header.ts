@@ -110,7 +110,7 @@ const TEXT_ICONS: [RegExp, string][] = [
   [/hide|visible|column/i, '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/>'],
   [/save ?as|export/i, '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>'],
   [/refresh|regenerate/i, '<path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/>'],
-  [/retrieve|run\b/i, '<path d="M7 4v16l13-8z"/>'],
+  [/retrieve|run\b|generate/i, '<path d="M7 4v16l13-8z"/>'],
   [/sort/i, '<path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/>'],
   [/print/i, '<path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/>'],
   [/preview|view/i, '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'],
@@ -158,7 +158,9 @@ export function groupToolbar(tool: HTMLElement, title = ''): void {
       element.className = `mh-group mh-group-${key}`
       // the approved design names the record group after the document ("Invoice" on invoice windows)
       const invoice = key === 'record' && buttons.some((button) => (button.dataset.stock ?? '').toLowerCase() === 'selectscript!' && /invoice/i.test(button.dataset.label || button.title || ''))
-      const label = invoice ? 'Invoice' : TOOLBAR_GROUPS.find((item) => item.key === key)?.label
+      // (a master-data form shares the invoice menu of its ancestor: its records are not invoices; orders and quotations keep their name)
+      const docName = /form|template|setting|priority|refused/i.test(title) ? '' : /order/i.test(title) ? 'Order' : /quotation/i.test(title) ? 'Quotation' : /sale|purchase|return|invoice|adjustment|voucher/i.test(title) ? 'Invoice' : ''
+      const label = invoice && docName ? docName : TOOLBAR_GROUPS.find((item) => item.key === key)?.label
       if (label) {
         const caption = document.createElement('span')
         caption.className = 'mh-group-label'
@@ -184,6 +186,13 @@ export function groupToolbar(tool: HTMLElement, title = ''): void {
       label.textContent = LABELLED.get(stock)!
       button.append(label)
     }
+    // the window's own command on the Post button ("Mark In-Active") is named too: an icon alone, dimmed while unavailable, said nothing
+    if (stock === 'dbadmin!' && text && !fits(stock, text) && !button.querySelector('.mh-label')) {
+      const label = document.createElement('span')
+      label.className = 'mh-label'
+      label.textContent = text
+      button.append(label)
+    }
     button.classList.toggle('mh-primary', stock === 'dbadmin!' && fits(stock, text))
     button.classList.toggle('mh-danger', stock === 'clear!')
     group(stock === 'exit!' ? 'exit' : toolbarGroup(stock)).append(button)
@@ -194,6 +203,7 @@ export function groupToolbar(tool: HTMLElement, title = ''): void {
   const heading = document.createElement('span')
   heading.className = 'mh-title'
   heading.textContent = title
+  heading.title = title
   tool.replaceChildren(heading, ...order.flatMap((key) => key === 'output' ? [spacer, ...(groups.has(key) ? [groups.get(key)!] : [])] : groups.has(key) ? [groups.get(key)!] : []))
 }
 

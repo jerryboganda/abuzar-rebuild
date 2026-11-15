@@ -28,7 +28,7 @@ export interface HomeData {
   sales: number; salesPrev: number; purchases: number; purchasesPrev: number
   receivable: number; receivableCount: number; payable: number; payableCount: number
   series: { d: Date; sales: number; purchases: number }[]
-  low: { name: string; stock: number; reorder: number }[]
+  low: { name: string; stock: number; reorder: number }[]; lowCount: number; expiringCount: number
   expiring: { name: string; batch: string; expiry: Date; qty: number }[]
   recent: { kind: 'sale' | 'purchase'; code: string; total: number; date: Date; who: string }[]
 }
@@ -37,9 +37,9 @@ export async function loadHome(query: HomeQuery): Promise<HomeData> {
   const [anchorRow] = await query(`SELECT max(date)::date FROM dbo.saleledger`)
   const anchor = anchorRow?.[0] ? day(anchorRow[0]) : null
   const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  if (!anchor) return { anchor, sales: 0, salesPrev: 0, purchases: 0, purchasesPrev: 0, receivable: 0, receivableCount: 0, payable: 0, payableCount: 0, series: [], low: [], expiring: [], recent: [] }
+  if (!anchor) return { anchor, sales: 0, salesPrev: 0, purchases: 0, purchasesPrev: 0, receivable: 0, receivableCount: 0, payable: 0, payableCount: 0, series: [], low: [], lowCount: 0, expiringCount: 0, expiring: [], recent: [] }
   const a = iso(anchor)
-  const [series, ar, ap, low, expiring, recent] = await Promise.all([
+  const [series, ar, ap, low, expiring, recent, counts] = await Promise.all([
     query(`WITH d AS (SELECT generate_series(date '${a}' - 13, date '${a}', interval '1 day')::date AS d)
       SELECT d.d, coalesce((SELECT sum(invtotal) FROM dbo.saleledger s WHERE s.date::date = d.d),0),
         coalesce((SELECT sum(invtotal) FROM dbo.purledger p WHERE p.date::date = d.d),0) FROM d ORDER BY d.d`),
@@ -54,9 +54,13 @@ export async function loadHome(query: HomeQuery): Promise<HomeData> {
     query(`SELECT itemname, batch, expiry::date, qty FROM dbo.view_waseelamini_stock WHERE qty > 0 AND expiry IS NOT NULL
       AND expiry::date <= current_date + 90 ORDER BY expiry, itemname LIMIT 5`),
     query(`SELECT r.kind, r.code, r.total, r.date, coalesce(u.username::text, '') FROM (
-        (SELECT 'sale' AS kind, saleinvcode AS code, invtotal AS total, date, coalesce(postedby, modifiedby) AS who FROM dbo.saleledger ORDER BY date DESC, saleinvcode DESC LIMIT 3)
+        (SELECT 'sale' AS kind, saleinvcode AS code, invtotal AS total, date, coalesce(postedby, modifiedby, salesmancode) AS who FROM dbo.saleledger ORDER BY date DESC, saleinvcode DESC LIMIT 3)
         UNION ALL (SELECT 'purchase', purinvcode, invtotal, date, coalesce(postedby, modifiedby) FROM dbo.purledger ORDER BY date DESC, purinvcode DESC LIMIT 2)
       ) r LEFT JOIN dbo.users u ON u.usercode = r.who ORDER BY r.date DESC`),
+    // how many there are in all (the lists above show the first five)
+    query(`SELECT (SELECT count(*) FROM (SELECT i.icode FROM dbo.item i LEFT JOIN dbo.view_waseelamini_stock v ON v.icode = i.icode
+        WHERE i.reorderlevel > 0 GROUP BY i.icode, i.reorderlevel HAVING coalesce(sum(v.qty),0) < i.reorderlevel) x),
+      (SELECT count(*) FROM dbo.view_waseelamini_stock WHERE qty > 0 AND expiry IS NOT NULL AND expiry::date <= current_date + 90)`),
   ])
   const s = series.map((r) => ({ d: day(r[0]), sales: num(r[1]), purchases: num(r[2]) }))
   return {
@@ -64,8 +68,9 @@ export async function loadHome(query: HomeQuery): Promise<HomeData> {
     sales: s.at(-1)?.sales ?? 0, salesPrev: s.at(-2)?.sales ?? 0, purchases: s.at(-1)?.purchases ?? 0, purchasesPrev: s.at(-2)?.purchases ?? 0,
     receivable: num(ar[0]?.[0]), receivableCount: num(ar[0]?.[1]), payable: num(ap[0]?.[0]), payableCount: num(ap[0]?.[1]),
     series: s,
+    lowCount: num(counts[0]?.[0]), expiringCount: num(counts[0]?.[1]),
     low: low.map((r) => ({ name: String(r[0]).trim(), stock: num(r[1]), reorder: num(r[2]) })),
-    expiring: expiring.map((r) => ({ name: String(r[0]).trim(), batch: String(r[1] ?? '').trim(), expiry: day(r[2]), qty: num(r[3]) })),
+    expiring: expiring.map((r) => ({ name: String(r[0]).trim(), batch: String(r[1] ?? '').trim().replace(/^\.+$/, ''), expiry: day(r[2]), qty: num(r[3]) })),
     recent: recent.map((r) => ({ kind: r[0] === 'sale' ? 'sale' : 'purchase', code: String(r[1]).trim(), total: num(r[2]), date: day(r[3]), who: String(r[4] ?? '').trim() })),
   }
 }
@@ -73,8 +78,8 @@ export async function loadHome(query: HomeQuery): Promise<HomeData> {
 /** Notifications for the bell, derived from the same figures. */
 export function homeNotes(d: HomeData): HomeNote[] {
   const notes: HomeNote[] = []
-  if (d.low.length) notes.push({ tone: 'bad', title: `${d.low.length} item${d.low.length === 1 ? '' : 's'} below reorder level`, detail: d.low.slice(0, 3).map((x) => x.name).join(', ') })
-  if (d.expiring.length) notes.push({ tone: 'warn', title: `${d.expiring.length} batch${d.expiring.length === 1 ? '' : 'es'} expired or expiring within 90 days`, detail: d.expiring.slice(0, 3).map((x) => x.name).join(', ') })
+  if (d.low.length) notes.push({ tone: 'bad', title: `${d.lowCount.toLocaleString('en-PK')} item${d.lowCount === 1 ? '' : 's'} below reorder level`, detail: d.low.slice(0, 3).map((x) => x.name).join(', ') })
+  if (d.expiring.length) notes.push({ tone: 'warn', title: `${d.expiringCount.toLocaleString('en-PK')} batch${d.expiringCount === 1 ? '' : 'es'} expired or expiring within 90 days`, detail: d.expiring.slice(0, 3).map((x) => x.name).join(', ') })
   if (d.receivableCount) notes.push({ tone: 'info', title: `${d.receivableCount.toLocaleString('en-PK')} customers owe money`, detail: `${rs0(d.receivable)} to collect` })
   if (d.payableCount) notes.push({ tone: 'info', title: `${d.payableCount.toLocaleString('en-PK')} suppliers have a balance`, detail: `${rs0(d.payable)} payable` })
   return notes
@@ -90,16 +95,20 @@ function spark(values: number[]): string {
 
 function chart(series: HomeData['series']): string {
   if (!series.length) return '<p class="ds-empty">No sales or purchases recorded yet.</p>'
-  const W = 640, H = 240, P = [30, 10, 26, 46], n = series.length
+  // as wide as the card at the usual window width, so the plot fills it instead of standing letterboxed in the middle
+  const W = 1000, H = 240, P = [30, 10, 26, 46], n = series.length
   const max = Math.max(1, ...series.map((r) => Math.max(r.sales, r.purchases)))
-  const step = Math.pow(10, Math.floor(Math.log10(max))) / 2
-  const top = Math.ceil(max / step) * step
+  // four even steps of a round size (1, 2, 2.5 or 5 times a power of ten), so every axis label is a round figure
+  const rough = max / 4, pow = Math.pow(10, Math.floor(Math.log10(rough)))
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * pow).find((v) => v >= rough)!
+  const top = step * 4
+  const axis = (v: number) => v >= 1e6 ? `${+(v / 1e6).toFixed(2)}M` : v >= 1000 ? `${+(v / 1000).toFixed(2)}k` : String(+v.toFixed(2))
   const x = (i: number) => P[3] + i * (W - P[1] - P[3]) / Math.max(1, n - 1)
   const y = (v: number) => P[0] + (H - P[0] - P[2]) * (1 - v / top)
   const line = (k: 'sales' | 'purchases') => 'M' + series.map((r, i) => `${x(i).toFixed(1)},${y(r[k]).toFixed(1)}`).join('L')
   let grid = ''
-  for (let v = 0; v <= top + 1e-9; v += top / 4) {
-    grid += `<line class="g" x1="${P[3]}" x2="${W - P[1]}" y1="${y(v)}" y2="${y(v)}"/><text x="${P[3] - 8}" y="${y(v) + 4}" text-anchor="end">${v >= 1000 ? Math.round(v / 1000) + 'k' : Math.round(v)}</text>`
+  for (let v = 0; v <= top + 1e-9; v += step) {
+    grid += `<line class="g" x1="${P[3]}" x2="${W - P[1]}" y1="${y(v)}" y2="${y(v)}"/><text x="${P[3] - 8}" y="${y(v) + 4}" text-anchor="end">${axis(v)}</text>`
   }
   series.forEach((r, i) => { if (i % 2 === 0) grid += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${r.d.getDate()}/${r.d.getMonth() + 1}</text>` })
   const last = series.length - 1
@@ -135,12 +144,12 @@ export function renderHome(host: HTMLElement, d: HomeData, user: string, actions
       <div class="ds-stack">
         <div class="ds-card"><div class="ds-card-h"><h2>Sales and purchases</h2><span class="hint">${d.series.length} days to ${d.anchor ? fmtDay(d.anchor, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}, Rs</span><span class="grow"></span>
           <div class="ds-legend"><span><i style="background:var(--p-accent)"></i>Sales</span><span><i style="background:#7a8fd0"></i>Purchases</span></div></div><div class="ds-card-b">${chart(d.series)}</div></div>
-        <div class="ds-card"><div class="ds-card-h"><h2>Recent activity</h2></div><div class="ds-card-b"><ul class="ds-timeline ds-stagger">${d.recent.map((r, i) => `<li style="--i:${i}"><span class="tdot">${icon(r.kind === 'sale' ? 'post' : 'truck', 's')}</span><div><div>${r.kind === 'sale' ? 'Sale' : 'Purchase'} ${esc(r.code)} · ${rs0(r.total)}</div><small>${esc(r.who || '—')} · ${fmtDay(r.date, { day: 'numeric', month: 'short', year: 'numeric' })}</small></div></li>`).join('') || '<li>No transactions yet.</li>'}</ul></div></div>
+        <div class="ds-card"><div class="ds-card-h"><h2>Recent activity</h2></div><div class="ds-card-b"><ul class="ds-timeline ds-stagger">${d.recent.map((r, i) => `<li style="--i:${i}"><span class="tdot">${icon(r.kind === 'sale' ? 'post' : 'truck', 's')}</span><div><div>${r.kind === 'sale' ? 'Sale' : 'Purchase'} ${esc(r.code)} · ${rs0(r.total)}</div><small>${r.who ? `${esc(r.who)} · ` : ''}${fmtDay(r.date, { day: 'numeric', month: 'short', year: 'numeric' })}</small></div></li>`).join('') || '<li>No transactions yet.</li>'}</ul></div></div>
       </div>
       <div class="ds-stack">
         <div class="ds-card"><div class="ds-card-h"><h2>Quick actions</h2></div><div class="ds-card-b"><div class="ds-qa ds-stagger">${actions.map((a, i) => `<button type="button" data-home="${i}" style="--i:${i}" ${a.disabled ? 'disabled' : ''}><span class="qi">${icon(a.icon, 's')}</span><b>${esc(a.label)}</b><small>${esc(a.hint)}</small></button>`).join('')}</div></div></div>
-        <div class="ds-card"><div class="ds-card-h"><h2>Stock alerts</h2><span class="ds-pill bad">${d.low.length}</span></div><div class="ds-card-b" style="padding-top:6px">${d.low.map((x, i) => { const p = Math.min(100, x.stock / x.reorder * 100); return `<div class="ds-bar-row"><span class="n">${esc(x.name)}</span><span class="ds-meter"><i class="${p < 15 ? 'b' : 'w'}" style="width:${Math.max(3, p)}%;animation-delay:${i * 90}ms"></i></span><span class="q">${Math.round(x.stock)}/${Math.round(x.reorder)}</span></div>` }).join('') || '<p class="ds-empty">Every item is above its reorder level.</p>'}</div></div>
-        <div class="ds-card"><div class="ds-card-h"><h2>Expiring soon</h2><span class="hint">expired or within 90 days</span></div><div class="ds-card-b" style="padding-top:6px">${d.expiring.map((x) => `<div class="ds-bar-row"><span class="n">${esc(x.name)}<small>${esc(x.batch || '—')} · ${Math.round(x.qty)} in stock</small></span>${tag(x.expiry)}</div>`).join('') || '<p class="ds-empty">No batches expire in the next 90 days.</p>'}</div></div>
+        <div class="ds-card"><div class="ds-card-h"><h2>Stock alerts</h2><span class="ds-pill ${d.lowCount ? 'bad' : 'ok'}">${d.lowCount.toLocaleString('en-PK')}</span></div><div class="ds-card-b" style="padding-top:6px">${d.low.map((x, i) => { const p = Math.min(100, x.stock / x.reorder * 100); return `<div class="ds-bar-row"><span class="n">${esc(x.name)}</span><span class="ds-meter"><i class="${p < 15 ? 'b' : 'w'}" style="width:${Math.max(3, p)}%;animation-delay:${i * 90}ms"></i></span><span class="q">${Math.round(x.stock)}/${Math.round(x.reorder)}</span></div>` }).join('') || '<p class="ds-empty">Every item is above its reorder level.</p>'}</div></div>
+        <div class="ds-card"><div class="ds-card-h"><h2>Expiring soon</h2><span class="hint">expired or within 90 days</span>${d.expiringCount ? `<span class="grow"></span><span class="ds-pill ${'warn'}">${d.expiringCount.toLocaleString('en-PK')}</span>` : ''}</div><div class="ds-card-b" style="padding-top:6px">${d.expiring.map((x) => `<div class="ds-bar-row"><span class="n">${esc(x.name)}<small>${x.batch ? `Batch ${esc(x.batch)} · ` : ''}${Math.round(x.qty).toLocaleString('en-PK')} in stock</small></span>${tag(x.expiry)}</div>`).join('') || '<p class="ds-empty">No batches expire in the next 90 days.</p>'}</div></div>
       </div>
     </div></div>`
   host.querySelectorAll<HTMLButtonElement>('[data-home]').forEach((b) => b.addEventListener('click', () => {
@@ -237,6 +246,8 @@ export const HOME_CSS = `
 .ds-pill {display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:2px 10px;border-radius:999px;background:var(--p-sunk);color:var(--p-muted);}
 .ds-pill::before {content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
 .ds-pill.bad {background:var(--p-danger-soft);color:var(--p-danger);}
+.ds-pill.warn {background:var(--p-warn-soft);color:var(--p-warn);}
+.ds-pill.ok {background:var(--p-ok-soft, var(--p-sunk));color:var(--p-ok);}
 .ds-bar-row {display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--p-hair);font-size:13px;}
 .ds-bar-row:last-child {border-bottom:0;}
 .ds-bar-row .n {flex:0 0 140px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}

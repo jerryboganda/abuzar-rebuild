@@ -202,3 +202,61 @@ menu object name and wrapping the header; Cash Sale panel widths, payment card a
 look; "?" micro help. Kept as the original: d_login's `*****` mask, `cbx_all` hidden on the stock register, dot leaders in menu
 texts, closequery-guarded dialogs, Confirm Changes on a new record. Not every one of the ~2,000 windows was opened: the fixes are in
 the shared renderer (menus, dialogs, groupboxes, list boxes, DataWindow editing, header) that all of them use.
+**Modern UI visual QA, second pass, 2026-11-15 (local, NOT deployed, not committed).** Driven in a real browser (Playwright
+Chromium, 1440x900, dark and light) against the local test server (`.claude/launch.json`: `trader-test-server` on the scratch copy
+`waseela_rehearsal`, `trader-web-real` on port 5174) as `CLAUDE TEST`. Tools: `web/e2e/modern-visual-qa.mjs` opens every enabled
+leaf of the user's menu (202 of 211; Exit, Change User, Backup and the like are skipped), takes a screenshot of each and records
+message boxes, script errors, clipped captions and overlapping controls; `web/e2e/modern-qa-steps.mjs` drives single screens from a
+JSON step list. Four full crawls; every screenshot of the first and the third was reviewed.
+Fixed: Home (uneven chart axis labels, sales without their operator, "." batches, alert counts limited to the five listed);
+Cash/Credit Sale (item search list overlapping the lines and totals, black total boxes, payment card below the fold: the header
+keeps all its fields three to a row, the tile price is the unit price, the scan bar no longer leaves a blank before the typed
+name); every transaction (inset cards without the source frame, compact density, summary panels one line per figure); report
+criteria (docked card kept to the source proportions, list rows capped, caption bands for group boxes, captions no longer covered
+by their drop-down, lone required marks, the card docks under the tab strip for every report and is an ordinary dialog elsewhere,
+visible scrolling); dialogs (width follows the source width, option rows one line high, radio buttons and check boxes in the
+design's look, a primary button when the source names no default, whole frames, no focus frame around the card, themed list
+selection, tab pages and their controls themed, a fade where more tabs follow); forms (check boxes were a thin bar, one-column
+masters put the caption beside the field, in-form buttons line up, read-only grid cells flat, required mark of a grid heading no
+longer wraps, one drop-down arrow everywhere); frame (long titles shorten instead of pushing Exit out, Exit stays reachable, the
+header never wraps: the breadcrumb yields, status line without the 3-D bevel, document name of the toolbar group, Generate icon);
+report viewer (paper centred); message boxes (icon coloured by severity); EditMask placeholder text "none" no longer shown with a
+numeric mask; caption formulas and "No rows" no longer flash while a transaction opens; `windowDataCaption` tolerance 16 -> 32
+(six dialogs regenerated, five gain their captions).
+Checked and left as the original: "??:??" for a date without a time, "!" micro help, "none" group box titles, empty lists while
+"All" is ticked, the next dialog of a report after Cancel (the script never checks), `d_comp_selectedsalesandsummary` (not in the
+original's libraries: its menu item shows an empty viewer), the item search landing on the next name when the typed text has no
+match. A Cash Sale was posted end to end in Modern on the scratch copy (invoice 588877). 962 frontend tests and the presentation
+types pass. A header simplification of the sale ("More invoice options") was tried and withdrawn: hiding fields is a parity
+exception that needs the owner's approval.
+Third round, same day (every one of the 202 screens photographed again in dark and in light, all 404 screenshots read, the
+findings fixed, then crawled and read again). Fixed: a dialog body taller than the screen shows a soft band over its button bar
+while more lies below (it fades at the end) and a visible scroll bar; stacked fields with one editor edge start at one edge
+(Start/End Date); captions left of their fields end at one distance before them and stand level with them, also beside a
+DataWindow's field; a button beside a DataWindow's field is level with it ("Retrieve"); group boxes keep air around their options,
+never touch the box under them, a box inside another ends above the outer border; a list inside a group box ends above the border;
+option captions stay on one line ("All"); the focused option is marked on its own box; list boxes use the interface font and a
+readable selection; tab-page controls (Job Schedules) are drawn by the theme, enabled or not, a third larger; the Find box of a
+list page is one field and its caption hides when the window gives it no row; the editable criteria drop-down is one field; the
+required mark of a one-column form follows its caption; check boxes and buttons inside form rows are level with the fields; an
+inherited detail form without a record shows no empty card; the Post button's own command is named ("Mark In-Active"); a
+crosstab's `@column` heading shows nothing before retrieval; text selection uses the accent; the Home chart fills its card; the
+Credit Sale header no longer shows a hidden caption beside its replacement ("AmountCustomerbalance"). Later the same night, from three more full reads: a group box never grows into the caption or field under it and its lowest
+field keeps air above the border; the docked criteria card covers its whole strip; the active tab of a dialog shows the accent
+instead of the Classic dotted rectangle; every drop-down arrow has one colour; spin arrows sit inside their field; a text in a
+group band uses the interface font; a selection grid stands clear of its group border and a line grid's first editor of the card
+edge; "Item Alert Color" has its caption above its button.
+Pack Purchase: the quick-entry bar keeps the keyboard, and the panel button is "Post to stock" (enabled when the original's Post
+is); a chained "save, then post" was withdrawn because the original clears the window after Save and posts by document range from
+the List. Verified end to end on the scratch copy: save (invoice 12278), List, Post with the user password and the range,
+"Posting Completed", `posted = 'Y'`. The duplicate-key error seen first came from the scratch copy's own counter
+(`_tabmaxkey.PurLedger` 12266 against 12276 rows), aligned there for the test.
+Checked and left as the source has it: `[shortdate]` follows the machine's regional setting (month first only in the US-locale
+test browser); the "Icode" column of sale returns, " :Bonus", two "Total" captions of a footer, a customer drop-down showing 0,
+`d_customerwisesalesdetail` blank without rows (header band 0 high), Cash Sale's 1.00 misc charge on an empty sale (Classic shows the same), `Selectable` + `Manufacturers` as two captions, source
+positions of criteria fields and group boxes, the empty area of the Job Schedules tab page, the date of "Last Transaction Date
+Modification" named by the title only, headings clipped on report paper. Scroll bars exist wherever content is cut; a headless
+screenshot hides them. Final state: 202 of 202 screens open in both themes, one message box (the cashier-job notice of the
+original), five script errors after Cancel that the original's scripts cause themselves; 962 tests, presentation types and the
+modal-window generator check pass.
+

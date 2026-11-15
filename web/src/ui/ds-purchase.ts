@@ -11,6 +11,9 @@ export interface PurchaseContext {
   model(control: string): Model | null
   /** Runs a read-only query; rows as arrays. */
   query(sql: string, params: unknown[]): Promise<unknown[][]>
+  /** Moves the keyboard to a cell of a DataWindow the way a script does (SetFocus, SetRow, SetColumn): the window's own editor opens
+   * and keeps the keyboard through its redraws. */
+  focusCell?(control: string, row: number, column: string): Promise<boolean>
 }
 
 const str = (v: unknown) => (v === null || v === undefined ? '' : String(v)).trim()
@@ -123,21 +126,29 @@ export function decoratePurchase(ctx: PurchaseContext, state: PurchaseState, too
         <label class="ds-quick-f"><span>Item · name, code or barcode</span><span class="ds-quick-in"><svg class="ds-i s" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="text" placeholder="Start typing… e.g. pana" autocomplete="off" aria-describedby="ds-quick-help"></span></label>
         ${[['packqty', 'Packs'], ['bonusqty', 'Bonus'], ['purprice', 'P. Price']].map(([col, label]) => `<label class="ds-quick-f ds-quick-n"><span>${label}</span><input type="text" inputmode="decimal" data-cell="${col}" placeholder="—" autocomplete="off" aria-describedby="ds-quick-help"></label>`).join('')}
         <button type="button" class="ds-btn primary" data-quick-add><svg class="ds-i s" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M12 13v5M9.5 15.5h5"/></svg>Add line</button>
-        <p class="ds-help" id="ds-quick-help">Each field types into the same column of the current line, so the window's own checks run. Item: use ↓ ↑ and Enter to pick from the list; batch and expiry are filled in the line.</p></div>`
+        <p class="ds-help" id="ds-quick-help">Type or scan an item, then use ↓ ↑ and Enter to pick it from the list. Packs, bonus and price go to the current line; batch and expiry are entered in the line below.</p></div>`
       const openRow = () => [...gridSurface.querySelectorAll<HTMLElement>('tbody tr')].find((row) => !row.querySelector('[data-obj=itemname]')?.textContent?.trim())
       // opens the cell's own editor (as a click on it does) and moves the keyboard there once it exists; anything already typed in
       // the bar is carried over, and the next real keystroke runs the window's own search and checks
       const handOff = (cell: HTMLElement, from: HTMLInputElement | null) => {
-        for (const type of ['mousedown', 'mouseup', 'click']) cell.dispatchEvent(new MouseEvent(type, { bubbles: true, view: window }))
         const td = cell.closest('td')
         let tries = 0
         const focus = () => {
           const editor = td?.querySelector<HTMLInputElement>('input,textarea')
           if (!editor) { if (++tries < 40) setTimeout(focus, 25); return }
-          editor.focus()
+          if (document.activeElement !== editor) editor.focus()
           if (from?.value) { const text = from.value; from.value = ''; void typeInto(editor, text) }
           else editor.select?.()
         }
+        // The DataWindow takes the keyboard itself (SetFocus, SetRow, SetColumn), as when a script sends it there: an editor opened
+        // by made-up mouse events lost the keyboard at the next redraw of the line, after the first letters of an item name.
+        const tr = cell.closest('tr')
+        const row = Number(tr?.dataset.row) || (tr ? [...tr.parentElement!.children].indexOf(tr) + 1 : 0)
+        const column = cell.dataset.obj ?? td?.dataset.field ?? ''
+        // the press on the cell moves the view's editor there (and accepts the one it leaves); the script-style focus then makes
+        // the DataWindow the keyboard's owner, so the editor survives the redraws of the line
+        for (const type of ['mousedown', 'mouseup', 'click']) cell.dispatchEvent(new MouseEvent(type, { bubbles: true, view: window }))
+        if (ctx.focusCell && row > 0 && column) { void ctx.focusCell('dw_itemsdetail', row, column).then(() => focus()); return }
         focus()
       }
       const itemInput = () => quick!.querySelector<HTMLInputElement>('.ds-quick-in input')
@@ -205,10 +216,10 @@ export function decoratePurchase(ctx: PurchaseContext, state: PurchaseState, too
     const ready = done === 4
     const tb = (stock: string) => toolbar(stock)
     const dis = (stock: string, extra = false) => !tb(stock) || tb(stock)!.disabled || extra ? 'disabled' : ''
-    const html = `<div class="ring">${ringSvg(state.posted ? 1 : done / 4)}<div><b>${state.posted ? 'Posted to stock' : ready ? 'Ready to post' : 'Before you can post'}</b>
-      <div class="help">${state.posted ? 'Stock and supplier balance were updated' : 'Complete each check below'}</div></div></div>
+    const html = `<div class="ring">${ringSvg(state.posted ? 1 : done / 4)}<div><b>${state.posted ? 'Posted to stock' : ready ? (dis('dbadmin!') ? 'Ready to save' : 'Ready to post') : 'Before you can post'}</b>
+      <div class="help">${state.posted ? 'Stock and supplier balance were updated' : ready ? (dis('dbadmin!') ? 'Save the bill, then open it from List to post it' : 'Every check passed: post when the bill is complete') : 'Complete each check below'}</div></div></div>
       <ul class="checks">${checks.map(([k, t]) => `<li class="${state[k] || state.posted ? 'y' : ''}"><span class="c">✓</span>${t}</li>`).join('')}</ul>
-      <div class="acts"><button type="button" class="ds-btn primary block" data-stock="dbadmin!" ${dis('dbadmin!', !ready || state.posted)}>Save &amp; post to stock</button>
+      <div class="acts"><button type="button" class="ds-btn primary block" data-stock="dbadmin!" ${dis('dbadmin!', !ready || state.posted)}>Post to stock</button>
       <div class="row2"><button type="button" class="ds-btn" data-stock="save!" ${dis('save!')}>Save draft</button><button type="button" class="ds-btn" data-menu="slip" ${menu('slip') ? '' : 'disabled'}>Print slip</button></div>
       <div class="extra-acts">${extra('labels', 'Barcode labels')}${extra('history', 'Item history')}${extra('expenses', 'Pur. expenses')}</div></div>`
     if (panel.dataset.html !== html) { panel.innerHTML = html; panel.dataset.html = html }
@@ -250,6 +261,9 @@ export function decoratePurchase(ctx: PurchaseContext, state: PurchaseState, too
 export function forgetPurchaseFacts(): void { postedCache.clear(); supplierCache.clear() }
 
 export const PURCHASE_CSS = `
+/* Bill summary: the current item's RPP and average price stand on the line of their captions, as figures (the original draws
+   each beside its caption) */
+.modern-surface[aria-label=Purchasefooter] .simplified-row > .surface-caption:is([data-caption=t_rpp],[data-caption=t_avgprice]) {margin-top:-1.9em!important;text-align:right;font-family:var(--p-mono);color:var(--p-text)!important;pointer-events:none;}
 .modern-entry-window .entry-detail:has(.simplified-summary) > .ds-steps {grid-column:1 / -1;grid-row:1;}
 .modern-entry-window .entry-detail:has(.ds-steps) > .entry-control:has(.simplified-summary) {grid-row:2 / span 3!important;}
 .modern-entry-window .entry-detail:has(.ds-steps) > .entry-control:has(.simplified-form:not(.simplified-summary)) {grid-row:2;}

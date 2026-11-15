@@ -67,7 +67,7 @@ export const PRESENTATION_CSS = `
 .presentation-compatibility-dialog {position:fixed;inset:0;width:100vw;height:100vh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:transparent;overflow:hidden;color-scheme:light;color:#000;font:var(--font);}
 .presentation-compatibility-dialog::backdrop {background:#0c192b70;}
 .presentation-modern-dialog[open] {display:grid;place-items:center;padding:16px;}
-.modern-window.pbwin {position:relative!important;inset:auto!important;width:min(34em,100%)!important;height:auto!important;max-height:100%;min-height:0;border:1px solid var(--p-line);border-radius:8px;overflow:auto;background:var(--p-surface);box-shadow:0 8px 28px #00000040;}
+.modern-window.pbwin {position:relative!important;inset:auto!important;width:min(max(34em,calc(var(--source-width,0px) * 1.3)),100%)!important;height:auto!important;max-height:100%;min-height:0;border:1px solid var(--p-line);border-radius:8px;overflow:auto;background:var(--p-surface);box-shadow:0 8px 28px #00000040;}
 .modern-window.pbwin>.tbar {height:auto;flex:none;padding:12px 16px;gap:12px;background:var(--p-surface);color:var(--p-text);align-items:flex-start;}
 .modern-window .tbar .ic {display:none;}
 .modern-window .tbar .ttl {font-size:1.35em;line-height:1.25;font-weight:650;white-space:normal;overflow-wrap:anywhere;align-self:center;}
@@ -108,7 +108,8 @@ export const PRESENTATION_CSS = `
 .modern-window .window-option {display:flex;align-items:center!important;gap:8px;min-height:36px;padding:6px 0!important;white-space:normal;overflow-wrap:anywhere;background:transparent!important;color:var(--p-text)!important;}
 .modern-window .window-option input {flex:none;accent-color:var(--p-accent);inline-size:24px;block-size:24px;margin:0;}
 .modern-window .window-option span {outline:none!important;}
-.modern-window .window-option:has(input:focus-visible) {outline:2px solid var(--p-accent);outline-offset:2px;}
+.modern-window .window-option:has(input:focus-visible) {outline:none;}
+.modern-window .window-option input:is([type=radio],[type=checkbox]):focus-visible {outline:2px solid var(--p-accent)!important;outline-offset:2px;}
 .modern-window[data-density=comfortable] .window-option {min-height:42px;}
 /* Reflowed controls only: a container kept as its original element (a tab control, an embedded DataWindow) keeps its own size and its
    children keep their Classic positions and colours inside it. */
@@ -149,7 +150,7 @@ export const PRESENTATION_CSS = `
 .modern-window button:disabled,.modern-window input:disabled,.modern-window select:disabled {background:var(--p-canvas)!important;color:var(--p-muted)!important;cursor:default;}
 .modern-window[data-density=comfortable] input.ctl:not(.window-embedded *),.modern-window[data-density=comfortable] button {min-height:42px;}
 .modern-window :focus-visible,.modern-window .ctl:focus-visible {outline:2px solid var(--p-accent);outline-offset:2px;}
-.modern-data-window.pbwin {width:min(58em,100%)!important;}
+.modern-data-window.pbwin {width:min(max(58em,calc(var(--source-width,0px) * 1.3)),100%)!important;}
 .modern-data-window.window-untitled>.tbar {position:static;justify-content:flex-end;}
 .modern-data-window.window-untitled>.client {padding-top:12px;}
 .modern-window .window-data {min-width:0;border:1px solid var(--p-line);border-radius:4px;overflow:hidden;}

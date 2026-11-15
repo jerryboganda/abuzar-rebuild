@@ -74,7 +74,7 @@ export function windowCaptionAbove(text: ControlBox, target: ControlBox): boolea
 
 /** A window caption that names a field of the DataWindow beside it: left of the DataWindow, within its rows, nothing between. */
 export function windowDataCaption(text: ControlBox, data: ControlBox, boxes: readonly ControlBox[]): boolean {
-  return rightEdge(text) <= data.x + 16 && middle(text) >= data.y - 60 && middle(text) <= data.y + data.height + 60 && !controlBetween(text, data, boxes)
+  return rightEdge(text) <= data.x + 32 && middle(text) >= data.y - 60 && middle(text) <= data.y + data.height + 60 && !controlBetween(text, data, boxes)
 }
 
 /**

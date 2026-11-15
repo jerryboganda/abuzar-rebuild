@@ -493,6 +493,8 @@ export class ModernDwView extends DwView {
       label.id = `${this.identity}-${band.band}-${grouped ? `${row}-` : ''}${field.object}-label`
       // Hidden only while the source caption is blank; a script-set caption is painted.
       label.textContent = field.labelHidden && !sourceLabel?.textContent?.trim() ? '' : sourceLabel?.textContent ?? (labelObject ? '' : field.label ?? '')
+      // A caption the source computes (an expression) has no text until a row exists to evaluate it against: its formula is never shown.
+      if (/\w\(\s*'|'\s*\+|\+\s*'/.test(label.textContent ?? '')) { if (!model.rowCount()) continue; label.textContent = '' }
       if (label.textContent) item.append(label)
       if (value) {
         const result = document.createElement('dd')

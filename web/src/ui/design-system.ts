@@ -54,7 +54,8 @@ export const DESIGN_CSS = `
 .mh-context .mh-mark {width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#0f6b6f,#1d5f80);color:#fff;font-size:14px;box-shadow:0 6px 20px rgb(15 107 111 / .45);}
 .mh-context .mh-brand b {letter-spacing:.03em;line-height:1.2;}
 .mh-context .mh-sub {font-size:11px;}
-.mh-context .mh-search {flex:0 1 360px;min-width:200px;width:auto;padding:7px 10px;border-radius:9px;background:rgb(255 255 255 / .05);transition:border-color .2s,background .2s,box-shadow .25s;}
+.mh-context .mh-search {flex:0 1 clamp(220px,25vw,360px);min-width:150px;width:auto;padding:7px 10px;border-radius:9px;background:rgb(255 255 255 / .05);transition:border-color .2s,background .2s,box-shadow .25s;}
+.mh-context .mh-search span:first-of-type {white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .mh-context .mh-search:hover {background:rgb(255 255 255 / .08);box-shadow:0 0 0 4px rgb(79 184 178 / .12);}
 .mh-context .mh-chip {padding:5px 10px;transition:background .2s,color .2s;}
 .mh-context .mh-theme button {width:30px;height:28px;transition:background .25s,color .25s,transform .2s;}
@@ -62,10 +63,13 @@ export const DESIGN_CSS = `
 .mh-context .mh-icon {width:34px;height:32px;border-radius:9px;position:relative;}
 .mh-context .mh-badge {position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:#c9302c;color:#fff;font:700 10px/17px var(--p-font);text-align:center;border:2px solid var(--p-chrome);}
 .mh-context .mh-avatar {width:28px;height:28px;background:linear-gradient(135deg,#0f6b6f,#1d5f80);color:#fff;font-size:11px;}
-.mh-context .mh-crumbs {display:flex;align-items:center;gap:4px;font-size:13px;flex:0 1 auto;min-width:0;max-width:min(34vw,560px);overflow:hidden;white-space:nowrap;}
+.mh-context .mh-crumbs {display:flex;align-items:center;gap:4px;font-size:13px;flex:0 1 clamp(0px,calc(100vw - 1150px),400px);min-width:0;overflow:hidden;white-space:nowrap;container-type:inline-size;}
+/* a short breadcrumb shows where you are (the window), not one letter of each level */
+@container (max-width:300px){.mh-context .mh-crumbs > .mh-crumb,.mh-context .mh-crumbs > .mh-sep{display:none}}
 /* a long path never pushes the header onto a second row: the earlier steps shrink first, the window title last */
 .mh-context .mh-crumbs > * {flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;}
-.mh-context .mh-crumbs > strong {flex-shrink:.2;}
+.mh-context .mh-crumbs > strong {flex:0 1 auto;min-width:0;}
+.mh-context .mh-crumbs > .mh-crumb {flex-shrink:8;}
 .mh-context .mh-crumbs > .mh-sep {flex:none;}
 .mh-context .mh-crumbs::before {content:none;}
 .mh-context .mh-crumbs .mh-sep {opacity:.5;}
@@ -112,6 +116,8 @@ export const DESIGN_CSS = `
 /* a long command set (report windows: 25 commands) scrolls sideways instead of wrapping onto a second row */
 .presentation-ui .toolbar.mh-toolbar {flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;}
 .presentation-ui .toolbar.mh-toolbar > :not(.mh-spacer) {flex:none;}
+/* when the commands do not fit, they scroll; Exit stays in reach at the right edge */
+.presentation-ui .toolbar.mh-toolbar > .mh-group-exit {position:sticky;right:0;z-index:2;background:var(--p-surface);box-shadow:-10px 0 10px var(--p-surface);}
 .modern-entry-window .entry-tabs.ds-tabs-in-toolbar > .strip {display:none!important;}
 .presentation-ui .toolbar.mh-toolbar .ds-rep-back {display:inline-flex;align-items:center;gap:6px;color:var(--p-muted);}
 .presentation-ui .toolbar.mh-toolbar .ds-rep-back .mh-label {display:inline!important;}
@@ -120,6 +126,12 @@ export const DESIGN_CSS = `
 /* ---------- Home tab bar and panel ---------- */
 .presentation-ui .ds-home-bar {display:flex;align-items:center;gap:10px;padding:9px 16px;background:var(--p-surface);border-bottom:1px solid var(--p-hair);min-height:52px;}
 .presentation-ui .ds-home-bar[hidden] {display:none;}
+.presentation-ui .ds-home-bar .mh-title {font-size:17px;font-weight:600;letter-spacing:-.01em;color:var(--p-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+/* a long window title gives way to the commands: it shortens with an ellipsis (the full title is the tab's and the tooltip's) */
+.presentation-ui .toolbar.mh-toolbar > .mh-title {flex:0 1 auto;min-width:6em;overflow:hidden;text-overflow:ellipsis;}
+/* the frame's status line keeps no 3-D bevel of the original (a white edge and divider on the dark theme) */
+.presentation-ui .ds-statusbar > .status {border:0!important;box-shadow:none!important;}
+.presentation-ui .ds-statusbar > .ds-status-right {border-left:1px solid var(--p-hair)!important;padding-left:16px;}
 .presentation-ui .ds-home-bar .ds-spacer {flex:1;}
 .presentation-ui .ds-home-bar .tb {display:flex;align-items:center;gap:6px;border:0;background:none;padding:6px 10px;border-radius:8px;cursor:pointer;color:var(--p-text);font:500 calc(14px * var(--p-scale)) var(--p-font);transition:background .15s,box-shadow .2s,transform .1s;}
 .presentation-ui .ds-home-bar .tb:hover {background:var(--p-sunk);}
@@ -199,6 +211,10 @@ export const DESIGN_CSS = `
 .presentation-ui .ds-status-right .ds-live {display:inline-block;width:7px;height:7px;border-radius:50%;background:#4ec98a;margin-right:6px;animation:ds-pulse 2s infinite;}
 
 /* ---------- cards (data surfaces, panels) ---------- */
+/* transaction pages: the cards sit inset on the canvas like the sale and purchase pages, without the source control's own square
+   frame around the rounded card */
+.modern-entry-window .entry-detail.ds-transaction:not(:has(.simplified-summary)) {padding:0 16px 16px;}
+.modern-entry-window .entry-detail.ds-transaction > .entry-control {border:0!important;background:transparent!important;box-shadow:none!important;}
 .presentation-ui .modern-surface {border:1px solid var(--p-hair);border-radius:14px;box-shadow:var(--p-shadow);}
 .presentation-ui .modern-entry-window .entry-data>.modern-surface {border-radius:14px;}
 .modern-surface .surface-status {font-size:12.5px;color:var(--p-muted);padding:10px 16px;}
@@ -224,6 +240,88 @@ export const DESIGN_CSS = `
 }
 .modern-surface .surface-field > .surface-value:not(.editable):not(.surface-choice):not([role=button]) {background:var(--p-sunk);border-radius:8px;color:var(--p-muted);}
 .modern-surface .surface-number,.modern-surface .surface-total-value {font-family:var(--p-mono);font-variant-numeric:tabular-nums;}
+/* an open editor that does not hold the keyboard looks like any other field: only the focused one carries the accent ring */
+.modern-surface :is(input,textarea).surface-editor:not(:focus):not([type=checkbox]) {border-color:var(--p-line);}
+/* one-column forms (masters such as Customer): the caption beside its field, the form no wider than a readable line */
+.modern-entry-window .modern-surface .surface-row.has-grid.grid-one-column:not(.simplified-row) {max-width:68em;grid-template-rows:none!important;grid-auto-rows:auto;row-gap:8px!important;}
+.modern-entry-window .modern-surface .surface-row.has-grid.grid-one-column:not(.simplified-row) > .surface-field {display:grid!important;grid-template-columns:minmax(9em,13em) 1.2em minmax(0,1fr);align-items:center;column-gap:4px;}
+.modern-entry-window .modern-surface .surface-row.has-grid.grid-one-column:not(.simplified-row) > .surface-field > .surface-label {grid-column:1;margin:0;white-space:normal;overflow-wrap:anywhere;}
+.modern-entry-window .modern-surface .surface-row.has-grid.grid-one-column:not(.simplified-row) > .surface-field > .surface-required {grid-column:2;}
+.modern-entry-window .modern-surface .surface-row.has-grid.grid-one-column:not(.simplified-row) > .surface-field > :not(.surface-label):not(.surface-required) {grid-column:3;min-width:0;}
+/* the required mark follows the caption's text (it stood at the far end of the caption column, beside the field) */
+.modern-entry-window .modern-surface .surface-row.has-grid.grid-one-column:not(.simplified-row) > .surface-field > .surface-required::after {visibility:hidden;}
+.modern-entry-window .modern-surface .surface-row.has-grid.grid-one-column:not(.simplified-row) > .surface-field:has(> .surface-required) > .surface-label::after {content:" *";color:var(--p-danger);font-weight:700;}
+@media (max-width:700px){.modern-entry-window .modern-surface .surface-row.has-grid.grid-one-column:not(.simplified-row) > .surface-field {grid-template-columns:minmax(0,1fr) auto;}.modern-entry-window .modern-surface .surface-row.has-grid.grid-one-column:not(.simplified-row) > .surface-field > :not(.surface-label):not(.surface-required) {grid-column:1 / -1;}}
+/* a form with no record yet (a transaction still opening) is an empty card, as the original's empty form: the "No rows" line is
+   kept for assistive technology only; lists keep it visible */
+.modern-entry-window .modern-surface .surface-body:not(.surface-body-grid) > .surface-empty {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+/* check boxes of a form: a real box with its caption (the generic "field under its caption" rule made the box a thin bar), without
+   the frame of a text field */
+.modern-surface .surface-field > .surface-value.surface-toggle {display:flex!important;align-items:center;gap:10px;border:0!important;background:transparent!important;box-shadow:none!important;padding-inline:0!important;}
+.modern-surface .surface-toggle .cbx {flex:none;display:inline-block;width:18px;height:18px;border:1.5px solid var(--p-faint);border-radius:5px;background:var(--p-surface);transition:background .15s,border-color .15s;}
+.modern-surface .surface-toggle:hover .cbx {border-color:var(--p-accent);}
+.modern-surface .surface-toggle .cbx.on {background:var(--p-accent);border-color:var(--p-accent);}
+.modern-surface .surface-toggle:focus-visible {outline:2px solid var(--p-accent);outline-offset:2px;border-radius:6px;}
+/* read-only cells of a grid are plain text on the row (the sunk box of a read-only form field made rows look patchy) */
+.modern-surface td.surface-field > .surface-value:not(.editable):not(.surface-choice):not([role=button]) {background:transparent!important;border-radius:0;}
+/* a list page whose Find DataWindow holds no row (the original shows no box either) keeps no empty frame */
+.modern-entry-window .entry-find:has(.surface-body:not(.surface-body-grid) > .surface-empty) {height:0!important;min-height:0!important;border:0!important;margin:0!important;padding:0!important;overflow:hidden;}
+/* a button in a grid cell (the "---" picker of a row) keeps its caption on one line inside its narrow column */
+.modern-surface .surface-grid td > button.surface-button {white-space:nowrap;width:100%;min-width:0;min-height:28px;padding:0 4px!important;border-radius:6px;}
+.modern-surface .surface-grid td:has(> button.surface-button) {padding:3px 4px;}
+/* a command button among the fields of a form lines up with the fields of its row (it has no caption above it) */
+.modern-surface .simplified-row > .surface-button,.modern-surface .simplified-row > .grid-cell:has(> button.surface-button:only-child) {align-self:end!important;}
+/* a check box whose caption stands before it keeps the box next to the caption */
+.modern-surface .surface-field > .surface-value.surface-toggle.dw-checkbox-left {justify-content:flex-start;}
+.modern-surface .surface-toggle.dw-checkbox-left .cbx {margin-inline-start:4px!important;}
+/* figures the source leaves without a caption of their own (they stand beside "%", "Stock:" or "As/Doc" in the original) get a
+   readable caption; the accessible name stays the original's */
+.modern-surface .surface-field[data-field=rppmargin] > .surface-label.presentation-visually-hidden,.modern-surface .surface-field[data-field=purprice] > .surface-label.presentation-visually-hidden,.modern-surface .surface-field[data-field=rpp] > .surface-label.presentation-visually-hidden,.modern-surface .surface-field[data-field=avgprice] > .surface-label.presentation-visually-hidden,.modern-surface .surface-field[data-field=retailprice] > .surface-label.presentation-visually-hidden,.modern-surface .surface-field[data-field=itemtotalval] > .surface-label.presentation-visually-hidden,.modern-surface .surface-field[data-field=totalstock] > .surface-label.presentation-visually-hidden,.modern-surface .surface-field[data-field=doccode] > .surface-label.presentation-visually-hidden,.modern-surface .surface-field[data-field=customerbalance] > .surface-label.presentation-visually-hidden {position:static!important;width:auto!important;height:auto!important;clip:auto!important;clip-path:none!important;overflow:visible!important;white-space:nowrap;margin:0 0 3px!important;font-size:0!important;color:var(--p-muted);display:inline-block;}
+.modern-surface .surface-field[data-field=rppmargin] > .surface-label.presentation-visually-hidden::before,.modern-surface .surface-field[data-field=purprice] > .surface-label.presentation-visually-hidden::before,.modern-surface .surface-field[data-field=rpp] > .surface-label.presentation-visually-hidden::before,.modern-surface .surface-field[data-field=avgprice] > .surface-label.presentation-visually-hidden::before,.modern-surface .surface-field[data-field=retailprice] > .surface-label.presentation-visually-hidden::before,.modern-surface .surface-field[data-field=itemtotalval] > .surface-label.presentation-visually-hidden::before,.modern-surface .surface-field[data-field=totalstock] > .surface-label.presentation-visually-hidden::before,.modern-surface .surface-field[data-field=doccode] > .surface-label.presentation-visually-hidden::before,.modern-surface .surface-field[data-field=customerbalance] > .surface-label.presentation-visually-hidden::before {font-size:12.5px;font-weight:500;}
+.modern-surface .surface-field[data-field=rppmargin] > .surface-label.presentation-visually-hidden::before {content:"RPP margin %";}
+.modern-surface .surface-field[data-field=purprice] > .surface-label.presentation-visually-hidden::before {content:"Purchase price";}
+.modern-surface .surface-field[data-field=rpp] > .surface-label.presentation-visually-hidden::before {content:"RPP";}
+.modern-surface .surface-field[data-field=avgprice] > .surface-label.presentation-visually-hidden::before {content:"Avg. price";}
+.modern-surface .surface-field[data-field=retailprice] > .surface-label.presentation-visually-hidden::before {content:"Retail price";}
+.modern-surface .surface-field[data-field=itemtotalval] > .surface-label.presentation-visually-hidden::before {content:"Item value";}
+.modern-surface .surface-field[data-field=totalstock] > .surface-label.presentation-visually-hidden::before {content:"T/Stock";}
+.modern-surface .surface-field[data-field=doccode] > .surface-label.presentation-visually-hidden::before {content:"As/Doc";}
+.modern-surface .surface-field[data-field=customerbalance] > .surface-label.presentation-visually-hidden::before {content:"Amount";}
+/* editors of a grid row leave the row's lines visible (they filled the row edge to edge and touched each other) */
+.modern-surface .surface-grid td.surface-field > .surface-value.editable,.modern-surface .surface-grid td.surface-field > .surface-value.surface-choice {min-height:28px!important;padding-block:3px!important;margin-block:2px;}
+/* a one-word heading wider than its narrow column is not broken letter by letter */
+.modern-surface .surface-grid th {overflow-wrap:normal!important;word-break:normal!important;}
+/* list pages keep the margin of every other page */
+.modern-entry-window .page > .entry-list {padding:0 16px 16px;box-sizing:border-box;}
+/* a group box inside a four-column form takes a row of its own under the fields, its members four to a row */
+.modern-surface .simplified-form:not(.simplified-summary) .simplified-row > .surface-group {grid-column:1 / -1!important;order:150;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 14px;padding-block:10px 4px;border-block-start:1px solid var(--p-hair);}
+.modern-surface .simplified-form:not(.simplified-summary) .simplified-row > .surface-group > .surface-group-caption {grid-column:1 / -1;font-weight:600;}
+/* a grid inside a dialog is as wide as its columns: the current-row band ends with the last cell */
+.modern-window .window-fields .window-data table.surface-grid {width:100%!important;}
+.modern-surface .surface-grid th {vertical-align:bottom;}
+/* a group box's bottom edge clears its last option */
+/* (group boxes keep the source's own spacing: moving a frame put its caption on its first option) */
+/* the report viewer's frame is a quiet hairline like every card */
+.modern-window .ctl.lowered.window-embedded {border-color:var(--p-hair)!important;}
+/* an editable drop-down's arrow is part of the field (no divider, no button face) */
+.modern-surface .dw-choice-toggle {border:0!important;background:transparent!important;color:var(--p-muted)!important;}
+.modern-surface .dw-choice-toggle:hover:not(:disabled) {color:var(--p-text)!important;background:var(--p-sunk)!important;border-radius:0 8px 8px 0;}
+/* a caption above its field starts where the field starts (the source right-aligns captions that stand left of a field) */
+.modern-surface .surface-row:not(.grid-one-column) > .surface-field > .surface-label {text-align:start!important;}
+.modern-window .window-data .surface-field > .surface-label {text-align:start!important;display:block;}
+.modern-surface .surface-field > .window-caption {text-align:start!important;padding:0 0 3px!important;}
+/* Compact density (the default): fields one size smaller and closer, so a transaction fits a laptop screen */
+.modern-surface[data-density=compact] .surface-field > .surface-value.editable,.modern-surface[data-density=compact] .surface-field > .surface-value[role=button],.modern-surface[data-density=compact] .surface-field > .surface-value.surface-choice {min-height:34px;padding:5px 10px;}
+.modern-surface[data-density=compact] section.surface-row {gap:10px 14px;padding:12px 16px;}
+.modern-surface[data-density=compact] .surface-label {margin-bottom:3px;}
+/* summary panels (bill summary, payment): one tight line per figure, a dash for a figure that has no value yet */
+.modern-surface .simplified-summary .simplified-row {gap:0!important;padding:8px 16px 12px!important;}
+.modern-surface .simplified-summary .surface-field {padding:2px 0!important;align-items:center!important;}
+.modern-surface .simplified-summary .surface-field .surface-label {font-size:13px!important;margin:0!important;}
+.modern-surface .simplified-summary .surface-field .surface-value {font-size:13.5px!important;}
+.modern-surface .simplified-summary .surface-field .surface-value.editable {min-height:32px!important;padding:4px 10px!important;}
+.modern-surface .simplified-summary .surface-field > .surface-value:not(.editable):empty::after {content:"—";color:var(--p-faint);}
+.modern-surface .simplified-summary .simplified-row > .surface-caption,.modern-surface .simplified-summary .simplified-row > .grid-cell:not(.surface-field):not(.simplified-more):not(.surface-group) {padding:2px 0!important;font-size:13px!important;}
 
 /* tables (mockup th/td) */
 .modern-surface th {padding:10px 12px;background:var(--p-surface);border-bottom:1px solid var(--p-hair);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--p-muted);}
@@ -238,6 +336,9 @@ export const DESIGN_CSS = `
 .modern-surface .row.sel .o {color:var(--p-text)!important;}
 .modern-surface .surface-band {background:var(--p-sunk);border-top:1px solid var(--p-hair);font-weight:600;}
 .modern-surface .surface-band dt {font-weight:500;color:var(--p-muted);}
+/* totals of a line grid read as plain figures (the source paints them as black boxes) */
+.modern-surface .surface-band .surface-total-value {background:transparent!important;border:0!important;box-shadow:none!important;color:var(--p-text)!important;padding:0 2px;}
+.modern-surface .surface-band dl > div:has(> dt:only-child) > dt {color:var(--p-text);font-weight:600;}
 
 .modern-surface .simplified-form:not(.simplified-summary) .simplified-row {grid-auto-flow:row dense;}
 .modern-surface .simplified-form .simplified-row > .grid-cell:not(.surface-field):not(.simplified-more):empty {display:none;}
@@ -254,7 +355,177 @@ export const DESIGN_CSS = `
 .modern-surface .simplified-summary .simplified-emphasis .surface-label {color:var(--p-surface)!important;text-transform:uppercase;letter-spacing:.08em;font-size:11.5px;opacity:.8;}
 .modern-surface .simplified-summary .simplified-emphasis .surface-value {grid-column:3!important;justify-self:end;background:transparent!important;border:0!important;box-shadow:none!important;color:var(--p-surface)!important;font:600 26px var(--p-mono)!important;width:auto!important;padding:0!important;min-height:0!important;}
 .modern-surface .simplified-summary .simplified-emphasis .surface-required {display:none;}
+.modern-surface .simplified-summary .simplified-emphasis .surface-value {font-size:26px!important;}
+.modern-surface .simplified-summary .simplified-emphasis {margin-top:8px!important;padding:10px 16px!important;}
+.modern-surface .simplified-summary .simplified-more {margin-top:4px!important;padding-top:4px!important;}
 .modern-surface .simplified-summary .surface-group {display:contents;}
+/* ---------- options: radio buttons and check boxes drawn in the design's own look (an unselected one is an outlined ring, not a
+   grey disc that reads as disabled) ---------- */
+:is(.modern-window,.modern-entry-window) :is(.window-option,label.ctl) input:is([type=radio],[type=checkbox]):not(.window-embedded *) {appearance:none;-webkit-appearance:none;inline-size:20px;block-size:20px;margin:0;flex:none;display:inline-grid;place-content:center;border:1.5px solid var(--p-faint);background:var(--p-surface);cursor:pointer;transition:border-color .15s,background .15s,box-shadow .2s;}
+:is(.modern-window,.modern-entry-window) :is(.window-option,label.ctl) input[type=radio]:not(.window-embedded *) {border-radius:50%;}
+:is(.modern-window,.modern-entry-window) :is(.window-option,label.ctl) input[type=checkbox]:not(.window-embedded *) {border-radius:5px;}
+:is(.modern-window,.modern-entry-window) :is(.window-option,label.ctl) input:is([type=radio],[type=checkbox]):hover:not(:disabled) {border-color:var(--p-accent);}
+:is(.modern-window,.modern-entry-window) :is(.window-option,label.ctl) input:is([type=radio],[type=checkbox]):checked {border-color:var(--p-accent);background:var(--p-accent);}
+:is(.modern-window,.modern-entry-window) :is(.window-option,label.ctl) input[type=radio]:checked::after {content:"";width:8px;height:8px;border-radius:50%;background:var(--p-on-accent);}
+:is(.modern-window,.modern-entry-window) :is(.window-option,label.ctl) input[type=checkbox]:checked::after {content:"";width:10px;height:5px;border:solid var(--p-on-accent);border-width:0 0 2px 2px;transform:translateY(-1px) rotate(-45deg);}
+:is(.modern-window,.modern-entry-window) :is(.window-option,label.ctl) input:is([type=radio],[type=checkbox]):disabled {opacity:.45;cursor:not-allowed;}
+.modern-window .window-option {gap:10px;}
+.modern-window .window-option {padding-inline:6px!important;margin-inline:-6px;}
+:is(.modern-window,.modern-entry-window) :is(.window-option,label.ctl) input:is([type=radio],[type=checkbox]):focus-visible {outline:none!important;box-shadow:0 0 0 3px var(--p-glow);}
+/* a dialog without a default button still shows which button accepts it (the look only: the keys stay the source's) */
+.modern-window .window-actions:not(:has(button.default)) button:first-child:not(:disabled) {background:linear-gradient(180deg,var(--p-accent-2),var(--p-accent));border-color:var(--p-accent);color:var(--p-on-accent)!important;box-shadow:0 6px 18px var(--p-glow);}
+/* a tab control inside a dialog carries the design's surfaces: no white page, light frame or clipped grid of the original */
+.modern-window .tabctl.window-embedded {background:transparent!important;color:var(--p-text)!important;color-scheme:inherit;}
+/* more tabs than fit: the strip fades at its right edge, so a cut caption reads as "more this way" (it scrolls sideways) */
+.modern-window .tabctl.window-embedded > .strip {scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent);padding-right:28px;}
+.modern-window .tabctl.window-embedded > .page {background:var(--p-surface)!important;border:1px solid var(--p-hair)!important;border-radius:0 10px 10px 10px;overflow:auto;}
+.modern-window .tabctl.window-embedded > .page > .ctl:has(> .modern-surface) {max-width:100%!important;}
+.modern-window .tabctl.window-embedded > .page > .ctl > .modern-surface {overflow:auto!important;border:0!important;box-shadow:none!important;border-radius:0!important;}
+.modern-window.pbwin:has(.tabctl.window-embedded .modern-surface) {width:min(max(64em,calc(var(--source-width,0px) * 1.3)),100%)!important;}
+/* controls the tab pages keep at their source positions take the theme's colours (no light-grey lists and white boxes on dark) */
+.modern-window .tabctl.window-embedded :is(input:not([type=checkbox]):not([type=radio]),select,textarea).ctl {background:var(--p-surface)!important;color:var(--p-text)!important;border:1px solid var(--p-line)!important;border-radius:6px;}
+.modern-window .tabctl.window-embedded :is(input,select,textarea).ctl:disabled {background:var(--p-sunk)!important;color:var(--p-muted)!important;}
+.modern-window .tabctl.window-embedded .ctl:is(.st,label,legend),.modern-window .tabctl.window-embedded fieldset.ctl > legend {color:var(--p-text)!important;background:transparent!important;}
+.modern-window .tabctl.window-embedded fieldset.ctl {border-color:var(--p-hair)!important;background:transparent!important;border-radius:8px;}
+.modern-window .tabctl.window-embedded input:is([type=checkbox],[type=radio]) {accent-color:var(--p-accent);}
+.modern-window .tabctl.window-embedded input:is([type=checkbox],[type=radio]) {appearance:none;-webkit-appearance:none;width:16px;height:16px;margin:0 6px 0 0;flex:none;display:inline-grid;place-content:center;vertical-align:middle;border:1.5px solid var(--p-faint);background:var(--p-surface);cursor:pointer;}
+.modern-window .tabctl.window-embedded input[type=radio] {border-radius:50%;}
+.modern-window .tabctl.window-embedded input[type=checkbox] {border-radius:4px;}
+.modern-window .tabctl.window-embedded input:is([type=checkbox],[type=radio]):checked {border-color:var(--p-accent);background:var(--p-accent);}
+.modern-window .tabctl.window-embedded input[type=radio]:checked::after {content:"";width:6px;height:6px;border-radius:50%;background:var(--p-on-accent);}
+.modern-window .tabctl.window-embedded input[type=checkbox]:checked::after {content:"";width:8px;height:4px;border:solid var(--p-on-accent);border-width:0 0 2px 2px;transform:translateY(-1px) rotate(-45deg);}
+.modern-window .tabctl.window-embedded input:is([type=checkbox],[type=radio]):disabled {opacity:.45;}
+.modern-window .tabctl.window-embedded .ctl > input:not([type=checkbox]):not([type=radio]),.modern-window .tabctl.window-embedded .pb-dropdown :is(select,input) {background:var(--p-surface)!important;color:var(--p-text)!important;border:1px solid var(--p-line)!important;border-radius:6px;}
+.modern-window .tabctl.window-embedded .pb-dropdown :is(select,input):disabled,.modern-window .tabctl.window-embedded .ctl > input:disabled {background:var(--p-sunk)!important;color:var(--p-muted)!important;}
+.modern-window .tabctl.window-embedded :is(label.ctl,.ctl.st,legend) {font:500 12.5px/1.3 var(--p-font)!important;white-space:nowrap;}
+.modern-window .tabctl.window-embedded .page .ctl:not(fieldset):not(.dw),.modern-window .tabctl.window-embedded .page .ctl > input {border-color:var(--p-line)!important;}
+/* About: captions on one line, the link in the interface font */
+.pbwin[data-win=w_about] .window-caption,.pbwin[data-win=w_about] .window-field label .ctl {white-space:nowrap!important;overflow-wrap:normal!important;}
+.pbwin[data-win=w_about] .ctl {font-family:var(--p-font)!important;}
+.pbwin[data-win=w_about] .window-caption {overflow:visible!important;height:auto!important;line-height:1.5!important;}
+.presentation-ui[data-theme=dark] .modern-window .tabctl.window-embedded,.modern-window[data-theme=dark] .tabctl.window-embedded {color-scheme:dark;}
+.modern-window .tabctl.window-embedded button.ctl {background:var(--p-surface)!important;color:var(--p-text)!important;border:1px solid var(--p-line)!important;border-radius:8px;}
+/* drop-downs of a tab page are drawn by the theme, enabled or not (the native disabled widget was a light grey box in the dark theme) */
+.modern-window .tabctl.window-embedded .pb-dropdown select {appearance:none;-webkit-appearance:none;opacity:1!important;padding:0 16px 0 6px!important;font:500 12px/1.2 var(--p-font)!important;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='m2 2 4 4 4-4' fill='none' stroke='%238a98a6' stroke-width='1.6'/%3E%3C/svg%3E")!important;background-position:right 4px center!important;background-size:8px 6px!important;background-repeat:no-repeat!important;}
+.modern-window .tabctl.window-embedded .pb-dropdown select:disabled {background-color:var(--p-sunk)!important;color:var(--p-muted)!important;border-color:var(--p-hair)!important;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='m2 2 4 4 4-4' fill='none' stroke='%238a98a6' stroke-width='1.6'/%3E%3C/svg%3E")!important;background-position:right 4px center!important;background-size:8px 6px!important;background-repeat:no-repeat!important;}
+.modern-window .tabctl.window-embedded .ctl.pb-dropdown {border:0!important;background:transparent!important;box-shadow:none!important;}
+.modern-window .tabctl.window-embedded input:is([type=checkbox],[type=radio]):disabled {opacity:1;border-color:var(--p-muted);background:var(--p-sunk);}
+.modern-window .tabctl.window-embedded label.ctl:has(input:disabled) > span {color:var(--p-muted)!important;}
+/* a one-line DataWindow of a tab page without a row is an empty box, not a clipped "No rows" note */
+.modern-window .tabctl.window-embedded .page > .ctl.lowered > .modern-surface .surface-empty {display:none;}
+.modern-window .tabctl.window-embedded .page > .ctl.lowered {border-radius:6px;background:var(--p-sunk)!important;}
+.modern-window .tabctl.window-embedded :is(label.ctl,.ctl.st) {letter-spacing:-.01em;overflow:visible!important;}
+.modern-window .tabctl.window-embedded label.ctl > input {margin-right:5px;}
+/* an option of a tab page: its box and its caption on one line */
+.modern-window .tabctl.window-embedded label.ctl:has(> input:is([type=radio],[type=checkbox])) {display:inline-flex!important;align-items:center;}
+.modern-window .tabctl.window-embedded label.ctl > input:is([type=radio],[type=checkbox]) {vertical-align:middle;margin-top:0!important;margin-bottom:0!important;}
+/* ---------- dialogs: one frame style, visible scrolling ---------- */
+/* a resizable source window keeps no thick light frame around the card */
+.presentation-compatibility-dialog .modern-window.pbwin {border-width:1px!important;border-color:var(--p-hair)!important;}
+/* the card itself shows no focus frame when it (not one of its fields) holds the keyboard */
+dialog.presentation-compatibility-dialog:focus,dialog.presentation-compatibility-dialog:focus-visible,.presentation-compatibility-dialog .modern-window.pbwin:focus,.presentation-compatibility-dialog .modern-window.pbwin:focus-visible {outline:none!important;}
+/* a body taller than the screen scrolls with a bar the user can see (the last group was cut with no cue) */
+dialog .modern-window.pbwin > .client {scrollbar-width:thin;scrollbar-color:var(--p-muted) transparent;scrollbar-gutter:stable;}
+/* more of the body lies under the button bar: a soft edge above the bar while the body can still be scrolled down (it fades at the end) */
+dialog .modern-window.pbwin > .client > .window-actions::before {content:"";position:absolute;inset:auto 0 100% 0;height:26px;pointer-events:none;opacity:0;
+  background:linear-gradient(transparent,color-mix(in srgb,var(--p-text) 22%,transparent));}
+@supports (animation-timeline:scroll()) {
+  dialog .modern-window.pbwin > .client > .window-actions::before {animation:ds-more-below linear both;animation-timeline:scroll(nearest block);}
+}
+@keyframes ds-more-below {0%,94% {opacity:1;} 100% {opacity:0;}}
+/* a check box of a grid stands under its heading's text, clear of the editor on its left */
+.modern-surface table.surface-grid td.surface-field:has(> .surface-toggle) {padding-inline-start:12px!important;}
+/* a form without a record below the main form (an inherited detail the screen does not fill) shows no empty card */
+.modern-entry-window .entry-detail > .entry-form ~ .entry-form:has(> .modern-surface > .simplified-form > .surface-empty):not(:has(.surface-row)) {display:none!important;}
+/* a command inside a form is as tall as a field, level with its caption */
+/* a command with its caption in a one-column form ("Item Alert Color: [Select Color]"): the caption above, the command at the field edge */
+.modern-surface .simplified-form > .surface-row.has-grid:not(.simplified-row) > button.surface-button.grid-cell {grid-column:1 / -1!important;justify-self:start;margin:24px 0 0 8px!important;min-width:14em;align-self:start;}
+.modern-surface .simplified-form > .surface-row.has-grid:not(.simplified-row) > p.surface-caption.grid-cell {align-self:start;font:500 12.5px/1.3 var(--p-font)!important;color:var(--p-muted)!important;}
+/* the Find box of a list page is one field, not a field in two frames */
+.modern-entry-window .ctl.entry-find,.modern-entry-window .ctl.entry-find > .modern-surface {border:0!important;background:transparent!important;box-shadow:none!important;height:auto!important;min-height:0!important;overflow:visible!important;}
+.modern-entry-window .ctl.entry-find .surface-row {padding:0!important;}
+.modern-entry-window .ctl.entry-find .surface-field {padding-inline:0!important;}
+/* a list whose Find box has no row (the window gives it none) shows no "Find:" caption and hint over nothing */
+.modern-entry-window .entry-search:has(> .entry-find .surface-empty) > :is(:nth-child(1),:nth-child(2),.entry-find) {display:none!important;}
+/* an editable drop-down of the criteria row is one field with its arrow inside, like the lists beside it */
+.modern-entry-window .entry-criteria .pb-dropdown:has(> .dropdown-toggle) > input {border-right:0!important;border-radius:8px 0 0 8px!important;}
+.modern-entry-window .entry-criteria .pb-dropdown > .dropdown-toggle {border:1px solid var(--p-line)!important;border-left:0!important;border-radius:0 8px 8px 0!important;background:var(--p-surface)!important;color:var(--p-muted)!important;}
+.modern-entry-window .entry-criteria .pb-dropdown > .dropdown-toggle:hover {color:var(--p-text)!important;}
+/* a check box in a row of captioned fields stands level with their editors, not with their captions */
+.modern-surface .surface-row.simplified-row > .surface-field:has(> .surface-toggle) {align-self:end!important;padding-bottom:5px;}
+/* a command in a row of fields: as wide and as tall as the fields beside it */
+.modern-surface .surface-row.has-grid > button.surface-button.grid-cell {margin-inline:8px;height:34px!important;min-height:0!important;align-self:end;margin-bottom:3px;}
+/* list boxes use the interface font; an option's focus frame is as wide as the option */
+.modern-window select.ctl,.modern-window select.ctl option {font-family:var(--p-font)!important;}
+.modern-window .window-fields.has-grid > .window-option {justify-self:start;width:fit-content!important;max-width:100%;}
+.modern-entry-window .entry-criteria .dropdown-toggle {color:var(--p-muted)!important;}
+.modern-entry-window .entry-criteria .dropdown-toggle svg path {stroke-width:1.2;}
+/* selected text uses the accent, not the browser's blue */
+.presentation-ui ::selection,dialog.presentation-compatibility-dialog ::selection {background:color-mix(in srgb,var(--p-accent) 38%,transparent);color:var(--p-text);}
+/* a tab page drawn at the source's pixel size (Job Schedules) is shown a third larger, so its controls are as large as the rest */
+.modern-window.pbwin[data-win=w_job_schedule] .tabctl.window-embedded > .page {zoom:1.3;}
+.modern-window.pbwin[data-win=w_job_schedule] .tabctl.window-embedded > .page :is(label.ctl,.ctl.st,legend) {font-size:10px!important;}
+.modern-window.pbwin[data-win=w_job_schedule] .tabctl.window-embedded > .page .pb-dropdown select {font-size:9.5px!important;}
+/* the two arrows of a spin field are part of the field: no boxes of their own over its rounded end */
+.modern-surface .surface-spin-controls {inset:1px 1px 1px auto!important;gap:0!important;}
+.modern-surface .surface-value.surface-spinner,.modern-surface .surface-spinner .surface-editor {padding-right:calc(4em + 16px)!important;}
+.modern-surface .surface-spin-controls button {border:0!important;border-left:1px solid var(--p-hair)!important;background:transparent!important;color:var(--p-muted)!important;min-height:0!important;}
+.modern-surface .surface-spin-controls button:last-child {border-radius:0 7px 7px 0!important;}
+.modern-surface .surface-spin-controls button:hover:not(:disabled) {background:var(--p-sunk)!important;color:var(--p-text)!important;}
+/* the active tab of a dialog shows the accent, not the Classic dotted rectangle */
+.modern-window .tabctl.window-embedded > .strip .t.on {outline:none!important;}
+.modern-window .tabctl.window-embedded > .strip .t:focus-visible {outline:2px solid var(--p-accent)!important;outline-offset:-2px;border-radius:6px;}
+/* the arrow of the editable criteria drop-down has the colour of the lists' arrows beside it */
+.modern-entry-window .entry-criteria .pb-dropdown > .dropdown-toggle,.modern-entry-window .entry-criteria .pb-dropdown > .dropdown-toggle:hover {color:#8a98a6!important;}
+/* every drop-down arrow has one colour (a DataWindow's arrow took the text colour, darker than the lists' arrows) */
+.modern-surface .surface-choice-arrow {color:#8a98a6!important;}
+/* the docked criteria card covers its whole strip (a line of the page behind showed at both sides) */
+dialog.presentation-compatibility-dialog[open].ds-report-criteria {padding-inline:0!important;}
+/* a text shown in a group or summary band uses the interface font; only figures use the figure font */
+.modern-surface .surface-total-value:not(.surface-number) {font-family:var(--p-font)!important;}
+/* an editor in the first column of a line grid starts under its heading, clear of the card edge and the row mark */
+.modern-entry-window .modern-surface table.surface-grid tbody td.surface-field:first-child:has(> .surface-value.editable) {padding-inline-start:10px!important;}
+/* a dialog never grows past the screen (a long option list ran under the application header) */
+dialog.presentation-compatibility-dialog[open]:not(.ds-report-criteria) {max-height:calc(100vh - 32px)!important;}
+/* a list inside a group box ends above the group's border */
+.modern-window .window-fields.has-grid > .window-data:has(.surface-body-grid) {margin-bottom:10px;margin-inline:8px;}
+/* an option's caption stays on one line ("All" broke into "Al / l" in a narrow column) */
+.modern-window .window-option {white-space:nowrap;}
+/* the chosen line of a list box reads as clearly as the others */
+.modern-window select.ctl option:checked {background:var(--p-accent) linear-gradient(0deg,var(--p-accent),var(--p-accent))!important;color:var(--p-on-accent)!important;font-weight:600;}
+/* a small DataWindow inside a dialog (one drop-down) has a whole, quiet frame instead of the original's two-edged 3-D border */
+/* a form DataWindow inside a dialog (one or two fields) is part of the dialog, not a card in the card; a list keeps its frame */
+.modern-window .window-fields .window-data:not(.window-embedded):not(.window-embedded *) {border:0!important;border-radius:0;box-shadow:none!important;background:transparent!important;}
+.modern-window .window-fields .window-data:not(.window-embedded):has(.surface-body-grid) {border:1px solid var(--p-hair)!important;border-radius:10px;}
+.modern-window .window-fields .window-data:not(.window-embedded):not(:has(.surface-body-grid)) section.surface-row {padding:0!important;}
+.modern-window .window-fields .window-data:not(.window-embedded) > .modern-surface {background:transparent!important;}
+/* the dialog's own caption names the DataWindow's field: the field's second caption is kept for assistive technology only */
+.modern-window .window-data.window-data-captioned .surface-field > :is(.surface-label,.surface-required) {position:absolute!important;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+.modern-window .window-fields.has-grid > .window-caption.window-caption-beside {padding-top:9px!important;}
+.modern-window .window-fields .window-data:not(.window-embedded):not(.window-embedded *) > .modern-surface {border:0!important;box-shadow:none!important;}
+/* its frame is as tall as its fields: stretched over the rows it shares, the frame's bottom edge ran through the next row's options */
+.modern-window .window-fields.has-grid > .window-data:not(.window-embedded) {align-self:start;}
+.modern-window .window-fields.has-grid > .window-caption-inline {align-self:start!important;z-index:2;pointer-events:none;padding-block:3px 0!important;white-space:nowrap;}
+/* a command button among a dialog's fields keeps a button's height (it was stretched over the rows it shares) */
+.modern-window .window-fields.has-grid > button.ctl.window-button:not(.window-embedded) {align-self:center!important;height:auto!important;max-height:44px;}
+/* an option the source draws on a frame's edge covers the line behind its caption (as a caption on a group box does) */
+.modern-window .window-fields.has-grid > .window-option {position:relative;z-index:2;}
+.modern-window .window-fields.has-grid > .window-option > span {background:var(--p-surface);padding-inline:2px;}
+/* list boxes: the chosen lines in the theme's selection colour (the browser's blue on grey text was unreadable) */
+.modern-window select.ctl[multiple] option:checked,.modern-window select.ctl[size] option:checked {background:var(--p-selected) linear-gradient(0deg,var(--p-selected),var(--p-selected));color:var(--p-text);}
+.modern-window select.ctl[multiple]:focus option:checked,.modern-window select.ctl[size]:focus option:checked {background:var(--p-accent) linear-gradient(0deg,var(--p-accent),var(--p-accent));color:var(--p-on-accent);}
+.modern-window select.ctl[multiple],.modern-window select.ctl[size] {scrollbar-width:thin;scrollbar-color:var(--p-faint) transparent;}
+/* a field whose caption is hidden shows no lone required mark */
+.modern-surface .surface-field > .surface-label.presentation-visually-hidden + .surface-required {display:none!important;}
+/* the required mark of a grid heading keeps its place beside the caption (it wrapped under it in a narrow column) */
+/* (the mark is drawn as part of the caption's last word, so it can neither wrap alone nor drift to the column's far edge) */
+.modern-surface .surface-grid th > .surface-required::after {content:none;}
+.modern-surface .surface-grid th > .surface-required {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);}
+.modern-surface .surface-grid th:has(> .surface-required) > span:first-child::after {content:" *";color:var(--p-danger);font-weight:700;text-transform:none;}
+/* drop-down lists everywhere in the workspace share one arrow (some kept the browser's heavy native one) */
+.presentation-ui :is(.modern-surface,.modern-window,.modern-entry-window) select:not([multiple]):not([size]):not(.window-embedded *) {appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a98a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 9px center!important;background-size:15px!important;padding-right:30px!important;}
 /* ---------- buttons (mockup .btn) ---------- */
 .modern-window button.ctl.window-button:not(.window-embedded *),.modern-window .window-actions button,.presentation-settings button,.modern-surface .surface-button button,.modern-surface button.surface-button {
   min-height:40px;padding:0 16px;border-radius:9px;border:1px solid var(--p-line);background:var(--p-surface);color:var(--p-text);font:500 calc(14px * var(--p-scale)) var(--p-font);cursor:pointer;transition:transform .12s,background .15s,box-shadow .2s,border-color .15s;
@@ -306,6 +577,10 @@ dialog .modern-window.pbwin > .client > .window-actions {position:sticky;bottom:
 .presentation-runtime-dialog {width:min(480px,calc(100vw - 32px));padding:0!important;}
 .presentation-runtime-dialog h2 {display:flex;align-items:center;gap:10px;margin:0;padding:18px 20px 0;font:600 17px/1.3 var(--p-font);color:var(--p-text);}
 .presentation-runtime-dialog .presentation-message-icon svg {width:22px;height:22px;color:var(--p-accent);}
+/* the original's own icon keeps its meaning: amber for a warning, red for an error, blue for information */
+.presentation-runtime-dialog .presentation-message-icon[data-severity=warning] svg {color:var(--p-warn);}
+.presentation-runtime-dialog .presentation-message-icon[data-severity=error] svg {color:var(--p-danger);}
+.presentation-runtime-dialog .presentation-message-icon[data-severity=information] svg {color:var(--p-info);}
 .presentation-runtime-dialog .presentation-copy {margin:0;padding:12px 20px 16px;color:var(--p-muted);white-space:pre-wrap;}
 .presentation-runtime-dialog label,.presentation-runtime-dialog input {margin:0 20px 12px;}
 .presentation-runtime-dialog input {min-height:40px;border:1px solid var(--p-line);border-radius:8px;padding:0 12px;background:var(--p-surface);color:var(--p-text);width:calc(100% - 40px);}
