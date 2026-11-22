@@ -240,6 +240,9 @@ async function evalCall(e: Extract<Expr, { k: 'call' }>, ctx: EvalCtx): Promise<
     case 'rows':
       return ctx.host.rowCount()
     case 'today':
+      // the DataWindow's Today() is the date and time (PowerScript's is the date only): the reports' header computes
+      // (`today()` with format `dd/mm/yyyy hh:mm:ss`, 1,743 of them) show the time of printing, not `??:??:??`
+      return PBDateTime.fromJs(new Date())
     case 'now':
     default:
       break
@@ -251,6 +254,10 @@ async function evalCall(e: Extract<Expr, { k: 'call' }>, ctx: EvalCtx): Promise<
   if (name === 'counter') return ctx.row
   const args: unknown[] = []
   for (const a of e.a) args.push(await evalDw(a, ctx))
+  // measured in the original engine (pbdwe125 Evaluate): RelativeDate of a DateTime keeps its time
+  // (`relativedate(today(), 1)` = tomorrow at the current time); DateTime() takes a date, so `datetime(today())` is midnight
+  if (name === 'relativedate' && args[0] instanceof PBDateTime) return args[1] === null ? null : new PBDateTime(args[0].n + toNum(args[1]), args[0].ms)
+  if (name === 'datetime' && args[0] instanceof PBDateTime) args[0] = args[0].date
   const sf = ctx.host.rt.sys.get(name)
   if (sf) return sf.fn(ctx.host.rt, args, undefined as never)
   // global function (f_xxx) from the application

@@ -7,7 +7,7 @@ import { compileDw } from '../../dw/expr.ts'
 import { DwModel, DATA_MODIFIED, NEW, NEW_MODIFIED, NOT_MODIFIED, lookupDataWindows } from '../../dw/model.ts'
 import type { DwRow } from '../../dw/model.ts'
 import { argList, splitExpr } from '../../dw/def.ts'
-import type { DwDef } from '../../dw/def.ts'
+import type { DwDef, DwObject } from '../../dw/def.ts'
 import { commitDwValue, dwEditText, dwRequired } from '../../dw/edit.ts'
 import { NTransaction } from './transaction.ts'
 import { Ref } from '../interp.ts'
@@ -822,6 +822,8 @@ export class NDwBase extends PBObject {
     if (!m || this.destroyed) return -1
     const name = toStr(col).toLowerCase()
     const o = m.def.objects.find((x) => x.type === 'column' && x.name.toLowerCase() === name)
+    const report = o ? undefined : m.def.objects.find((x) => x.type === 'report' && x.name.toLowerCase() === name)
+    if (report) return this.nestedReportChild(m, report, ref)
     const dddw = m.overrides.get(`${name}.dddw.name`) ?? o?.['dddw.name']
     const store = this.childControls
     let ch = store.get(name)
@@ -847,6 +849,40 @@ export class NDwBase extends PBObject {
       store.set(name, ch)
     }
     await this.autoRetrieveChild(name, ch)
+    if (ref instanceof Ref) {
+      await ref.set(ch)
+      return 1
+    }
+    return ch
+  }
+  /**
+   * GetChild of a nested report (the report objects of a composite): the child is that report's DataWindow, and what a script
+   * retrieves into it is what the composite shows (f_getnestedreport, 34 call sites; the sale reprint with summaries said
+   * "Problem in Retrieving Report" because only drop-down columns had children).
+   */
+  private async nestedReportChild(m: DwModel, report: DwObject, ref: unknown): Promise<unknown> {
+    const name = report.name.toLowerCase()
+    const dataobject = m.reportObjectName(report).toLowerCase()
+    const key = `report:${name}`
+    let ch = this.childControls.get(key)
+    if (ch && (ch.destroyed || ch.dwName !== dataobject || ch.model !== m.nested.get(name))) {
+      ch.destroy()
+      this.childControls.delete(key)
+      ch = undefined
+    }
+    if (!ch) {
+      if (!dataobject || !(await this.rt.dwCatalog?.get(dataobject))) return -1
+      ch = new NDwBase(this.rt, 'datawindowchild', 'datawindowchild')
+      ch.dwName = dataobject
+      ch.ready = ch.loadDef(dataobject)
+      await ch.ready
+      if (!ch.model) return -1
+      if (this.trans) ch.trans = this.trans
+      if (!ch.model.trans?.db) ch.model.trans = m.trans
+      m.nested.set(name, ch.model)
+      ch.listeners.add(() => this.changed())
+      this.childControls.set(key, ch)
+    }
     if (ref instanceof Ref) {
       await ref.set(ch)
       return 1

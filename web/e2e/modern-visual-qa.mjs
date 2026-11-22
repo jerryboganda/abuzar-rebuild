@@ -209,6 +209,8 @@ for (const leaf of todo) {
       steps.push(did)
       await settle(10)
     }
+    // QA_RUN_WAIT=ms: time for a long report to retrieve and draw before it is photographed
+    if (process.env.QA_RUN_WAIT) await page.waitForTimeout(Number(process.env.QA_RUN_WAIT))
     await page.screenshot({ path: `${out}/${id}-run.png`, timeout: 60000 }).catch((e) => console.log('  screenshot failed: ' + String(e?.message ?? e).split('\n')[0]))
     const runBoxes = await page.evaluate(() => window.__boxes.splice(0))
     const preview = await page.evaluate(() => {

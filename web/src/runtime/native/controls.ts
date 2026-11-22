@@ -111,6 +111,10 @@ export class NControl extends PBObject {
     // longlong placeholder even when the value is a date.  Parse date-looking
     // text first, otherwise `d_sdate = 0` would take the numeric branch and
     // turn "01/01/2020 00:00:00" into 0.
+    // A numeric mask whose text is no number (the designer text "none" of User Wise › Invoice Graph's percentage, shown empty):
+    // GetData fails (-1) and leaves the variable as it was, as in PowerBuilder.  Writing "none" into it made the script's
+    // `db_code1 < 0.0` raise "bad decimal: none" and the report never ran.
+    if (this.native === 'editmask' && /^[#0,.\-]+$/.test(mask.trim()) && !Number.isFinite(Number(text.replace(/,/g, '').trim() || 'x'))) return -1
     const m = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(text.trim())
     const iso = /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(text.trim())
     if (m) {

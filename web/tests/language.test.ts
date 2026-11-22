@@ -5,7 +5,7 @@ import { Runtime, Frame } from '../src/runtime/interp.ts'
 import { registerSysFuncs } from '../src/runtime/sysfuncs.ts'
 import { PBObject } from '../src/runtime/object.ts'
 import type { ClassDef } from '../src/runtime/object.ts'
-import { Dec, PBDate, PBArray } from '../src/runtime/values.ts'
+import { Dec, PBDate, PBDateTime, PBArray } from '../src/runtime/values.ts'
 import { DwModel } from '../src/dw/model.ts'
 import { compileDw, evalDw, newCtx } from '../src/dw/expr.ts'
 import type { DwDef } from '../src/dw/def.ts'
@@ -134,6 +134,20 @@ test('DataWindow expressions: case, in, if, aggregates with scope', async () => 
   assert.equal(String(await ev('sum(amt for all)')), '13.75')
   assert.equal(String(await ev('cumulativesum(amt for all)', 2)), '12.75')
   assert.equal(await ev('count(k for all)'), 3)
+  // the DataWindow's Today() carries the time: report headers format it with `hh:mm:ss`.  Every expectation below was
+  // measured in the original engine (pbdwe125 Evaluate, 2026-11-22).
+  const now = await ev('today()')
+  assert.ok(now instanceof PBDateTime)
+  assert.match(String(await ev("string(today(), 'dd/mm/yyyy hh:mm:ss')")), /^\d\d\/\d\d\/\d{4} \d\d:\d\d:\d\d$/)
+  assert.match(String(await ev("string(relativedate(today(), 1), 'dd/mm/yyyy hh:mm')")), /^\d\d\/\d\d\/\d{4} \d\d:\d\d$/)
+  assert.match(String(await ev("string(relativedate(date(today()), 1), 'dd/mm/yyyy hh:mm')")), / \?\?:\?\?$/)
+  assert.match(String(await ev("string(datetime(today()), 'dd/mm/yyyy hh:mm')")), / 00:00$/)
+  assert.match(String(await ev("string(time(today()), 'hh:mm')")), /^\d\d:\d\d$/)
+  assert.equal(await ev('daysafter(relativedate(today(), 3), today())'), -3)
+  assert.equal(await ev('daysafter(today(), relativedate(today(), 3))'), 3)
+  assert.equal(await ev("if(relativedate(today(), -1) < today(), 'lt', 'ge')"), 'lt')
+  assert.equal(await ev("if(date(today()) = today(), 'eq', 'ne')"), 'ne')
+  assert.equal(await ev('year(today())'), new Date().getFullYear())
 })
 
 test('update statements follow the where-clause mode of the DataWindow', () => {
@@ -207,7 +221,7 @@ test('Timer(0, window) reaches the system function, not the window Timer event',
   const w = await rt.instantiate('w_timer')
   await rt.fire(w, 'open')
   assert.equal(rt.globals.get('gs_timerhits'), 0)
-})
+})
 
 test('a for loop tests its limit again on every pass; a local keeps its initial value', async () => {
   const rt = runtimeWith(`// function f_loop (x)  ancestor: function_object
@@ -278,7 +292,7 @@ test('a ref parameter returns its value to the caller', async () => {
 `,
   )
   assert.equal(await call(rt, 'f_caller'), 'hello')
-})
+})
 
 test('an array addressed with two subscripts keeps every element', async () => {
   const rt = runtimeWith(`// function f_md (x)  ancestor: function_object

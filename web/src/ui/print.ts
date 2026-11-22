@@ -81,19 +81,18 @@ export async function buildPages(ctl: NDwBase, options: BuildPagesOptions = {}):
     const out: HTMLElement[] = []
     const parts = m.def.objects.filter((o) => o.type === 'report' && o.dataobject).sort((a, b) => num(a, 'y') - num(b, 'y'))
     const { NDwBase } = await import('../runtime/native/dwctrl.ts')
-    const { DwModel } = await import('../dw/model.ts')
-    const { argList } = await import('../dw/def.ts')
     const { compileDw, evalDw, newCtx } = await import('../dw/expr.ts')
     for (const o of parts) {
-      const def = await ctl.rt.dwCatalog?.get(o.dataobject)
-      if (!def) continue
-      const child = new DwModel(ctl.rt, o.dataobject, def)
-      child.trans = m.trans
-      const items = ((o.nest_arguments as unknown as { _items: { _items: string[] }[] } | undefined)?._items) ?? []
-      const args: unknown[] = []
-      for (const it of items) args.push(await evalDw(compileDw((it._items[0] || '').trim()), newCtx(m, 1, 'detail')))
-      void argList
-      if (m.trans) await child.retrieve(args)
+      const child = await m.nestedReport(o, async () => {
+        const items = ((o.nest_arguments as unknown as { _items: { _items: string[] }[] } | undefined)?._items) ?? []
+        const args: unknown[] = []
+        for (const it of items) {
+          const src = (it._items[0] || '').trim().replace(/^"|"$/g, '')
+          args.push(src ? await evalDw(compileDw(src), newCtx(m, 1, 'detail')) : null)
+        }
+        return args
+      })
+      if (!child) continue
       const c = new NDwBase(ctl.rt, 'datawindow', 'datawindow')
       c.attach(child)
       out.push(...(await buildPages(c, options)))

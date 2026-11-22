@@ -1602,17 +1602,16 @@ export class DwView {
   /** nested report: retrieves the child DataWindow with the arguments given in the report object and renders it in full */
   async nestedReport(m: DwModel, o: DwObject, row: number, band: string): Promise<HTMLElement | null> {
     const rt = this.ctl.rt
-    const def = await rt.dwCatalog?.get(o.dataobject)
-    if (!def) return null
-    const child = new DwModel(rt, o.dataobject, def)
-    child.trans = m.trans
-    const args: unknown[] = []
-    const items = ((o.nest_arguments as unknown as { _items: { _items: string[] }[] } | undefined)?._items) ?? []
-    for (const it of items) {
-      const src = (it._items[0] || '').trim().replace(/^"|"$/g, '')
-      args.push(src ? await evalDw(compileDw(src), newCtx(m, row, band)) : null)
-    }
-    if (m.trans) await child.retrieve(args)
+    const child = await m.nestedReport(o, async () => {
+      const args: unknown[] = []
+      const items = ((o.nest_arguments as unknown as { _items: { _items: string[] }[] } | undefined)?._items) ?? []
+      for (const it of items) {
+        const src = (it._items[0] || '').trim().replace(/^"|"$/g, '')
+        args.push(src ? await evalDw(compileDw(src), newCtx(m, row, band)) : null)
+      }
+      return args
+    })
+    if (!child) return null
     const { NDwBase } = await import('../runtime/native/dwctrl.ts')
     const c = new NDwBase(rt, 'datawindow', 'datawindow')
     c.attach(child)

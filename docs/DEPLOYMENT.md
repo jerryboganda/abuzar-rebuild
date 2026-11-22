@@ -317,6 +317,17 @@ rights and a rights switch toggled (then cancelled), Item Form List/Detail and r
 - Users page: Edit user / Edit group rights opened empty new records; they open the chosen user (ALI, SALES OFFICER) and that
   group's rights (Groups list double-click, `wf_openmywindow`).
 - An unfocused drop-down editor no longer keeps the accent ring (two fields looked focused on Cash Sale Return).
+- User Wise › Invoice Graph stopped with "bad decimal: none": GetData of an empty numeric EditMask (designer text `none`) now
+  fails like PowerBuilder's (`controls.ts`), and the script's fallback takes over.
+- GetChild of a composite's nested report (`dw_1`, `dw_2` ...) returns that report (`dwctrl.ts nestedReportChild`; it only knew
+  drop-down columns), and the composite shows what the script retrieved into it (`model.ts nestedReport`: whichever of the
+  composite and the nested report retrieved last). RePrinting › Sale (with summary reports) said "Retrieve Error: Problem in
+  Retrieving Report"; `f_getnestedreport` has 34 call sites. That reprint lists unposted sales only (`posted = 'N'`); every sale
+  in this shop's database is posted, so its pages are empty, as in the original.
+- The DataWindow's `Today()` is the date and time (`expr.ts`), measured in the original engine (pbdwe125 `Evaluate`):
+  `string(today(), 'dd/mm/yyyy hh:mm:ss')` = `22/11/2026 22:30:46`, `relativedate(today(), 1)` keeps the time,
+  `datetime(today())` is midnight. 1,743 report header computes (`today()` with a `hh:mm:ss` format) showed `??:??:??`; a real
+  Date value formatted with a time still shows `??:??` (FIDELITY.md).
 Checked and left as the original: Stock In Hand › Manufacturer Wise (Format2) for all manufacturers fails with "division by zero"
 (18 active items whose unit sale price rounds to 0.00; the same SELECT raises "Divide by zero error encountered" on the original
 SQL Server, whose app connections run with ANSI_WARNINGS ON); Ctrl+A in a sale field is the original's Save As Template

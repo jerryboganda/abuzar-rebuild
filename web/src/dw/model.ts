@@ -59,6 +59,8 @@ export interface SqlSource {
  * copy, so a repeated retrieve of the same DataWindow with the same arguments can reuse the session result.
  * Other DataWindows are deliberately not cached: reports and entry windows expect a fresh read whenever they retrieve.
  */
+let retrieveCounter = 0
+
 const SHARED_ITEM_LIST_DWS = new Set([
   'ddd_itemmanfnames_groupgodown',
   'ddd_itemmanfnames_cat_groupgodown',
@@ -92,6 +94,10 @@ export class DwModel implements EvalHost {
   lastError = ''
   /** retrieval arguments of the last retrieve by name (nested reports and expressions refer to them) */
   args = new Map<string, unknown>()
+  /** when this model last retrieved, in the order of all retrieves (a composite tells whose data is newer: its own or a nested report's) */
+  retrieveSerial = 0
+  /** a composite's nested reports that a script holds through GetChild, by report object name */
+  nested = new Map<string, DwModel>()
   /** a Reset() before the next Retrieve means the caller wants current data, not the session cache */
   private retrieveDirty = false
 
@@ -373,6 +379,7 @@ export class DwModel implements EvalHost {
         this.retrieveDirty = false
         this.trans.setOk(1)
         this.row = 1
+        this.retrieveSerial = ++retrieveCounter
         this.touch()
         return 1
       }
@@ -440,6 +447,7 @@ export class DwModel implements EvalHost {
       this.trans.setOk(rows.length)
       await this.applyFilterSort()
       this.row = this.buf.primary.length ? 1 : 0
+      this.retrieveSerial = ++retrieveCounter
       this.touch()
       return this.buf.primary.length
     } catch (e) {
@@ -868,6 +876,32 @@ export class DwModel implements EvalHost {
   setProperty(property: string, value: string): void {
     this.applyProperty(property, value)
     this.touch()
+  }
+
+  /** the DataWindow a report object shows: its DataObject, or the one a script assigned (`object.dw_1.dataobject = ...`) */
+  reportObjectName(o: DwObject): string {
+    return String(this.overrides.get(`${o.name.toLowerCase()}.dataobject`) ?? o.dataobject ?? '')
+  }
+
+  /**
+   * The data of a nested report.  A composite's Retrieve retrieves its nested reports with the report objects' arguments, and a
+   * script can instead get one with GetChild and retrieve it itself (f_getnestedreport: the sale reprint retrieves each summary
+   * with the invoice range and never retrieves the composite): whichever retrieved last is shown, as in PowerBuilder.
+   */
+  async nestedReport(o: DwObject, args: () => Promise<unknown[]>): Promise<DwModel | null> {
+    const name = this.reportObjectName(o)
+    const held = Number((this.def.datawindow as Record<string, unknown>).processing) === 5 ? this.nested.get(o.name.toLowerCase()) : undefined
+    const same = held && held.name.toLowerCase() === name.toLowerCase() ? held : undefined
+    if (same && (!this.retrieveSerial || same.retrieveSerial > this.retrieveSerial)) return same
+    let child = same
+    if (!child) {
+      const def = await this.rt.dwCatalog?.get(name)
+      if (!def) return null
+      child = new DwModel(this.rt, name, def)
+    }
+    if (!child.trans?.db) child.trans = this.trans
+    if (this.trans) await child.retrieve(await args())
+    return child
   }
 
   private applyProperty(property: string, value: string): void {
