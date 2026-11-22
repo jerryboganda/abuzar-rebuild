@@ -74,6 +74,12 @@ await page.evaluate(() => {
     const wins = [...document.querySelectorAll('.pbwin')].filter((w) => w.offsetParent !== null && w.dataset.win !== 'w_main')
     const vw = innerWidth, vh = innerHeight
     const label = (el) => (el.getAttribute('data-obj') || el.getAttribute('data-name') || el.getAttribute('aria-label') || el.className || el.tagName).toString().slice(0, 40)
+    const textRect = (el) => {
+      const range = document.createRange()
+      range.selectNodeContents(el)
+      const r = range.getBoundingClientRect()
+      return r.width > 0 && r.height > 0 ? r : el.getBoundingClientRect()
+    }
     const visible = (el) => { const s = getComputedStyle(el); const r = el.getBoundingClientRect(); return s.visibility !== 'hidden' && s.display !== 'none' && r.width > 0 && r.height > 0 && el.offsetParent !== null }
     const clippedBy = (el) => {
       // the nearest ancestor that cuts the element off without offering a scroll bar
@@ -105,12 +111,15 @@ await page.evaluate(() => {
           const key = `clip:${t.slice(0, 30)}`
           if (!seen.has(key)) { seen.add(key); issues.push(`${name}: caption cut "${t.slice(0, 50)}" (${el.clientWidth}/${el.scrollWidth}px)`) }
         }
-        if (el.scrollHeight > el.clientHeight + 3 && s.overflowY === 'hidden' && el.clientHeight > 0 && el.clientHeight < 40) {
+        // cut vertically only when the glyphs themselves run past the box (a line box taller than the text is not a cut)
+        if (el.scrollHeight > el.clientHeight + 3 && s.overflowY === 'hidden' && el.clientHeight > 0 && el.clientHeight < 40 &&
+          textRect(el).height > el.getBoundingClientRect().height + 2) {
           const key = `clipv:${t.slice(0, 30)}`
           if (!seen.has(key)) { seen.add(key); issues.push(`${name}: caption cut vertically "${t.slice(0, 50)}" (${el.clientHeight}/${el.scrollHeight}px)`) }
         }
         const fs = parseFloat(s.fontSize)
-        if (fs < 10.5) { const key = `font:${Math.round(fs)}`; if (!seen.has(key)) { seen.add(key); issues.push(`${name}: ${fs}px text "${t.slice(0, 30)}"`) } }
+        // a report page keeps its printed design (exempt from the Modern rules): its small print is not a screen caption
+        if (fs < 10.5 && !el.closest('.page, .dw-preview, .print-modern')) { const key = `font:${Math.round(fs)}`; if (!seen.has(key)) { seen.add(key); issues.push(`${name}: ${fs}px text "${t.slice(0, 30)}"`) } }
       }
       const controls = [...w.querySelectorAll('input, select, textarea, button, .dw, [role=combobox], [role=listbox]')].filter(visible)
       for (const el of controls) {
@@ -121,11 +130,17 @@ await page.evaluate(() => {
       }
       // overlapping form controls and captions (siblings that sit on top of each other)
       const boxes = [...w.querySelectorAll('input, select, textarea, button, label, .st')].filter((el) => visible(el) && !el.closest('.dw .band.row') && !el.closest('[role=menu]'))
-      const rects = boxes.map((el) => ({ el, r: el.getBoundingClientRect() }))
+      // what is painted: a caption's text, not its (often wider) box; a control's box
+      const rects = boxes.map((el) => ({ el, r: /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(el.tagName) ? el.getBoundingClientRect() : textRect(el) }))
+      const footer = (el) => el.closest('.window-actions, .ds-actions, .tbar')
       let overlaps = 0
       for (let i = 0; i < rects.length && overlaps < 6; i++) for (let j = i + 1; j < rects.length && overlaps < 6; j++) {
         const a = rects[i], b = rects[j]
         if (a.el.contains(b.el) || b.el.contains(a.el)) continue
+        // a drop-down's chevron sits inside its own field by design
+        if ([a.el, b.el].some((el) => el.matches('.dw-choice-toggle, .dw-choice-browse')) && a.el.parentElement === b.el.parentElement) continue
+        // content scrolled under the sticky title or Ok/Cancel bar is not an overlap
+        if (!!footer(a.el) !== !!footer(b.el)) continue
         const ox = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left), oy = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top)
         if (ox > 6 && oy > 6) { overlaps++; issues.push(`${name}: overlap ${a.el.tagName.toLowerCase()} "${(a.el.textContent || a.el.value || label(a.el)).trim().slice(0, 24)}" x ${b.el.tagName.toLowerCase()} "${(b.el.textContent || b.el.value || label(b.el)).trim().slice(0, 24)}" (${Math.round(ox)}x${Math.round(oy)})`) }
       }
@@ -147,11 +162,33 @@ const settle = async (rounds = 16) => {
   }
 }
 const closeAll = async () => page.evaluate(async () => {
-  for (let i = 0; i < 5; i++) {
-    window.__answer()
-    document.querySelectorAll('.pbwin:not(.sheet) button').forEach((b) => { if (/^(cancel|close|exit)$/i.test(b.textContent.trim())) b.click() })
-    await new Promise((r) => setTimeout(r, 200))
-    for (const [n, w] of [...window.rt.windowInstances]) if (n !== 'w_main') { try { await Promise.race([window.closeLikeUser ? window.closeLikeUser(w) : window.rt.closeWindow(w), new Promise((r) => setTimeout(r, 3000))]) } catch { /* next */ } }
+  const cancelOf = (w) => {
+    const view = [...window.rt.ui.views.values()].find((v) => v.w === w)
+    return view ? [...view.el.querySelectorAll('button')].find((b) => b.offsetParent && /^(cancel|close|exit)$/i.test(b.textContent.trim())) : undefined
+  }
+  for (let i = 0; i < 16; i++) {
+    // a message box answered: the dialog under it shows its buttons only once the box has gone, so look again next round
+    if (document.querySelector('.msgbox, .presentation-runtime-dialog[open]')) { window.__answer(); await new Promise((r) => setTimeout(r, 600)); continue }
+    // like a user: the dialog's own Cancel (its CloseWithReturn tells the report script it was cancelled; a dialog may open the next
+    // one of a chain); a window is closed directly only when it offers no Cancel (a format choice, the report sheet itself)
+    let cancelled = false
+    for (const [n, w] of [...window.rt.windowInstances]) {
+      const cancel = n !== 'w_main' && cancelOf(w)
+      if (cancel) { cancel.click(); cancelled = true }
+    }
+    await new Promise((r) => setTimeout(r, cancelled ? 900 : 300))
+    if (cancelled || document.querySelector('.msgbox, .presentation-runtime-dialog[open]')) continue
+    // the topmost dialog first (a format choice without Cancel), the sheets once no dialog is left
+    const isDialog = ([n, w]) => n !== 'w_main' && ![...window.rt.ui.views.values()].find((v) => v.w === w)?.sheet
+    if (![...window.rt.windowInstances].some(isDialog)) {
+      // the next dialog of a chain opens after a round trip: closing the report sheet before it does ends the report script
+      // half-way (its dialog closes without returning), so wait for the chain to settle first
+      await new Promise((r) => setTimeout(r, 2500))
+      if ([...window.rt.windowInstances].some(isDialog) || document.querySelector('.msgbox, .presentation-runtime-dialog[open]')) continue
+    }
+    const dialogs = [...window.rt.windowInstances].filter(isDialog)
+    const order = dialogs.length ? dialogs : [...window.rt.windowInstances].filter(([n]) => n !== 'w_main')
+    for (const [, w] of order.slice(-1)) { try { await Promise.race([window.closeLikeUser ? window.closeLikeUser(w) : window.rt.closeWindow(w), new Promise((r) => setTimeout(r, 3000))]) } catch { /* next */ } }
     await new Promise((r) => setTimeout(r, 150))
     if ([...window.rt.windowInstances.keys()].filter((n) => n !== 'w_main').length === 0 && !document.querySelector('.msgbox, .presentation-runtime-dialog[open]')) break
   }

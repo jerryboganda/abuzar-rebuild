@@ -336,6 +336,18 @@ rights and a rights switch toggled (then cancelled), Item Form List/Detail and r
   Summary (28,966 rows), Sale Summary Inv. Cust Wise (range, customer, Retrieve, pick invoices) and the header-wise reprint run.
 - Group and Rights Information (Groups › double-click): its group-box captions kept the design colour #f0f0f0 behind light text and
   were unreadable in dark; captions take the colour behind them (`ds-pages.ts`, `dwview.ts dw-gb-cap`). Rights switches toggle.
+- Dialogs had a close box the original does not have: 855 response windows (every `w_listarguments` criteria dialog, the selection
+  lists) have no ControlMenu. Closing one there skipped its Ok/Cancel CloseWithReturn, and the report script then read a null
+  argument structure ("Null object reference (reading i_status)", the 5 errors of the crawl: Stock Quantity Format, Expiry Report,
+  Slow/Fast, Dead Item List, Adjustment Summary Detail). Both interfaces now draw the close box only with ControlMenu (`dom-ui.ts`);
+  Cancel through those chains, and the close box of the format dialogs that have one, end without an error. The crawler closes
+  like a user (Cancel first, waits for the next dialog of a chain) and its audit measures painted text, not element boxes.
+- After a Credit Sale was saved the next invoice showed the typed customer as an "Unapplied entry" over the Customer field: a
+  choice that the record (or the script's SetItem) applied is no longer a draft (`dw-choice-editor.ts unchanged()`, `dwview.ts`).
+  Saved on the final build: Credit Sale 588883 (password prompt, receipt, Save Changes, clean new invoice) and Credit Sale
+  Return 61604 on it (1 x PANADOL CF DAY TAB, Rs 5.86, posted).
+- Reports › Selected Sales and Summaries Report names a layout (`d_comp_selectedsalesandsummary`) that is in none of the
+  original's libraries; the Modern view now says so instead of showing a blank page (`modern-dwview.ts`); Classic stays empty.
 Checked and left as the original: RePrinting › Sale Format(2) and the summary reports are empty for an empty invoice range;
 "Selected Sales and Summaries Report" names `d_comp_selectedsalesandsummary`, which is in none of the original's libraries (only
 the menu script mentions it); after Enter on the Credit Sale customer the keyboard stays there and Pack Purchase opens in Tax

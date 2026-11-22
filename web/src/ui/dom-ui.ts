@@ -641,11 +641,16 @@ export class WinView {
     if (titlebar) {
       const tb = document.createElement('div')
       tb.className = 'tbar'
-      tb.innerHTML = '<img class="ic" src="app-icon.png" alt=""><div class="ttl"></div><div class="cls">✕</div>'
+      // A popup or response window has the title-bar close box only with ControlMenu (855 of the original's dialogs have none, among
+      // them every w_listarguments criteria dialog): closing it there skips the CloseWithReturn of its Ok/Cancel, and the report
+      // script then read a null argument structure ("Null object reference (reading i_status)").
+      const closeBox = opts.sheet || isMdi || bool(w, 'controlmenu', false)
+      tb.innerHTML = '<img class="ic" src="app-icon.png" alt=""><div class="ttl"></div>' + (closeBox ? '<div class="cls">✕</div>' : '')
       this.ttlEl = tb.querySelector('.ttl') as HTMLElement
       this.ttlEl.textContent = str(w, 'title')
       if (w.name.toLowerCase() === 'w_main') setNativeTitle(this.ttlEl.textContent)
-      ;(tb.querySelector('.cls') as HTMLElement).onclick = () => void ui.rt.closeWindow(w)
+      const cls = tb.querySelector<HTMLElement>('.cls')
+      if (cls) cls.onclick = () => void ui.rt.closeWindow(w)
       this.el.appendChild(tb)
       const previous = w.onProp
       const onProp = (n: string) => {

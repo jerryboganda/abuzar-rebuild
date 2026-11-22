@@ -174,6 +174,22 @@ export class ModernDwView extends DwView {
     return !object || await this.prop(model, object, 'visible', this.labelRow(object, row), object.band) !== '0'
   }
 
+  /**
+   * A DataWindow object the application names but does not contain (Reports › Selected Sales and Summaries Report names
+   * d_comp_selectedsalesandsummary, which is in none of the original's libraries): the original draws an empty control; the
+   * Modern view says why instead of showing a blank page.
+   */
+  protected override paintWithoutDefinition(): void {
+    this.root.textContent = ''
+    const name = this.ctl.dwName
+    if (!name) return
+    const note = document.createElement('p')
+    note.className = 'surface-empty surface-missing'
+    note.setAttribute('role', 'status')
+    note.textContent = `Nothing to show: the layout "${name}" is not part of the installed application.`
+    this.root.append(note)
+  }
+
   protected override async paint(model: DwModel): Promise<void> {
     if (this.ctl.model !== model) return
     if (this.choiceEdit?.isComposing || this.composingText && this.editor === this.composingText) return

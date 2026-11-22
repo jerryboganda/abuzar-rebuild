@@ -261,7 +261,14 @@ export class DwView {
   /** a script's SetItem on the current cell: the open editor shows that value (typed text is dropped, as in PowerBuilder) */
   private onCurrentItemSet = (): void => {
     if (this.disposed) return
-    if (this.choiceEdit && this.editor === this.choiceEdit.element) { this.choiceEdit.syncValue(); return }
+    if (this.choiceEdit && this.editor === this.choiceEdit.element) {
+      // the field now holds the record's value: nothing in it is the user's unapplied entry any more (after the Credit Sale was
+      // saved, the customer typed before it came back as an "Unapplied entry" over the next invoice)
+      this.choiceEdit.syncValue()
+      this.editorInitial = this.choiceEdit.read()
+      this.editorDirty = false
+      return
+    }
     if (this.editor instanceof HTMLInputElement || this.editor instanceof HTMLTextAreaElement) {
       this.syncFocusedText?.()
       this.editorDirty = false
@@ -551,7 +558,7 @@ export class DwView {
       if (await this.retainInvalidText()) return
       const m = this.ctl.model
       if (!m) {
-        this.root.textContent = ''
+        this.paintWithoutDefinition()
         return
       }
       // the scroll bars are attributes of the control (HScrollBar / VScrollBar), not of the DataWindow object; without them nothing scrolls by mouse
@@ -570,6 +577,11 @@ export class DwView {
         else this.schedule()
       } else this.renderSettled()
     }
+  }
+
+  /** a control without a DataWindow object shows nothing (Classic: the original draws an empty control) */
+  protected paintWithoutDefinition(): void {
+    this.root.textContent = ''
   }
 
   private units(m: DwModel): number {
@@ -1854,8 +1866,8 @@ export class DwView {
   /** a choice editor whose value the user has not changed: its record went away, so it simply closes */
   protected discardUnchangedChoiceEditor(): boolean {
     const choice = this.choiceEdit
-    if (!choice || this.editor !== choice.element || this.editorDirty || choice.read() !== this.editorInitial ||
-      this.inputEventCount || this.pendingEdits.size) return false
+    if (!choice || this.editor !== choice.element || this.inputEventCount || this.pendingEdits.size) return false
+    if ((this.editorDirty || choice.read() !== this.editorInitial) && !choice.unchanged()) return false
     const element = choice.element
     this.cancelChoice()
     this.detachTextEditor()
@@ -2066,7 +2078,12 @@ export class DwView {
     }
     this.placeEditor(choice.element, cell)
     choice.popup?.mount()
-    this.acceptEdit = (navigation) => choice.accept(navigation)
+    this.acceptEdit = async (navigation) => {
+      const accepted = await choice.accept(navigation)
+      // an applied choice is the record's value from now on, not a draft to keep when the record is replaced
+      if (accepted && this.choiceEdit === choice && this.editor === choice.element) { this.editorInitial = choice.read(); this.editorDirty = false }
+      return accepted
+    }
     this.releaseTextEditor = this.ctl.bindTextEditor(model, row, object.name, { read: () => choice.read(), write: (text) => choice.write(text) })
     if (editable && choice.element instanceof HTMLInputElement) {
       this.textEditor = choice.element

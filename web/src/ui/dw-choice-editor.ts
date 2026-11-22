@@ -237,6 +237,18 @@ export class DwChoiceEditor {
     return this.choose(this.element.checked ? 0 : 1)
   }
 
+  /**
+   * The field shows the value the record gave it: nothing picked or typed differs from it.  The text alone cannot tell (until the
+   * list has loaded an editable field shows the data code, `22`, and then the name), so the comparison goes through the record value.
+   */
+  unchanged(): boolean {
+    if (!(this.host.editable && this.element instanceof HTMLInputElement)) return sameChoiceValue(this.value, this.original)
+    if (this.draftChoice) return false
+    const current = this.choices?.items.find((choice) => sameChoiceValue(choice.value, this.original))
+    const text = this.read()
+    return text === (current ? current.text : toStr(this.original)) || text === toStr(this.original)
+  }
+
   write(text: string): void {
     if (this.host.editable && this.element instanceof HTMLInputElement) {
       this.element.value = this.host.editable.normalize(text)
