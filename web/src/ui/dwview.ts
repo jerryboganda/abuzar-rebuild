@@ -1386,11 +1386,13 @@ export class DwView {
       st.overflow = 'visible'
       st.pointerEvents = 'none'
       const frame = document.createElement('div')
+      frame.className = 'dw-gb-frame'
       frame.style.cssText = `position:absolute;left:0;right:0;bottom:0;top:${Math.round(fpx / 2)}px;border:1px solid #dcdcdc;border-radius:4px;box-sizing:border-box`
       el.appendChild(frame)
       const text = await this.prop(m, o, 'text', row, band)
       if (text) {
         const cap = document.createElement('span')
+        cap.className = 'dw-gb-cap'
         cap.textContent = text
         cap.style.cssText = `position:absolute;left:8px;top:0;padding:0 3px;white-space:pre;line-height:${Math.round(fpx * 1.25)}px;background:${pbColor(m.def.datawindow.color, '#f0f0f0')};font:${cssFont({ face: o['font.face'] || 'Arial', size: fontSize(fh), weight: Number(o['font.weight'] ?? 400), italic: false, underline: false, strike: false })}`
         el.appendChild(cap)
@@ -1706,16 +1708,18 @@ export class DwView {
     if (!m || m.row < 1 || m.row > m.rowCount() || m.col < 1) return false
     const name = m.colNames[m.col - 1]
     const o = m.def.objects.find((x) => x.type === 'column' && x.name.toLowerCase() === name)
-    if (!o) return false
-    let cell = this.cellOf(m.row, o.name)
-    if (!cell) {
+    // a current column without a column object (`code` of the item selection list's d_popup_itemselected, a result column that is
+    // never drawn) goes the way of a hidden one: with the fallback, the first editable column of the tab order
+    if (!o && !fallback) return false
+    let cell = o ? this.cellOf(m.row, o.name) : undefined
+    if (o && !cell) {
       await this.render()
       cell = this.cellOf(m.row, o.name)
     }
     // A current column that is not painted (hidden, or not part of the Modern form) is not a place for the keyboard either: when the
     // window comes up the keyboard goes to the first editable column of the tab order, as for a protected current cell.
     if (!cell && !fallback) return false
-    if (cell && (this.editor instanceof HTMLInputElement || this.editor instanceof HTMLTextAreaElement) &&
+    if (o && cell && (this.editor instanceof HTMLInputElement || this.editor instanceof HTMLTextAreaElement) &&
       this.editRow === m.row && this.editObj.toLowerCase() === name) {
       this.syncFocusedText?.()
       // AutoSelect selects the text when the focus arrives in the column.  SetFocus on the DataWindow that already has it (the item
@@ -1726,7 +1730,7 @@ export class DwView {
       if (!hadFocus && !this.choiceEdit && dwEditAutoSelect(m, o)) this.editor.select()
       return true
     }
-    if (!cell || !cell.classList.contains('editable')) {
+    if (!o || !cell || !cell.classList.contains('editable')) {
       if (!fallback) return false
       // a protected current cell (when the window comes up): the keyboard goes to the first column of the tab order that can be edited (the Purchase Order's header starts in AliasName, `Code` is read-only)
       const order = m.def.objects.filter((x) => x.type === 'column' && num(x, 'tabsequence', 0) > 0).sort((a, b) => num(a, 'tabsequence') - num(b, 'tabsequence'))

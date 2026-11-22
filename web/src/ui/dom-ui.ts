@@ -1260,6 +1260,10 @@ export class WinView {
         if (bool(c, 'password', false)) i.type = 'password'
         const lim = num(c, 'limit', 0)
         if (lim > 0) i.maxLength = lim
+        // a date / time mask holds exactly its own characters: typing on past them (the report criteria's Start Date took
+        // "22/11/2026 00:00:00PANADOL") does nothing in PowerBuilder
+        const mask = str(c, 'mask')
+        if (lim <= 0 && /^[dmyhsf]+([\s/:.\-]+[dmyhsf]+)*$/i.test(mask.trim()) && /[dy]|h/i.test(mask) && !/dddd|mmmm/i.test(mask)) i.maxLength = mask.trim().length
         i.disabled = !bool(c, 'enabled', true)
         i.oninput = () => {
           c.props.set('text', i.value)

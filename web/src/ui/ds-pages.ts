@@ -357,6 +357,14 @@ export const PAGES_CSS = `
 .modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) .band.row:hover {background:var(--p-sunk);}
 .modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) .band.row.cur:hover {background:var(--p-selected)!important;}
 .modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) :is(input,textarea,select).dw-edit {background:var(--p-surface)!important;color:var(--p-text)!important;}
+/* group boxes of a DataWindow drawn in its own layout (the tab pages of w_groups_form ...): the caption is set into the frame's top
+   line on the colour behind it, which the theme changes (the design colour #f0f0f0 left white captions unreadable in dark) */
+.modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) {--gb-bg:var(--p-surface);}
+.modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) .band.row:hover {--gb-bg:var(--p-sunk);}
+.modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) .band.row.cur {--gb-bg:var(--p-selected);}
+.modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) .band.hdr .o {--gb-bg:var(--p-sunk);}
+.modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) .dw-gb-cap {background:var(--gb-bg)!important;color:var(--p-text)!important;}
+.modern-window .dw:not(.modern-surface):not(:has(> .dw-preview)) .dw-gb-frame {border-color:var(--p-line)!important;}
 /* ---------- Report criteria (the original w_arg_* dialogs) docked under the report header as the mockup's filter card: same
    window, fields and Ok/Cancel; it only sits in the page instead of floating over a dimmed screen ---------- */
 dialog.presentation-compatibility-dialog[open].ds-report-criteria {position:fixed;inset:var(--ds-report-top,150px) 16px auto 16px;margin:0;width:auto;max-width:none;max-height:calc(100vh - var(--ds-report-top,150px) - 30px);animation:ds-drop .2s var(--p-ease);}

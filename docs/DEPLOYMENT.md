@@ -328,7 +328,20 @@ rights and a rights switch toggled (then cancelled), Item Form List/Detail and r
   `string(today(), 'dd/mm/yyyy hh:mm:ss')` = `22/11/2026 22:30:46`, `relativedate(today(), 1)` keeps the time,
   `datetime(today())` is midnight. 1,743 report header computes (`today()` with a `hh:mm:ss` format) showed `??:??:??`; a real
   Date value formatted with a time still shows `??:??` (FIDELITY.md).
-Checked and left as the original: Stock In Hand › Manufacturer Wise (Format2) for all manufacturers fails with "division by zero"
+- Report criteria that need a name were driven by typing one: the item selection dialogs (Stock Register, Item Sale Price Changes,
+  Stock Adjustments Detail) opened in Start Date because the selection's current column `code` is never drawn; the keyboard now
+  goes to the first editable column of the tab order (`dwview.ts focusCurrent`). Their selection list (27,818 items) grew to
+  973,670px and showed an empty box: lists in dialogs scroll inside their own box now (`design-system.ts`). A date EditMask no
+  longer takes text past its mask (`22/11/2026 00:00:00PANADOL`, `dom-ui.ts`). With a picked name these reports, Customer Items
+  Summary (28,966 rows), Sale Summary Inv. Cust Wise (range, customer, Retrieve, pick invoices) and the header-wise reprint run.
+- Group and Rights Information (Groups › double-click): its group-box captions kept the design colour #f0f0f0 behind light text and
+  were unreadable in dark; captions take the colour behind them (`ds-pages.ts`, `dwview.ts dw-gb-cap`). Rights switches toggle.
+Checked and left as the original: RePrinting › Sale Format(2) and the summary reports are empty for an empty invoice range;
+"Selected Sales and Summaries Report" names `d_comp_selectedsalesandsummary`, which is in none of the original's libraries (only
+the menu script mentions it); after Enter on the Credit Sale customer the keyboard stays there and Pack Purchase opens in Tax
+Category (Classic identical); text typed in a DataWindow is not accepted when the mouse moves to another control (PowerBuilder's
+documented behaviour; Sale Summary Inv. Cust Wise's Retrieve then asks for the ending invoice, Enter accepts it).
+Also checked and left as the original: Stock In Hand › Manufacturer Wise (Format2) for all manufacturers fails with "division by zero"
 (18 active items whose unit sale price rounds to 0.00; the same SELECT raises "Divide by zero error encountered" on the original
 SQL Server, whose app connections run with ANSI_WARNINGS ON); Ctrl+A in a sale field is the original's Save As Template
 accelerator; criteria that need a typed name (Stock Register, Customer Items Summary) answer "Please enter valid value for Name".
