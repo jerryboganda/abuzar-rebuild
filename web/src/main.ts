@@ -14,6 +14,7 @@ import { startApplication, DEFAULT_CONFIG } from './app/startup.ts'
 import { PresentationSession, SessionPreferenceStorage } from './app/ui-preferences.ts'
 import { PresentationUi } from './ui/presentation-ui.ts'
 import { startDesignBoot } from './ui/design-boot.ts'
+import { needsInterfaceChoice, showInterfaceChooser } from './ui/interface-chooser.ts'
 import { nativeAppearance } from './ui/native-appearance.ts'
 import { fixSqlTables } from './runtime/sql-fixes.ts'
 import { autoLogin } from './app/autologin.ts'
@@ -169,6 +170,11 @@ async function findServer(q: URLSearchParams): Promise<{ base: string; db: boole
 
 async function main(): Promise<void> {
   const q = new URLSearchParams(location.search)
+  // the bare address opens the start page: the user picks Modern or Classic before signing in
+  if (needsInterfaceChoice(q)) {
+    showInterfaceChooser()
+    return
+  }
   setDateOrder(q.get('dateorder') === 'dmy' ? 'dmy' : q.get('dateorder') === 'mdy' ? 'mdy' : localeDateOrder()) // the short date of the machine (String(date), Date('3/11/2026'), [shortdate])
   const found = await findServer(q)
   const server = found ? found.base : null
