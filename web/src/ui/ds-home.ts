@@ -40,9 +40,11 @@ export async function loadHome(query: HomeQuery): Promise<HomeData> {
   if (!anchor) return { anchor, sales: 0, salesPrev: 0, purchases: 0, purchasesPrev: 0, receivable: 0, receivableCount: 0, payable: 0, payableCount: 0, series: [], low: [], lowCount: 0, expiringCount: 0, expiring: [], recent: [] }
   const a = iso(anchor)
   const [series, ar, ap, low, expiring, recent, counts] = await Promise.all([
-    query(`WITH d AS (SELECT generate_series(date '${a}' - 13, date '${a}', interval '1 day')::date AS d)
-      SELECT d.d, coalesce((SELECT sum(invtotal) FROM dbo.saleledger s WHERE s.date::date = d.d),0),
-        coalesce((SELECT sum(invtotal) FROM dbo.purledger p WHERE p.date::date = d.d),0) FROM d ORDER BY d.d`),
+    // one range scan per ledger (an index on date applies): the per-day `date::date = d` sub-queries took ~3 s on every Home load
+    query(`WITH d AS (SELECT generate_series(date '${a}' - 13, date '${a}', interval '1 day')::date AS d),
+      s AS (SELECT date::date AS d, sum(invtotal) AS t FROM dbo.saleledger WHERE date >= date '${a}' - 13 AND date < date '${a}' + 1 GROUP BY 1),
+      p AS (SELECT date::date AS d, sum(invtotal) AS t FROM dbo.purledger WHERE date >= date '${a}' - 13 AND date < date '${a}' + 1 GROUP BY 1)
+      SELECT d.d, coalesce(s.t,0), coalesce(p.t,0) FROM d LEFT JOIN s ON s.d = d.d LEFT JOIN p ON p.d = d.d ORDER BY d.d`),
     // balances from the accounts ledger (the invoices' own outstanding columns are not maintained by the application)
     query(`SELECT coalesce(sum(b),0), count(*) FROM (SELECT g.acccode, sum(g.debit - g.credit) AS b FROM dbo.virtualgl g
       JOIN dbo.customer c ON c.custcode = g.acccode GROUP BY g.acccode HAVING sum(g.debit - g.credit) > 0.5) x`),
@@ -54,7 +56,7 @@ export async function loadHome(query: HomeQuery): Promise<HomeData> {
     query(`SELECT itemname, batch, expiry::date, qty FROM dbo.view_waseelamini_stock WHERE qty > 0 AND expiry IS NOT NULL
       AND expiry::date <= current_date + 90 ORDER BY expiry, itemname LIMIT 5`),
     query(`SELECT r.kind, r.code, r.total, r.date, coalesce(u.username::text, '') FROM (
-        (SELECT 'sale' AS kind, saleinvcode AS code, invtotal AS total, date, coalesce(postedby, modifiedby, salesmancode) AS who FROM dbo.saleledger ORDER BY date DESC, saleinvcode DESC LIMIT 3)
+        (SELECT 'sale' AS kind, saleinvcode AS code, invtotal AS total, date, coalesce(postedby, modifiedby) AS who FROM dbo.saleledger ORDER BY date DESC, saleinvcode DESC LIMIT 3)
         UNION ALL (SELECT 'purchase', purinvcode, invtotal, date, coalesce(postedby, modifiedby) FROM dbo.purledger ORDER BY date DESC, purinvcode DESC LIMIT 2)
       ) r LEFT JOIN dbo.users u ON u.usercode = r.who ORDER BY r.date DESC`),
     // how many there are in all (the lists above show the first five)
@@ -128,8 +130,8 @@ export function renderHome(host: HTMLElement, d: HomeData, user: string, actions
   // the approved wording ("Today's sales … vs yesterday") when the latest business day is today; otherwise the day is named
   const change = (cur: number, prev: number) => prev ? `${cur >= prev ? '+' : '−'}${Math.abs((cur - prev) / prev * 100).toFixed(1)}% vs ${stale ? 'previous day' : 'yesterday'}` : `No figures for ${stale ? 'the previous day' : 'yesterday'}`
   const kpis = [
-    [stale ? 'Sales' : "Today's sales", d.sales, change(d.sales, d.salesPrev), d.sales >= d.salesPrev ? 'up' : 'down', 'cart', d.series.map((r) => r.sales)],
-    [stale ? 'Purchases' : 'Purchases today', d.purchases, change(d.purchases, d.purchasesPrev), d.purchases <= d.purchasesPrev ? 'up' : 'down', 'truck', d.series.map((r) => r.purchases)],
+    [stale ? 'Sales' : "Today's sales", d.sales, change(d.sales, d.salesPrev), !d.salesPrev ? '' : d.sales >= d.salesPrev ? 'up' : 'down', 'cart', d.series.map((r) => r.sales)],
+    [stale ? 'Purchases' : 'Purchases today', d.purchases, change(d.purchases, d.purchasesPrev), !d.purchasesPrev ? '' : d.purchases <= d.purchasesPrev ? 'up' : 'down', 'truck', d.series.map((r) => r.purchases)],
     ['Receivables', d.receivable, d.receivableCount ? `${d.receivableCount.toLocaleString('en-PK')} customers owe` : 'No customer balances', d.receivableCount ? 'down' : '', 'wallet', []],
     ['Payables', d.payable, d.payableCount ? `${d.payableCount.toLocaleString('en-PK')} suppliers to pay` : 'No supplier balances', '', 'doc', []],
   ] as const
@@ -143,8 +145,8 @@ export function renderHome(host: HTMLElement, d: HomeData, user: string, actions
     <div class="ds-grid2">
       <div class="ds-stack">
         <div class="ds-card"><div class="ds-card-h"><h2>Sales and purchases</h2><span class="hint">${d.series.length} days to ${d.anchor ? fmtDay(d.anchor, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}, Rs</span><span class="grow"></span>
-          <div class="ds-legend"><span><i style="background:var(--p-accent)"></i>Sales</span><span><i style="background:#7a8fd0"></i>Purchases</span></div></div><div class="ds-card-b">${chart(d.series)}</div></div>
-        <div class="ds-card"><div class="ds-card-h"><h2>Recent activity</h2></div><div class="ds-card-b"><ul class="ds-timeline ds-stagger">${d.recent.map((r, i) => `<li style="--i:${i}"><span class="tdot">${icon(r.kind === 'sale' ? 'post' : 'truck', 's')}</span><div><div>${r.kind === 'sale' ? 'Sale' : 'Purchase'} ${esc(r.code)} · ${rs0(r.total)}</div><small>${r.who ? `${esc(r.who)} · ` : ''}${fmtDay(r.date, { day: 'numeric', month: 'short', year: 'numeric' })}</small></div></li>`).join('') || '<li>No transactions yet.</li>'}</ul></div></div>
+          <div class="ds-legend"><span><i style="background:var(--p-accent)"></i>Sales</span><span><i style="background:var(--p-info)"></i>Purchases</span></div></div><div class="ds-card-b">${chart(d.series)}</div></div>
+        <div class="ds-card"><div class="ds-card-h"><h2>Recent activity</h2><span class="grow"></span><button type="button" class="ds-btn ghost" data-home="reports">See all</button></div><div class="ds-card-b"><ul class="ds-timeline ds-stagger">${d.recent.map((r, i) => `<li style="--i:${i}"><span class="tdot">${icon(r.kind === 'sale' ? 'post' : 'truck', 's')}</span><div><div>${r.kind === 'sale' ? 'Sale' : 'Purchase'} ${esc(r.code)} · ${rs0(r.total)}</div><small>${r.who ? `${esc(r.who)} · ` : ''}${fmtDay(r.date, { day: 'numeric', month: 'short', year: 'numeric' })}</small></div></li>`).join('') || '<li>No transactions yet.</li>'}</ul></div></div>
       </div>
       <div class="ds-stack">
         <div class="ds-card"><div class="ds-card-h"><h2>Quick actions</h2></div><div class="ds-card-b"><div class="ds-qa ds-stagger">${actions.map((a, i) => `<button type="button" data-home="${i}" style="--i:${i}" ${a.disabled ? 'disabled' : ''}><span class="qi">${icon(a.icon, 's')}</span><b>${esc(a.label)}</b><small>${esc(a.hint)}</small></button>`).join('')}</div></div></div>
@@ -167,7 +169,7 @@ export function renderHome(host: HTMLElement, d: HomeData, user: string, actions
   }
   const svg = host.querySelector<SVGSVGElement>('.ds-chart svg'), tip = host.querySelector<HTMLElement>('.ds-tip'), hair = host.querySelector<SVGLineElement>('.ds-chart .hair')
   if (svg && tip && hair && d.series.length) {
-    const W = 640, P = [30, 10, 26, 46], n = d.series.length
+    const W = 1000, P = [30, 10, 26, 46], n = d.series.length
     svg.addEventListener('pointermove', (e) => {
       const r = svg.getBoundingClientRect(), sx = (e.clientX - r.left) / r.width * W
       const i = Math.max(0, Math.min(n - 1, Math.round((sx - P[3]) / ((W - P[1] - P[3]) / Math.max(1, n - 1)))))
@@ -194,6 +196,8 @@ export const HOME_CSS = `
 .ds-hello-actions {display:flex;gap:8px;flex-wrap:wrap;}
 .ds-btn {display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 16px;border-radius:9px;border:1px solid var(--p-line);background:var(--p-surface);color:var(--p-text);font:500 calc(14px * var(--p-scale)) var(--p-font);cursor:pointer;transition:transform .12s,background .15s,box-shadow .2s;}
 .ds-btn:hover {background:var(--p-sunk);}
+.ds-btn.ghost {border-color:transparent;background:transparent;min-height:32px;padding:0 10px;color:var(--p-muted);}
+.ds-btn.ghost:hover {background:var(--p-sunk);color:var(--p-text);}
 .ds-btn:active {transform:scale(.97);}
 .ds-btn.primary {background:linear-gradient(180deg,var(--p-accent-2),var(--p-accent));border-color:var(--p-accent);color:var(--p-on-accent);box-shadow:0 6px 18px var(--p-glow);}
 .ds-card {background:var(--p-surface);border:1px solid var(--p-hair);border-radius:14px;box-shadow:var(--p-shadow);min-width:0;transition:box-shadow .25s,transform .25s,border-color .25s;}
@@ -227,7 +231,7 @@ export const HOME_CSS = `
 .ds-chart text {fill:var(--p-faint);font:11px var(--p-mono);}
 .ds-chart .s1 {fill:none;stroke:var(--p-accent);stroke-width:2.5;stroke-dasharray:1600;stroke-dashoffset:0;}
 .ds-enter .ds-chart .s1 {stroke-dashoffset:1600;animation:ds-draw 1.8s var(--p-ease) .2s forwards;}
-.ds-chart .s2 {fill:none;stroke:#7a8fd0;stroke-width:2;stroke-dasharray:6 5;opacity:.9;}
+.ds-chart .s2 {fill:none;stroke:var(--p-info);stroke-width:2;stroke-dasharray:6 5;opacity:.9;}
 .ds-chart .ar {fill:url(#ds-ga);}
 .ds-chart .end {fill:var(--p-accent);stroke:var(--p-surface);stroke-width:2;}
 .ds-chart .hair {stroke:var(--p-line);stroke-dasharray:3 3;opacity:0;}

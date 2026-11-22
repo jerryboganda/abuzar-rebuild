@@ -21,6 +21,7 @@ import { DwChoiceEditor } from './dw-choice-editor.ts'
 import { numericSpin, stepNumber } from './numeric-spin.ts'
 import { lookupSurfaceIssues } from './data-surfaces.ts'
 import type { DataSurface } from './data-surfaces.ts'
+import type { LazyPage } from './print.ts'
 
 interface DwEditorSnapshot {
   row: number
@@ -36,6 +37,8 @@ interface DwEditorSnapshot {
   focused?: boolean
   invalid?: boolean
   dirty?: boolean
+  /** the text is the item's own value (not typed, not SetText): a repaint shows the item's value as it is now */
+  fromModel?: boolean
 }
 
 /** space between two columns of a grid, in DataWindow units (the engine of the original leaves 7 to 12, 9.5 on average) */
@@ -123,6 +126,8 @@ export class DwView {
   private editorInitial = ''
   /** set by a real input/change event, not by a lookup resolving its display text */
   private editorDirty = false
+  /** the open text editor holds the item's value as read from the data (see DwEditorSnapshot.fromModel) */
+  private editorFromModel = false
   private readTextEditor: (() => string) | null = null
   private checkTextEditor: (() => Promise<boolean>) | null = null
   private recoveredDraft = false
@@ -248,7 +253,18 @@ export class DwView {
     if (observe) {
       this.bindAcceptance(ctl.model)
       ctl.listeners.add(this.onChange)
+      ctl.currentItemSet.add(this.onCurrentItemSet)
       this.schedule()
+    }
+  }
+
+  /** a script's SetItem on the current cell: the open editor shows that value (typed text is dropped, as in PowerBuilder) */
+  private onCurrentItemSet = (): void => {
+    if (this.disposed) return
+    if (this.choiceEdit && this.editor === this.choiceEdit.element) { this.choiceEdit.syncValue(); return }
+    if (this.editor instanceof HTMLInputElement || this.editor instanceof HTMLTextAreaElement) {
+      this.syncFocusedText?.()
+      this.editorDirty = false
     }
   }
 
@@ -376,6 +392,8 @@ export class DwView {
     this.acceptEdit = null
     this.editor = null
     this.ctl.listeners.delete(this.onChange)
+    this.ctl.currentItemSet.delete(this.onCurrentItemSet)
+    this.previewObserver?.disconnect()
     this.cancelRender?.()
     this.cancelFill?.()
     this.fillToken++
@@ -919,9 +937,17 @@ export class DwView {
     return v === 'yes' || v === 'true' || v === '1'
   }
 
+  private previewObserver: IntersectionObserver | null = null
   private async paintPreview(m: DwModel): Promise<void> {
     const { buildPages } = await import('./print.ts') // print.ts builds its pages with a DwView: loaded on use
-    const pages = await buildPages(this.ctl)
+    const pages = await buildPages(this.ctl, { lazy: true }) as LazyPage[]
+    // the first pages at once (what is on screen); every other page when it comes near the view
+    for (const p of pages.slice(0, 3)) await p.fillPage?.()
+    this.previewObserver?.disconnect()
+    const observer = this.previewObserver = new IntersectionObserver((entries) => {
+      for (const e of entries) if (e.isIntersecting) { observer.unobserve(e.target); void (e.target as LazyPage).fillPage?.() }
+    }, { root: null, rootMargin: '1500px 0px' })
+    for (const p of pages.slice(3)) observer.observe(p)
     const zoom = Number(m.overrides.get('datawindow.print.preview.zoom') ?? m.def.datawindow['print.preview.zoom'] ?? 100) / 100
     const rulers = /^(yes|true|1)$/i.test(String(m.overrides.get('datawindow.print.preview.rulers') ?? m.def.datawindow['print.preview.rulers'] ?? ''))
     const wrap = document.createElement('div')
@@ -935,6 +961,9 @@ export class DwView {
       p.style.margin = '0 0 10px'
       p.style.boxShadow = rulers ? 'none' : '0 0 4px #000'
       p.style.pageBreakAfter = 'auto'
+      // a long report (Item Activity of every item: 27,818 rows, 250,000 elements) is laid out and painted only where it is seen
+      const pageHeight = parseFloat(p.style.height)
+      if (pageHeight > 0) { p.style.setProperty('content-visibility', 'auto'); p.style.setProperty('contain-intrinsic-size', `auto ${pageHeight}px`) }
       if (z !== 1) p.style.setProperty('zoom', String(z))
       if (rulers) {
         // the print area, as the original's preview draws it (blue rectangle inside the page at the margins)
@@ -1736,6 +1765,7 @@ export class DwView {
       scrollTop: e.scrollTop, scrollLeft: e.scrollLeft, focused: document.activeElement === e,
       invalid: e.getAttribute('aria-invalid') === 'true',
       dirty: this.editorDirty,
+      fromModel: this.editorFromModel,
     }
   }
 
@@ -1764,8 +1794,13 @@ export class DwView {
     finally { this.restoringEditor = false }
     const e = this.editor
     if (!(e instanceof HTMLInputElement || e instanceof HTMLTextAreaElement)) return
-    e.value = s.value
-    e.dispatchEvent(new CustomEvent('dwtextchange', { detail: s.value }))
+    // An editor nobody typed into shows the item: a SetItem between the snapshot and this repaint is shown (the sale window's
+    // ue_setitemfocus writes " " then null around SetFocus; keeping the " " made the item search look for " PANA").
+    if (!(s.fromModel && !s.dirty && !s.invalid)) {
+      e.value = s.value
+      e.dispatchEvent(new CustomEvent('dwtextchange', { detail: s.value }))
+      this.editorFromModel = false
+    }
     this.editorDirty = s.dirty ?? false
     if (s.invalid) e.setAttribute('aria-invalid', 'true')
     if (s.start !== null && s.end !== null) e.setSelectionRange(s.start, s.end, s.direction)
@@ -2327,6 +2362,7 @@ export class DwView {
     let sourceText = dwEditorText(m, o, v)
     this.editorInitial = sourceText
     input.value = sourceText
+    this.editorFromModel = true
     input.style.cssText = cell.style.cssText + ';z-index:5;border:1px solid #0078d7;background:#fff'
     input.style.lineHeight = 'normal'
     if (input instanceof HTMLTextAreaElement) {
@@ -2358,6 +2394,7 @@ export class DwView {
         storedText = current
         sourceText = current
         input.value = current
+        if (this.textEditor === input) this.editorFromModel = true
         input.dispatchEvent(new Event('dwtextchange'))
       }
     }
@@ -2366,10 +2403,11 @@ export class DwView {
       write: (text) => {
         sourceText = dwEditText(m, ci, o, text)
         input.value = sourceText
+        if (this.textEditor === input) this.editorFromModel = false
         input.dispatchEvent(new Event('dwtextchange'))
       },
     })
-    input.addEventListener('input', () => { this.editorDirty = true })
+    input.addEventListener('input', () => { this.editorDirty = true; if (this.textEditor === input) this.editorFromModel = false })
     input.addEventListener('dwtextchange', (event) => {
       if (event instanceof CustomEvent && typeof event.detail === 'string') sourceText = event.detail
     })

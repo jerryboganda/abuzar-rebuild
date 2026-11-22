@@ -806,11 +806,28 @@ export class WinView {
       const a = document.activeElement
       if (!a || a === document.body || !this.client.contains(a)) {
         const last = (this.w as unknown as { lastFocusDw?: PBObject }).lastFocusDw
-        if (last) void this.ui.focusDw(last)
-        else first.focus()
+        if (last) { void this.ui.focusDw(last); return }
+        // A DataWindow takes part in the tab order like any control: the User Password window (Code/Password DataWindow at tab
+        // order 10, Ok 20) opens in the Code field, not on Ok.
+        const dw = this.firstTabDataWindow()
+        if (dw && Number(dw.el.dataset.tab ?? 9999) < Number(first.dataset.tab ?? 9999)) {
+          void this.ui.focusDw(dw.o, true).then((done) => { if (!done && !this.destroyed && !this.client.contains(document.activeElement)) first.focus() })
+        } else first.focus()
       }
     }, 0)
     void this.ui.rt.fire(this.w, 'activate')
+  }
+
+  /** the visible, enabled DataWindow control with the lowest tab order in this window's client area */
+  private firstTabDataWindow(): { o: PBObject; el: HTMLElement } | null {
+    let best: { o: PBObject; el: HTMLElement } | null = null
+    for (const [o, view] of this.ctlViews) {
+      if (o.native !== 'datawindow' || !view.dw || !this.client.contains(view.el) || !view.el.offsetParent) continue
+      const tab = Number(view.el.dataset.tab ?? 9999)
+      if (tab >= 9999 || o.props.get('enabled') === false) continue
+      if (!best || tab < Number(best.el.dataset.tab ?? 9999)) best = { o, el: view.el }
+    }
+    return best
   }
 
   firstFocusable(): HTMLElement | null {

@@ -1,4 +1,4 @@
-import { typeInto } from './ds-sale.ts'
+import { fitFloatingList, typeInto } from './ds-sale.ts'
 
 // Pack Purchase companion of the approved design: progress steps, supplier card, the ready-to-post panel and the command-bar status,
 // all read from the window's live DataWindows.  Every button runs the window's own toolbar command (the same menu item and script),
@@ -189,7 +189,8 @@ export function decoratePurchase(ctx: PurchaseContext, state: PurchaseState, too
     const editor = gridCtl.querySelector<HTMLElement>('tr.cur') ?? gridCtl.querySelector<HTMLElement>('tbody tr')
     const top = editor ? Math.max(0, Math.round(editor.getBoundingClientRect().bottom - gridCtl.getBoundingClientRect().top + 4)) : 150
     if (aux.style.marginTop !== `${top}px`) aux.style.marginTop = `${top}px`
-  }
+    fitFloatingList(aux, editor)
+  } else detail.querySelector<HTMLElement>(':scope > .entry-auxiliary.hidden')?.removeAttribute('data-revealed')
   // ready-to-post panel under the bill summary
   const summaryCtl = detail.querySelector<HTMLElement>(':scope > .entry-control:has(.simplified-summary)')
   if (summaryCtl) {
@@ -297,8 +298,8 @@ export const PURCHASE_CSS = `
 .ds-quick .ds-help {grid-column:1 / -1;margin:0;}
 @media (max-width:760px){.ds-quick{grid-template-columns:repeat(3,minmax(0,1fr))}.ds-quick .ds-quick-f:first-child{grid-column:1 / -1}.ds-quick .ds-btn{grid-column:1 / -1}}
 /* the original item search list (the window's auxiliary DataWindow) floats over the lines like the mockup's suggestion list */
-.modern-entry-window .entry-detail.ds-transaction > .entry-auxiliary:not(.hidden) {grid-column:1;grid-row:3;align-self:start;justify-self:start;width:min(680px,100%)!important;z-index:30;height:min(360px,60vh)!important;border:1px solid var(--p-hair);border-radius:12px;box-shadow:var(--p-shadow-lg);background:var(--p-surface);overflow:hidden;animation:ds-drop .16s var(--p-ease);transition:margin-top .12s;}
-.modern-entry-window .entry-detail.ds-transaction > .entry-auxiliary:not(.hidden) > .modern-surface {width:100%!important;height:100%!important;border:0!important;box-shadow:none!important;border-radius:12px;}
+.modern-entry-window .entry-detail.ds-transaction > .entry-auxiliary:not(.hidden) {grid-column:1;grid-row:3;align-self:start;justify-self:start;width:min(880px,100%)!important;z-index:30;height:min(360px,60vh)!important;border:1px solid var(--p-hair);border-radius:12px;box-shadow:var(--p-shadow-lg);background:var(--p-surface);overflow:hidden;animation:ds-drop .16s var(--p-ease);transition:margin-top .12s;}
+.modern-entry-window .entry-detail.ds-transaction > .entry-auxiliary:not(.hidden) > .modern-surface {width:100%!important;height:100%!important;border:0!important;box-shadow:none!important;border-radius:12px;padding:0!important;}
 .modern-entry-window .entry-detail.ds-transaction > .entry-auxiliary .simplified-head {display:none;}
 .modern-entry-window .entry-detail.ds-transaction > .entry-auxiliary:not(.hidden) tr.cur {background:var(--p-selected)!important;}
 /* the bill summary's computed figures read as plain right-aligned numbers (mockup); fields the user can type in stay boxes */

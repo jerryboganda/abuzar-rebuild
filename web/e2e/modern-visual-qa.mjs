@@ -169,6 +169,8 @@ const report = []
 let n = 0
 for (const leaf of todo) {
   n++
+  // QA_FROM=n resumes a long walk at its n-th item (numbering unchanged)
+  if (n < Number(process.env.QA_FROM ?? 0)) continue
   current = leaf.path
   const id = String(n).padStart(3, '0') + '-' + leaf.path.replace(/&/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 90)
   await page.evaluate(() => { window.__boxes.length = 0 })
@@ -179,7 +181,43 @@ for (const leaf of todo) {
   }, leaf.path)
   await settle()
   const ms = Date.now() - t0
-  await page.screenshot({ path: `${out}/${id}.png` })
+  await page.screenshot({ path: `${out}/${id}.png`, timeout: 60000 }).catch((e) => console.log('  screenshot failed: ' + String(e?.message ?? e).split('\n')[0]))
+  // QA_RUN=1: a report is run as a user would: "All" ticked where a selection list offers it, then Ok on every dialog in turn
+  // (format choice, criteria, column criteria ...) until the preview shows; a message box on the way is recorded and answered.
+  if (process.env.QA_RUN === '1' && /^&?Reports/.test(leaf.path)) {
+    const steps = []
+    for (let i = 0; i < 7; i++) {
+      const did = await page.evaluate(() => {
+        const visible = (el) => el && el.offsetParent !== null
+        const box = [...document.querySelectorAll('.msgbox, .presentation-runtime-dialog[open]')].find(visible)
+        if (box) { const t = box.innerText.replace(/\s+/g, ' ').slice(0, 160); window.__answer(); return 'box: ' + t }
+        const dialogs = [...document.querySelectorAll('dialog[open] .pbwin, .pbwin:not(.sheet)')].filter((w) => visible(w) && w.dataset.win !== 'w_main')
+        const win = dialogs.at(-1)
+        if (!win) return ''
+        for (const label of win.querySelectorAll('label')) {
+          const cb = label.querySelector('input[type=checkbox]')
+          if (cb && !cb.checked && !cb.disabled && /^&?all$/i.test(label.textContent.trim())) cb.click()
+        }
+        const ok = [...win.querySelectorAll('button')].find((b) => visible(b) && !b.disabled && /^(&?ok|o&k|retrieve|run|preview|show)$/i.test(b.textContent.replace(/\s+/g, ' ').trim()))
+        if (!ok) return ''
+        ok.click()
+        return 'ok: ' + win.dataset.win
+      }).catch((e) => 'eval failed ' + e)
+      // between two dialogs (the next one opens after a round trip) there may be none for a moment: look again before stopping
+      if (!did && !steps.at(-1)?.startsWith('retry')) { steps.push('retry'); await page.waitForTimeout(2500); continue }
+      if (!did) break
+      steps.push(did)
+      await settle(10)
+    }
+    await page.screenshot({ path: `${out}/${id}-run.png`, timeout: 60000 }).catch((e) => console.log('  screenshot failed: ' + String(e?.message ?? e).split('\n')[0]))
+    const runBoxes = await page.evaluate(() => window.__boxes.splice(0))
+    const preview = await page.evaluate(() => {
+      const dw = [...document.querySelectorAll('.pbwin.sheet .dw')].find((d) => d.offsetParent !== null)
+      return dw ? (dw.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 120) : '(no visible report)'
+    }).catch(() => '')
+    console.log(`  run: ${steps.join(' > ')} | boxes=${runBoxes.join(' / ').slice(0, 300)} | preview: ${preview}`)
+    report.push({ id: id + '-run', path: leaf.path, steps, boxes: runBoxes, preview, errors: errors.slice(before).map((e) => e.text) })
+  }
   const audit = await page.evaluate(() => window.__audit()).catch((e) => ['audit failed: ' + e])
   const boxes = await page.evaluate(() => window.__boxes.splice(0))
   const open = await page.evaluate(() => [...window.rt.windowInstances.keys()].filter((x) => x !== 'w_main'))

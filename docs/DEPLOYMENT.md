@@ -262,3 +262,63 @@ screenshot hides them. Final state: 202 of 202 screens open in both themes, one 
 original), five script errors after Cancel that the original's scripts cause themselves; 962 tests, presentation types and the
 modal-window generator check pass.
 
+**Modern UI QA by driving the workflows, 2026-11-22** (local test server on the scratch copy `waseela_rehearsal`, as `CLAUDE TEST`;
+not deployed). Besides two full crawls (dark and light) reviewed screen by screen and a before/after regression read of the second
+crawl, the screens were *used*: typing, Enter/Tab, every header pop-up, the Items page, Users, Settings, List/Detail, record
+navigation, a Cash Sale saved (invoice 588878, 3 x PANADOL CF DAY TAB, Rs 19.00, posted), a Pack Purchase saved (12279, MULLER,
+bill QA-2211, Rs 498.00), a daily sale summary run (588878: gross 17.58, misc 1.00, net 19.00) and a Cash Sale Return opened on that
+sale. Fixed:
+- Modern Cash Sale item search: typing "PANA" searched for " PANA" and Enter left the line empty (price 0). `ue_setitemfocus` sets
+  the item to " " then null around SetFocus; a repaint restored the " " as if typed. An editor nobody typed into now shows the item's
+  current value after a repaint (`DwEditorSnapshot.fromModel`, `dwview.ts`). Classic was not affected by the timing.
+- Drop-down AutoRetrieve (both interfaces): a DDDW child is retrieved with the parent's transaction once the parent has rows
+  (InsertRow/Retrieve), not only when the column is drawn. The report criteria lists filled from `GetChild(...).RowCount()`
+  (Manufacturers, Categories, Users, Areas) were empty (`dwctrl.ts autoRetrieveChild`).
+- First focus (both interfaces): a DataWindow takes part in the tab order; the User Password prompt of Save opens in Code (tab 10)
+  instead of on Ok (`dom-ui.ts`).
+- Line grids: every column sat at the same 8em floor (the Cash Sale item column as narrow as Disc%, last columns cut). Grids now take
+  the card width in the source's proportions, a column keeps 70% of its source width as a floor (at most 15em), a typed text column
+  8.5em, a drop-down 8em with room for its arrow; wide grids scroll. The floating item search list is as wide as its columns need
+  (1,120px), stays inside the screen, and no scrolled rows show above its sticky heading.
+- Items page: "Sold (30 d)" summed `packqty`, which is 0 on all 1.3 million sale lines (sales are in `looseqty`); "Edit in Item form"
+  opened an empty new item (now the window's List, the item's row, Detail, as a double-click does); the palette's purchase invoices
+  open that invoice the same way; a search shows "9 matches" instead of "9 of 27,818"; no full stock bar for items without a reorder
+  level; read-only drawer fields look read-only.
+- Home: the chart tooltip used the old 640-unit width (wrong day under the pointer); "No figures for the previous day" was red; the
+  activity list joined `salesmancode` to users; Refresh label and "See all" (mockup); purchases line in the theme's info colour
+  (pale on white); the chart query took ~2.8 s per Home load (per-day `date::date` sub-queries) and now uses one indexed range per
+  ledger (0.5 ms, same figures).
+- Frame: avatar initials of "CLAUDE TEST" were "CL" (now "CT"); the status-bar dot of "FBR IMS: offline" was green (a CSS rule
+  order); user menu shows "Godown GODOWN1".
+- Dialogs: tab strips wrap instead of scrolling behind a fade (Preferences showed 11 of its 19 tabs with no way to reach the rest);
+  a window that is one tab control no longer scrolls as well as its list; report criteria rows are drawn at 70% of the source
+  spacing so the last fields and Ok are on screen, group boxes keep a gap; totals strips separate each figure; the focus ring of a
+  field is visible on white; display-only edits look read-only.
+Checked and left as the original (Classic identical): a fresh Cash Sale asks "Confirm Changes" on List; Escape does not close
+dialogs without a Cancel button (Select Format, Change Password); the Purchases supplier "(" placeholder plus `wf_setsuppname`
+(`name >= typed`) picks A TRADERS when "MULL" is typed after it (select the text first: MULLER); the purchase line's `c_margin`
+shows 100.00 for PANADOL CF DAY TAB (Classic computes the same). 962 tests, the presentation types and the six generator checks pass.
+Second round the same day: every report was *run* (`QA_RUN=1 node e2e/modern-visual-qa.mjs ... '^Reports'`: "All" ticked where a
+selection list offers it, Ok on every dialog, the preview, message boxes and script errors recorded); a Credit Sale saved (588879,
+customer 22, 2 units, Rs 13.00, receipt dialog), a Cash Sale Return saved (61603 on 588878, Rs 19.00), Users › Edit user, Edit group
+rights and a rights switch toggled (then cancelled), Item Form List/Detail and record navigation. Fixed:
+- SetItem on the current cell replaces what the edit control holds (both interfaces, `dwctrl.ts currentItemSet`): the Credit Sale's
+  Enter on a typed customer name ("CRED") sets the customer it found and calls AcceptText (`wf_setcustomerinfo`); the typed text was
+  kept, AcceptText failed with "You must select some Customer" and the customer went back to 0.
+- A composite DataWindow's Retrieve succeeds with its nested reports (`model.ts`): Category Wise › Sales showed a database error
+  "no translated SQL for DataWindow d_comp_catwisesummary" over its report.
+- Stock Reports › Item Activity for all categories never finished (one query ran 16 minutes and slowed every other session):
+  `reportdata.codeN` is numeric and the item codes are integer, so each of its 8 correlated sub-queries per item scanned its table.
+  `db/pg/31_report_indexes.sql` (fresh installs) and `db/upgrade/2026-11-22-report-indexes.sql` (existing databases, CONCURRENTLY)
+  add `(icode::numeric)` and missing `icode` indexes: the query takes 27 s for 27,818 items, the report shows in about 35 s.
+  Applied to the scratch copy only; production `waseela` needs the upgrade script (owner's go-ahead).
+- The report preview renders pages near the view only (`print.ts` lazy pages): Item Activity's 700 pages had built 250,000
+  elements for ~22 s before anything showed; now ~3,500 and the first page at once. Printing still builds every page.
+- Users page: Edit user / Edit group rights opened empty new records; they open the chosen user (ALI, SALES OFFICER) and that
+  group's rights (Groups list double-click, `wf_openmywindow`).
+- An unfocused drop-down editor no longer keeps the accent ring (two fields looked focused on Cash Sale Return).
+Checked and left as the original: Stock In Hand › Manufacturer Wise (Format2) for all manufacturers fails with "division by zero"
+(18 active items whose unit sale price rounds to 0.00; the same SELECT raises "Divide by zero error encountered" on the original
+SQL Server, whose app connections run with ANSI_WARNINGS ON); Ctrl+A in a sale field is the original's Save As Template
+accelerator; criteria that need a typed name (Stock Register, Customer Items Summary) answer "Please enter valid value for Name".
+

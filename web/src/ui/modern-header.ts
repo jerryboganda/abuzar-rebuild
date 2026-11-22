@@ -32,7 +32,7 @@ export interface HeaderHost {
   /** Opens an item of the catalogue (the Items page and its card). */
   openItem?(code: number): void
   /** Opens Purchase › Purchases (the purchase invoices). */
-  openPurchases?(): void
+  openPurchases?(code?: number): void
   /** The active window's toolbar commands (New, Save, Post …) for the search palette. */
   toolbarCommands?(): { label: string; shortcut?: string; disabled: boolean; run(): void }[]
 }
@@ -304,7 +304,7 @@ export class ModernHeader {
     badge.textContent = String(unread)
     q('.mh-bell').setAttribute('aria-label', unread ? `Notifications, ${unread} new` : 'Notifications')
     q('.mh-user-name').textContent = title.user ?? 'User'
-    q('.mh-avatar').textContent = (title.user ?? 'U').slice(0, 2).toUpperCase()
+    q('.mh-avatar').textContent = initials(title.user ?? 'User')
     const theme = this.host.theme()
     for (const button of this.element.querySelectorAll<HTMLButtonElement>('[data-theme-choice]')) {
       button.setAttribute('aria-pressed', String(button.dataset.themeChoice === theme))
@@ -405,13 +405,13 @@ export class ModernHeader {
       head.querySelector('b')!.textContent = user
       const sub = head.querySelector('small')!
       const godown = this.host.status?.().godown
-      sub.textContent = godown ? `${godown} godown` : ''
+      sub.textContent = godown ? `Godown ${godown}` : ''
       box.append(head)
       const query = this.host.query?.()
       if (query && title.user) {
         void query(`SELECT string_agg(g.groupname::text, ', ' ORDER BY g.groupname) FROM dbo.users u JOIN dbo.usergroups ug ON ug.usercode = u.usercode
           JOIN dbo.groups g ON g.groupcode = ug.groupcode WHERE upper(u.username) = upper($1)`, [title.user])
-          .then((rows) => { sub.textContent = [String(rows[0]?.[0] ?? ''), godown ? `${godown} godown` : ''].filter(Boolean).join(' · ') }).catch(() => {})
+          .then((rows) => { sub.textContent = [String(rows[0]?.[0] ?? ''), godown ? `Godown ${godown}` : ''].filter(Boolean).join(' · ') }).catch(() => {})
       }
       const menu = this.section(box)
       for (const [label, pattern, icon] of [['Change user', /^change user$/i, GLYPH.user], ['Change password', /^change password$/i, GLYPH.key], ['Preferences', /^preferences$/i, GLYPH.gear]] as const) {
@@ -579,7 +579,7 @@ export class ModernHeader {
           kind: 'invoice', title: `Purchase ${row[0]}`,
           detail: [String(row[2] ?? ''), date ? new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
             String(row[3] ?? '') && `bill ${row[3]}`, `Rs ${money(Number(row[4] ?? 0))}`, String(row[5]).toUpperCase() === 'Y' ? 'posted' : 'not posted'].filter(Boolean).join(' · '),
-          disabled: !this.host.openPurchases, run: () => this.host.openPurchases?.(),
+          disabled: !this.host.openPurchases, run: () => this.host.openPurchases?.(Number(row[0])),
         })
       }
     }

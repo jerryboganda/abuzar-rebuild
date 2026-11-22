@@ -10,7 +10,16 @@ import { pbColor, toPx } from './pb.ts'
 
 export interface BuildPagesOptions {
   presentation?: PrintPresentation
+  /**
+   * The on-screen preview: pages come back as sized, empty shells whose `fillPage()` renders them on demand (the preview renders
+   * the pages near the view).  Item Activity of every item is 27,818 rows on ~700 pages: rendering them all took ~22 s and
+   * 250,000 elements before the first page showed.  Printing builds every page.
+   */
+  lazy?: boolean
 }
+
+/** a preview page shell of a lazy build: renders its bands once */
+export type LazyPage = HTMLElement & { fillPage?: () => Promise<void> }
 
 /** paper sizes of the Windows DEVMODE (dmPaperSize) in millimetres */
 const PAPER_MM: Record<number, [number, number]> = {
@@ -134,14 +143,17 @@ export async function buildPages(ctl: NDwBase, options: BuildPagesOptions = {}):
   const usable = ps.width - ps.left - ps.right
   const across = L.width > usable * 1.05 ? Math.ceil(L.width / usable - 0.05) : 1
   m.printAcrossCount = across
+  let filling: Promise<void> = Promise.resolve()
   for (let s = 0; s < across; s++) {
     for (let p = 0; p < total; p++) {
+      const page: LazyPage = document.createElement('div')
+      page.className = presentation === 'modern' ? 'page print-modern' : 'page'
+      page.style.cssText = `position:relative;width:${ps.width}px;height:${ps.height}px;overflow:hidden;background:${pbColor(m.def.datawindow.color, '#fff')};page-break-after:always;break-after:page`
+      const fill = async () => {
       m.printPage = p + 1
       m.printPageCount = total
       m.printAcross = s + 1
-      const page = document.createElement('div')
-      page.className = presentation === 'modern' ? 'page print-modern' : 'page'
-      page.style.cssText = `position:relative;width:${ps.width}px;height:${ps.height}px;overflow:hidden;background:${pbColor(m.def.datawindow.color, '#fff')};page-break-after:always;break-after:page`
+      m.printAcrossCount = across
       const inner = document.createElement('div')
       inner.style.cssText = `position:absolute;left:${ps.left}px;top:${ps.top}px;width:${L.width}px`
       if (L.byBand.has('background')) {
@@ -173,13 +185,19 @@ export async function buildPages(ctl: NDwBase, options: BuildPagesOptions = {}):
         page.appendChild(inner)
         if (ft) page.appendChild(ft)
       }
+      m.printAcross = 1
+      m.printAcrossCount = 1
+      m.printPage = 1
+      m.printPageCount = 1
+      }
+      if (options.lazy) {
+        // one page at a time (page() / pagecount() are model state while a page renders); each page renders once
+        let done: Promise<void> | null = null
+        page.fillPage = () => done ??= (filling = filling.then(fill, fill))
+      } else await fill()
       pages.push(page)
     }
   }
-  m.printAcross = 1
-  m.printAcrossCount = 1
-  m.printPage = 1
-  m.printPageCount = 1
   return pages
 }
 

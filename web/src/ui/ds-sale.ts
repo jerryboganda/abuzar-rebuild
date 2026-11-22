@@ -34,6 +34,24 @@ export async function typeInto(first: HTMLInputElement, text: string, done?: () 
   }
 }
 
+/**
+ * The floating item search list ends inside the screen: it is as tall as the room under the line being typed (at most its designed
+ * 360px, at least 200px); when even 200px do not fit, the page scrolls it into view once, when it opens.  Without this the list ran
+ * below the screen and the row the search had found (the current row) was out of sight.
+ */
+export function fitFloatingList(aux: HTMLElement, line: HTMLElement | null): void {
+  // the window's own client area ends above the status bar
+  const bottom = Math.min(innerHeight, aux.closest('.client')?.getBoundingClientRect().bottom ?? innerHeight)
+  const room = Math.floor(bottom - (line?.getBoundingClientRect().bottom ?? aux.getBoundingClientRect().top) - 16)
+  const height = `${Math.max(200, Math.min(360, room))}px`
+  if (aux.style.getPropertyValue('height') !== height) aux.style.setProperty('height', height, 'important')
+  if (room < 200 && !aux.dataset.revealed) {
+    aux.dataset.revealed = '1'
+    requestAnimationFrame(() => aux.scrollIntoView({ block: 'nearest' }))
+  }
+  if (room >= 200) delete aux.dataset.revealed
+}
+
 /** Opens the editor of a line's cell the way a click on it does and resolves with it once it exists. */
 async function openCell(cell: HTMLElement): Promise<HTMLInputElement | null> {
   for (const type of ['mousedown', 'mouseup', 'click']) cell.dispatchEvent(new MouseEvent(type, { bubbles: true, view: window }))
@@ -144,7 +162,8 @@ export function decorateSale(root: HTMLElement, query: Query, toolbar: (stock: s
     const top = line ? Math.max(0, Math.round(line.getBoundingClientRect().bottom - gridCtl.getBoundingClientRect().top + 4)) : 150
     if (aux.style.getPropertyValue('--ds-aux-top') !== `${top}px`) aux.style.setProperty('--ds-aux-top', `${top}px`)
     if (aux.style.marginTop) aux.style.marginTop = ''
-  }
+    fitFloatingList(aux, line)
+  } else detail.querySelector<HTMLElement>(':scope > .entry-auxiliary.hidden')?.removeAttribute('data-revealed')
   // change calculator under the totals (display only)
   let pay = footer.querySelector<HTMLElement>(':scope > .ds-change')
   if (!pay) {
@@ -252,7 +271,7 @@ export const SALE_CSS = `
 .modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-control:not(.entry-auxiliary):has(.simplified-grid) {grid-column:1;grid-row:1 / span 2;}
 .modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-form ~ .entry-form {grid-column:2;grid-row:2;}
 .modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] {position:relative;}
-.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-auxiliary:not(.hidden) {grid-area:1 / 1 / 3 / 2!important;position:absolute!important;inset:auto!important;left:16px!important;top:var(--ds-aux-top,150px)!important;width:min(680px,calc(100% - 32px))!important;height:min(360px,42vh)!important;margin:0!important;z-index:30;border:1px solid var(--p-accent)!important;border-radius:12px;background:var(--p-surface)!important;box-shadow:var(--p-shadow-lg),0 0 0 4px var(--p-glow)!important;overflow:hidden;}
+.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-auxiliary:not(.hidden) {grid-area:1 / 1 / 3 / 2!important;position:absolute!important;inset:auto!important;left:16px!important;top:var(--ds-aux-top,150px)!important;width:min(1120px,calc(100vw - 80px))!important;height:min(360px,42vh)!important;margin:0!important;z-index:30;border:1px solid var(--p-accent)!important;border-radius:12px;background:var(--p-surface)!important;box-shadow:var(--p-shadow-lg),0 0 0 4px var(--p-glow)!important;overflow:hidden;}
 .modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-auxiliary:not(.hidden) > .modern-surface {border:0!important;border-radius:0!important;box-shadow:none!important;height:100%!important;}
 /* the header keeps every field of the original, three to a row, the customer and the date on two columns */
 .modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-form:first-of-type .simplified-row {grid-template-columns:repeat(3,minmax(0,1fr))!important;}

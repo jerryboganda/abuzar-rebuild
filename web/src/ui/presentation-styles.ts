@@ -276,7 +276,15 @@ export const PRESENTATION_CSS = `
 .modern-surface {background:var(--p-surface)!important;color:var(--p-text);container-type:inline-size;}
 .modern-surface .surface-status {position:sticky;left:0;width:100cqi;max-width:100%;padding:8px 12px;margin:0;color:var(--p-muted);overflow-wrap:anywhere;}
 .modern-surface .surface-empty {padding:20px;margin:0;color:var(--p-muted);}
-.modern-surface .surface-grid {border-spacing:0;min-width:100%;width:max-content;}
+/* a grid takes the card's width and shares it in the source's column proportions (colgroup); columns narrower than their content
+   (or the floor below) widen the table, which then scrolls.  At max-content every column sat at the 8em floor: the item column of the
+   Cash Sale was as narrow as Disc% and the last columns were cut off. */
+.modern-surface .surface-grid {border-spacing:0;min-width:100%;width:100%;}
+.modern-surface .surface-grid td > .surface-value:not(.surface-spinner) {min-width:4.5em;}
+/* a column the user types text into (Item Name, Alias Name) and a drop-down (its chevron) keep room for their value; read-only text
+   and numbers take what their content needs */
+.modern-surface .surface-grid td > .surface-value.editable:not(.surface-number):not(.surface-spinner) {min-width:8.5em;}
+.modern-surface .surface-grid td > .surface-value.surface-choice:not(.surface-spinner) {min-width:8em;}
 .modern-surface th {position:sticky;top:0;z-index:2;padding:8px 12px;text-align:left;background:var(--p-rail);border-bottom:1px solid var(--p-line);font-weight:600;max-width:100cqi;overflow-wrap:anywhere;}
 .modern-surface .surface-header-flow th {position:static;}
 .modern-surface td {padding:0;border-bottom:1px solid var(--p-line);}
@@ -307,7 +315,7 @@ export const PRESENTATION_CSS = `
 .modern-surface .row.sel .surface-value {background:var(--p-accent);}
 .modern-surface .row.sel .o {color:var(--p-on-accent)!important;}
 .modern-surface .surface-spacer {padding:0;border:0;}
-.modern-surface .surface-body-grid {width:max-content;min-width:100%;}
+.modern-surface .surface-body-grid {width:auto;min-width:100%;}
 .modern-surface .surface-body-with-footer {display:flex;flex-direction:column;min-height:100%;}
 .modern-surface .surface-body-with-footer > * {flex-shrink:0;}
 .modern-surface .surface-band {position:sticky;left:0;width:100cqi;max-width:100%;padding:10px 12px;border-top:1px solid var(--p-line);background:var(--p-canvas);color:var(--p-text);}
@@ -609,6 +617,9 @@ export const PRESENTATION_CSS = `
 .modern-surface .simplified-form .simplified-row > .surface-field > .surface-required {justify-self:start;}
 .modern-entry-window .entry-detail:has(.simplified-summary) > .entry-control {height:auto!important;}
 .modern-entry-window .entry-detail:has(.simplified-summary) > .entry-control > .modern-surface {overflow:visible!important;padding:14px 16px 16px;}
+/* a scrolling grid starts at the scroller's top edge: the sticky column header sticks inside the padding, so a top padding left a
+   band where scrolled rows showed above the header (the item search list of Purchases, a long sale) */
+.modern-entry-window .entry-detail:has(.simplified-summary) > .entry-control > .modern-surface:has(> .surface-body-grid,> .simplified-surface > .surface-body-grid) {padding-top:0;}
 .modern-surface .simplified-summary .simplified-row > .surface-field {grid-template-columns:max-content auto minmax(0,1fr)!important;}
 .modern-surface .simplified-summary .simplified-row > .surface-field > .surface-label {grid-column:1;}
 .modern-surface .simplified-summary .simplified-row > .surface-field > .surface-required {grid-column:2;}

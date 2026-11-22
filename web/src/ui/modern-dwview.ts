@@ -23,6 +23,7 @@ import type { LookupDialog } from './dw-lookup-dialog.ts'
 import type { PresentationDialog } from './presentation-dialogs.ts'
 import { choiceStyle, sameChoiceValue } from '../dw/choices.ts'
 import { imageDataUrl } from './image-data.ts'
+import { toPx } from './pb.ts'
 
 let nextSurface = 0
 const WINDOW_ROWS = 60
@@ -328,6 +329,13 @@ export class ModernDwView extends DwView {
         columns.append(column)
       }
       table.prepend(columns)
+      // A column keeps most of its source width as a floor (at most 15em): a grid with many columns scrolls sideways instead of
+      // squeezing a wide text column (Item Name of the Opening Purchase lines) down to the width of a number.
+      const units = Number(model.def.datawindow.units ?? 0)
+      ;[...head.cells].forEach((th, index) => {
+        const floor = Math.min(15 * 14, Math.round(toPx(widths[index] ?? 0, 'x', units) * 0.7))
+        if (floor > 63) th.style.minWidth = `min(${floor}px, 100cqi)`
+      })
       const rows = table.createTBody()
       const visible = new Set(Array.from({ length: Math.min(WINDOW_ROWS, count - start) }, (_, index) => start + index + 1))
       if (draft) visible.add(draft.row)

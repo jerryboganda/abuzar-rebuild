@@ -206,7 +206,8 @@ export const DESIGN_CSS = `
 .presentation-ui .pbwin:has(> div > .mdi-client) .ds-statusbar > .status {flex:1;min-width:0;border-top:0;background:none;}
 .presentation-ui .ds-status-right {margin-left:auto;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
 .presentation-ui .ds-status-right > span {display:inline-flex;align-items:center;white-space:nowrap;}
-.presentation-ui .ds-status-right .ds-off {background:var(--p-danger);animation:none;}
+/* (.ds-live.ds-off: the plain .ds-live rule below came later with the same weight and painted "offline" green) */
+.presentation-ui .ds-status-right .ds-live.ds-off {background:var(--p-danger);animation:none;}
 .presentation-ui .ds-status-right .num {font-family:var(--p-mono);}
 .presentation-ui .ds-status-right .ds-live {display:inline-block;width:7px;height:7px;border-radius:50%;background:#4ec98a;margin-right:6px;animation:ds-pulse 2s infinite;}
 
@@ -241,7 +242,7 @@ export const DESIGN_CSS = `
 .modern-surface .surface-field > .surface-value:not(.editable):not(.surface-choice):not([role=button]) {background:var(--p-sunk);border-radius:8px;color:var(--p-muted);}
 .modern-surface .surface-number,.modern-surface .surface-total-value {font-family:var(--p-mono);font-variant-numeric:tabular-nums;}
 /* an open editor that does not hold the keyboard looks like any other field: only the focused one carries the accent ring */
-.modern-surface :is(input,textarea).surface-editor:not(:focus):not([type=checkbox]) {border-color:var(--p-line);}
+.modern-surface :is(input,textarea,select).surface-editor:not(:focus):not([type=checkbox]) {border-color:var(--p-line);box-shadow:none;}
 /* one-column forms (masters such as Customer): the caption beside its field, the form no wider than a readable line */
 .modern-entry-window .modern-surface .surface-row.has-grid.grid-one-column:not(.simplified-row) {max-width:68em;grid-template-rows:none!important;grid-auto-rows:auto;row-gap:8px!important;}
 .modern-entry-window .modern-surface .surface-row.has-grid.grid-one-column:not(.simplified-row) > .surface-field {display:grid!important;grid-template-columns:minmax(9em,13em) 1.2em minmax(0,1fr);align-items:center;column-gap:4px;}
@@ -312,6 +313,8 @@ export const DESIGN_CSS = `
 .modern-surface .surface-field > .window-caption {text-align:start!important;padding:0 0 3px!important;}
 /* Compact density (the default): fields one size smaller and closer, so a transaction fits a laptop screen */
 .modern-surface[data-density=compact] .surface-field > .surface-value.editable,.modern-surface[data-density=compact] .surface-field > .surface-value[role=button],.modern-surface[data-density=compact] .surface-field > .surface-value.surface-choice {min-height:34px;padding:5px 10px;}
+/* (the padding above also reset the drop-down's room for its chevron: a narrow "Lock Reason" cell ran "GENERAL" into the arrow) */
+.modern-surface[data-density=compact] .surface-field > .surface-value.surface-choice {padding-inline-end:2.2em;}
 .modern-surface[data-density=compact] section.surface-row {gap:10px 14px;padding:12px 16px;}
 .modern-surface[data-density=compact] .surface-label {margin-bottom:3px;}
 /* summary panels (bill summary, payment): one tight line per figure, a dash for a figure that has no value yet */
@@ -336,6 +339,10 @@ export const DESIGN_CSS = `
 .modern-surface .row.sel .o {color:var(--p-text)!important;}
 .modern-surface .surface-band {background:var(--p-sunk);border-top:1px solid var(--p-hair);font-weight:600;}
 .modern-surface .surface-band dt {font-weight:500;color:var(--p-muted);}
+/* each total is its own cell with a hairline before it: right-aligned values no longer read as the caption of the next total
+   ("0.00 Total 0.00 Tax Value") */
+.modern-surface .surface-band-footer dl {column-gap:0;overflow:hidden;}
+.modern-surface .surface-band-footer dl > div {margin-left:-1px;padding-inline:16px;border-left:1px solid var(--p-hair);}
 /* totals of a line grid read as plain figures (the source paints them as black boxes) */
 .modern-surface .surface-band .surface-total-value {background:transparent!important;border:0!important;box-shadow:none!important;color:var(--p-text)!important;padding:0 2px;}
 .modern-surface .surface-band dl > div:has(> dt:only-child) > dt {color:var(--p-text);font-weight:600;}
@@ -377,7 +384,16 @@ export const DESIGN_CSS = `
 /* a tab control inside a dialog carries the design's surfaces: no white page, light frame or clipped grid of the original */
 .modern-window .tabctl.window-embedded {background:transparent!important;color:var(--p-text)!important;color-scheme:inherit;}
 /* more tabs than fit: the strip fades at its right edge, so a cut caption reads as "more this way" (it scrolls sideways) */
-.modern-window .tabctl.window-embedded > .strip {scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent);padding-right:28px;}
+/* Tabs wrap onto more rows instead of scrolling sideways behind a fade: Preferences has 19 visible tabs and the strip showed 11,
+   with no scrollbar or arrow to reach the others.  The page follows the strip (a column), so a wrapped strip pushes it down. */
+.modern-window .tabctl.window-embedded {display:flex!important;flex-direction:column;max-height:100%;}
+.modern-window .tabctl.window-embedded > .strip {flex-wrap:wrap;height:auto!important;overflow:visible!important;row-gap:2px;flex:none;}
+.modern-window .tabctl.window-embedded > .page {position:relative!important;inset:auto!important;flex:1 1 auto;min-height:0;margin-top:8px;}
+/* a window that is one tab control (Preferences, Job Schedules) gives it the height above the Save/Cancel row: the source height of
+   the tab control made the window scroll as well, under a fade that hid the last rows */
+.modern-window > .client > .window-fields:has(> .tabctl.window-embedded):not(:has(> :not(.tabctl,.hidden))) > .tabctl.window-embedded {max-height:max(320px,calc(100dvh - 230px))!important;}
+/* a page holding one list (Preferences) scrolls in that list only, not in the page and the window as well */
+.modern-window .tabctl.window-embedded > .page > .ctl:only-child:has(> .modern-surface) {top:0!important;height:100%!important;}
 .modern-window .tabctl.window-embedded > .page {background:var(--p-surface)!important;border:1px solid var(--p-hair)!important;border-radius:0 10px 10px 10px;overflow:auto;}
 .modern-window .tabctl.window-embedded > .page > .ctl:has(> .modern-surface) {max-width:100%!important;}
 .modern-window .tabctl.window-embedded > .page > .ctl > .modern-surface {overflow:auto!important;border:0!important;box-shadow:none!important;border-radius:0!important;}
@@ -540,7 +556,10 @@ dialog.presentation-compatibility-dialog[open]:not(.ds-report-criteria) {max-hei
 .modern-window :is(input,select,textarea).ctl:not([type=checkbox]):not([type=radio]):not(.window-embedded *) {
   min-height:40px;border:1px solid var(--p-line)!important;border-radius:8px!important;background:var(--p-surface)!important;padding:0 12px;transition:border-color .15s,box-shadow .2s;
 }
-.modern-window :is(input,select,textarea).ctl:focus:not(.window-embedded *) {outline:none;border-color:var(--p-accent)!important;box-shadow:0 0 0 4px var(--p-glow);}
+/* a display-only edit (DisplayOnly = true: About's licence lines, totals shown in an edit) reads as text, not as a field to type in */
+.modern-window :is(input:not([type=checkbox]):not([type=radio]),textarea).ctl[readonly] {background:var(--p-sunk)!important;border-color:var(--p-hair)!important;cursor:default;}
+/* the accent ring is drawn by the shadow as well: on white the 4px glow alone read as no focus where a field's own border rule wins */
+.modern-window :is(input,select,textarea).ctl:focus:not(.window-embedded *) {outline:none;border-color:var(--p-accent)!important;box-shadow:0 0 0 1px var(--p-accent),0 0 0 4px var(--p-glow);}
 /* every form: a field's caption and its required mark share one line (a long caption wraps, the mark stays at its end) */
 .modern-surface .surface-field:has(> .surface-label + .surface-required) {display:grid!important;grid-template-columns:minmax(0,max-content) minmax(0,1fr);align-items:end;column-gap:0;}
 .modern-surface .surface-field:has(> .surface-label + .surface-required) > :not(.surface-label):not(.surface-required) {grid-column:1 / -1;}

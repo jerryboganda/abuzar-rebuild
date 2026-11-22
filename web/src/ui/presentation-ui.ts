@@ -624,7 +624,8 @@ export class PresentationUi extends DomUi {
       query: () => this.pageQuery(),
       status: () => this.statusInfo,
       openItem: (code) => void this.openItemByCode(code),
-      openPurchases: () => {
+      openPurchases: (code?: number) => {
+        if (code !== undefined) { void this.openRecord(/^Purchase \/ Purchases$/i, 'w_purchase', code); return }
         const root = this.commandRoot()
         const command = root ? menuCommands(root).find((item) => /^Purchase \/ Purchases$/i.test(item.label)) : undefined
         if (command) void this.runCommand(command)
@@ -697,7 +698,7 @@ export class PresentationUi extends DomUi {
     bar.setAttribute('role', 'toolbar')
     bar.setAttribute('aria-label', 'Home commands')
     bar.innerHTML = `<span class="mh-title">Home</span><span class="ds-spacer"></span>
-      <button type="button" class="tb" data-ds="refresh" aria-label="Refresh figures" title="Refresh figures"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
+      <button type="button" class="tb" data-ds="refresh" aria-label="Refresh figures" title="Refresh figures"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg><span class="mh-label">Refresh</span></button>
       <button type="button" class="tb mh-primary" data-ds="sale"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${HOME_ICONS.cart}</svg><span class="mh-label">New sale</span></button>`
     bar.insertAdjacentHTML('beforeend', `<button type="button" class="tb" data-ds="items-refresh" data-page="items" aria-label="Refresh items"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg><span class="mh-label">Refresh</span></button>
       <button type="button" class="tb" data-ds="items-export" data-page="items" aria-label="Export to Excel" title="Export to Excel"><svg class="mh-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span class="mh-label">Export</span></button>
@@ -989,8 +990,18 @@ export class PresentationUi extends DomUi {
       if (this.page !== 'users' || !this.homeActive) return
       renderUsers(host, this.usersState, {
         addUser: users ? () => void this.runCommand(users) : null,
-        editUsers: users ? () => void this.runCommand(users) : null,
-        editRights: groups ? () => void this.runCommand(groups) : null,
+        // the chosen user's own record, and the record of that user's (first) group: not an empty new record
+        editUsers: users ? () => {
+          const user = this.usersState.users.find((u) => u.code === this.usersState.selected)
+          if (!user) { void this.runCommand(users); return }
+          void this.openRecord(/^Manage \/ Users$/i, 'w_users', (get) => Number(get('usercode') ?? get('code')) === user.code ||
+            String(get('username') ?? '').trim().toUpperCase() === user.name.toUpperCase())
+        } : null,
+        editRights: groups ? () => {
+          const group = this.usersState.users.find((u) => u.code === this.usersState.selected)?.groups.split(',')[0]?.trim().toUpperCase()
+          if (!group) { void this.runCommand(groups); return }
+          void this.openRecord(/^Manage \/ Groups$/i, 'w_groups', (get) => String(get('groupname') ?? get('name') ?? '').trim().toUpperCase() === group)
+        } : null,
         select: (code) => { this.usersState.selected = code; draw(); if (query) void loadRights(query, this.usersState).then(draw).catch(() => {}) },
       })
     }
@@ -1032,6 +1043,43 @@ export class PresentationUi extends DomUi {
     return command ? () => void this.runCommand(command) : null
   }
 
+  /**
+   * Opens one record in an entry window (the Item Form for an item, Purchases for a purchase invoice) the way a user does it in the
+   * original: the window's List, the record's row in it, then Detail (what a double-click in the list runs: wf_selectunselectrow
+   * and ue_detail).  The "Edit in Item form" button and the palette's invoice results opened an empty new record before.
+   */
+  private async openRecord(pattern: RegExp, windowClass: string, code: number | ((get: (column: string) => unknown) => boolean)): Promise<void> {
+    const root = this.commandRoot()
+    const command = root ? menuCommands(root).find((item) => pattern.test(item.label.replace(/\s*\.{3,}\s*/g, ' ').trim())) : undefined
+    if (!command) return
+    await this.runCommand(command)
+    let window: PBObject | undefined
+    for (let i = 0; i < 100 && !(window = this.rt.windowInstances.get(windowClass)); i++) await new Promise((resolve) => setTimeout(resolve, 50))
+    if (!window || window.destroyed) return
+    try {
+      await this.rt.fire(window, 'ue_list')
+      const list = window.pbGet('id_list') as NDwBase | null
+      const model = list?.model
+      if (!list || !model) return
+      // the record's key: the list's `code` column (Item, Purchases), else a caller's test on the row (a user, a group by name)
+      const column = model.colIndex('code')
+      const matches = typeof code === 'number'
+        ? (r: number) => column >= 0 && Number(model.getItem(r, column + 1)) === code
+        : (r: number) => code((name) => { const i = model.colIndex(name); return i < 0 ? undefined : model.getItem(r, i + 1) })
+      let row = 0
+      for (let r = 1; r <= model.rowCount(); r++) if (matches(r)) { row = r; break }
+      if (!row) { toast('That record is not in this window\'s list; it is shown so you can find it', 'alert'); return }
+      if (window.findRoutines('ue_detail').length) {
+        await this.rt.callMethod(window, 'wf_selectunselectrow', [row])
+        await this.rt.fire(window, 'ue_detail')
+      } else {
+        // a list-view window (Manage › Groups) opens a record from its list's own double-click (wf_openmywindow)
+        await list.n_scrolltorow(row)
+        await this.rt.fire(list, 'doubleclicked', [0, 0, row, null])
+      }
+    } catch (error) { this.rt.onError(error) }
+  }
+
   /** The search palette's item result: the Items page with that item's card open. */
   private async openItemByCode(code: number): Promise<void> {
     const query = this.pageQuery()
@@ -1044,7 +1092,8 @@ export class PresentationUi extends DomUi {
   private async openItem(row: ItemsState['rows'][number]): Promise<void> {
     const query = this.pageQuery()
     if (!query || !this.shell) return
-    await openItemDrawer(this.shell, row, query, this.itemsState.anchor, this.itemFormCommand())
+    await openItemDrawer(this.shell, row, query, this.itemsState.anchor,
+      this.itemFormCommand() ? () => void this.openRecord(/^Basic Data \/ Item ?\/ Item$/i, 'w_item_form', row.icode) : null)
   }
 
   private selectHome(): void {

@@ -156,7 +156,7 @@ export function applyGrid(container: HTMLElement, plan: GridPlan, elements: Read
   container.style.setProperty('--grid-unit', `${lineEm / plan.unit}em`)
   // A row never demands more than a comfortable list height: a tall source list keeps a usable size instead of pushing the fields
   // under it off the screen (the row still grows with its content).
-  container.style.setProperty('--grid-rows', [...Array.from({ length: rowOffset }, () => 'auto'), ...plan.rowSizes.map((size) => `minmax(min(calc(${size} * var(--grid-unit)), 10em), auto)`)].join(' '))
+  container.style.setProperty('--grid-rows', [...Array.from({ length: rowOffset }, () => 'auto'), ...plan.rowSizes.map((size) => `minmax(min(calc(${size} * var(--grid-unit) * var(--grid-density, 1)), 10em), auto)`)].join(' '))
   // A form the source draws as one column of fields (every field starts at the same edge, none beside another) is marked: the
   // design then puts each caption beside its field instead of above it, so a long form is half as tall.
   const starts = new Map<number, number>()

@@ -363,6 +363,19 @@ export class DwModel implements EvalHost {
       params = tr.params.map((p) => args[argList(this.def).findIndex((a) => a.name === p)])
     } else {
       const src = this.sqlSource?.dw(this.name) ?? this.rt.dwSql?.(this.name)
+      if (!src && Number((this.def.datawindow as Record<string, unknown>).processing) === 5) {
+        // A composite DataWindow has no SELECT of its own: Retrieve hands its arguments to the nested reports, which the view
+        // retrieves as it draws them, and succeeds with the composite's single row (Category Wise › Sales showed a database
+        // error over its report: "no translated SQL for DataWindow d_comp_catwisesummary").
+        this.clearBuffers()
+        const v: unknown[] = this.colNames.map(() => null)
+        this.buf.primary = [{ v, orig: v.slice(), st: NOT_MODIFIED, mod: new Set(), sel: false }]
+        this.retrieveDirty = false
+        this.trans.setOk(1)
+        this.row = 1
+        this.touch()
+        return 1
+      }
       if (!src) {
         this.lastError = `no translated SQL for DataWindow ${this.name}`
         this.rt.noteMissing('dwsql:' + this.name)

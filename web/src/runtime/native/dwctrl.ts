@@ -6,7 +6,7 @@ import { Dec, PBDate, PBDateTime, PBTime, PBArray, PBRuntimeError, toNum, toStr,
 import { compileDw } from '../../dw/expr.ts'
 import { DwModel, DATA_MODIFIED, NEW, NEW_MODIFIED, NOT_MODIFIED, lookupDataWindows } from '../../dw/model.ts'
 import type { DwRow } from '../../dw/model.ts'
-import { splitExpr } from '../../dw/def.ts'
+import { argList, splitExpr } from '../../dw/def.ts'
 import type { DwDef } from '../../dw/def.ts'
 import { commitDwValue, dwEditText, dwRequired } from '../../dw/edit.ts'
 import { NTransaction } from './transaction.ts'
@@ -384,6 +384,7 @@ export class NDwBase extends PBObject {
     if (n < 0 && m.lastError) await this.reportDbError(m)
     await this.rt.fire(this, 'retrieveend', [n])
     this.changed()
+    if (n > 0) await this.autoRetrieveChildren()
     return n
   }
   async n_update(accept = true, resetFlag = true): Promise<number> {
@@ -500,6 +501,7 @@ export class NDwBase extends PBObject {
     if (!m) return -1
     const n = m.insertRow(toNum(r))
     this.changed()
+    if (n > 0 && this.childControls.size) await this.autoRetrieveChildren()
     // the new row is the current row and its current cell gets the item focus: the entry windows rely on it (dw_itemsdetail.itemfocuschanged sets
     // `editflag`, which `wf_validatedate` returns; ue_newform clears `ib_focusdetail` right before it so that the event does not open the item list)
     // (a grid that another DataWindow's keyboard focus has passed by gets no event: the Purchase Order sets the focus on its header first and inserts the detail row without opening the item list)
@@ -548,9 +550,17 @@ export class NDwBase extends PBObject {
     const m = await this.m()
     if (!m) return -1
     const r = m.setItem(toNum(row), typeof col === 'number' ? col : toStr(col), val)
+    // SetItem on the current row and column also replaces what the edit control holds, typed or not, as in PowerBuilder: the
+    // Credit Sale's Enter handler sets the customer it found and then calls AcceptText (wf_setcustomerinfo); keeping the typed
+    // "CRED" made that AcceptText fail ("You must select some Customer") and reset the customer to 0.
+    if (r === 1 && toNum(row) === m.row && m.colIndex(typeof col === 'number' ? m.colNames[col - 1] ?? '' : toStr(col)) === m.col - 1) {
+      for (const listener of this.currentItemSet) listener()
+    }
     this.changed()
     return r
   }
+  /** views with an open editor on the current cell: they show the value a script has just set there */
+  readonly currentItemSet = new Set<() => void>()
   async getAny(row: unknown, col: unknown, buffer?: unknown, orig?: unknown): Promise<unknown> {
     const m = await this.m()
     if (!m) return null
@@ -836,11 +846,36 @@ export class NDwBase extends PBObject {
       ch.listeners.add(() => this.changed())
       store.set(name, ch)
     }
+    await this.autoRetrieveChild(name, ch)
     if (ref instanceof Ref) {
       await ref.set(ch)
       return 1
     }
     return ch
+  }
+  /**
+   * AutoRetrieve of a drop-down DataWindow: PowerBuilder retrieves an empty child (no retrieval arguments, AutoRetrieve = yes) with
+   * the parent's transaction once the parent has rows (InsertRow / Retrieve), whether or not the column is ever drawn.  Scripts rely
+   * on it: the report criteria windows fill their "Selectable" list boxes from `GetChild(...).RowCount()` right after InsertRow
+   * (w_arg_manufacturers_v3, the category, user and area lists); retrieving only when the view drew the column left them empty.
+   */
+  private autoRetrieved = new WeakSet<NDwBase>()
+  private async autoRetrieveChild(name: string, ch: NDwBase): Promise<void> {
+    const m = this.model
+    if (!m || m.rowCount() < 1 || ch.destroyed || this.autoRetrieved.has(ch)) return
+    const o = m.def.objects.find((x) => x.type === 'column' && x.name.toLowerCase() === name)
+    const auto = String(m.overrides.get(`${name}.dddw.autoretrieve`) ?? o?.['dddw.autoretrieve'] ?? '').toLowerCase()
+    if (auto !== 'yes') return
+    const cm = await ch.m()
+    if (!cm || cm.rowCount() > 0) return
+    if (!ch.trans && this.trans) { ch.trans = this.trans; if (!cm.trans) cm.trans = this.trans }
+    if (!cm.trans?.db || argList(cm.def).length) return
+    this.autoRetrieved.add(ch)
+    try { await ch.n_retrieve() } catch (error) { this.rt.onError(error) }
+  }
+  /** after InsertRow / Retrieve: the drop-down children a script already holds are retrieved as PowerBuilder does */
+  private async autoRetrieveChildren(): Promise<void> {
+    for (const [name, ch] of this.childControls) await this.autoRetrieveChild(name, ch)
   }
   async n_sharedata(other: unknown): Promise<number> {
     const m = await this.m()

@@ -161,13 +161,16 @@ export function renderItems(host: HTMLElement, state: ItemsState, onChange: () =
   host.innerHTML = `<div class="ds-home ds-page"><section class="ds-card">
     <div class="ds-toolbar2"><div class="ds-search"><label class="ds-sr" for="ds-item-q">Search items</label><input class="ds-in" id="ds-item-q" value="${esc(state.q)}" placeholder="Search name, code or manufacturer" autocomplete="off">${icon('search', 's')}</div>
       <div class="ds-filters" role="group" aria-label="Filter items">${filters.map(([k, t]) => `<button class="ds-fchip" type="button" data-if="${k}" aria-pressed="${state.filter === k}">${t}<span class="n">${(state.counts[k] ?? 0).toLocaleString('en-PK')}</span></button>`).join('')}</div>
-      <span class="grow"></span><span class="ds-help">${state.rows.length.toLocaleString('en-PK')}${state.rows.length === 200 ? '+' : ''} of ${(state.counts[state.filter] ?? 0).toLocaleString('en-PK')} shown</span></div>
+      <span class="grow"></span><span class="ds-help">${state.q.trim()
+        // a search: the count is of the matches (the chip counts do not apply to it; "9 of 27,818" read as a partial list)
+        ? `${state.rows.length.toLocaleString('en-PK')}${state.rows.length === 200 ? '+' : ''} ${state.rows.length === 1 ? 'match' : 'matches'}`
+        : `${state.rows.length.toLocaleString('en-PK')}${state.rows.length === 200 ? '+' : ''} of ${(state.counts[state.filter] ?? 0).toLocaleString('en-PK')} shown`}</span></div>
     <div class="ds-tblw"><table class="ds-table"><thead><tr><th>Item</th><th>Manufacturer</th><th>Category</th><th>Stock</th><th class="r">Pur. price</th><th class="r">Sale price</th><th>Nearest expiry</th><th><span class="ds-sr">Open</span></th></tr></thead>
     <tbody class="ds-stagger">${state.rows.map((it, i) => {
       const p = it.reorder > 0 ? Math.min(100, it.stock / (it.reorder * 2) * 100) : it.stock > 0 ? 100 : 0
       const color = it.stock <= 0 || p < 15 ? 'var(--p-danger)' : p < 50 ? 'var(--p-warn)' : 'var(--p-ok)'
       return `<tr data-item="${i}" style="--i:${Math.min(i, 20)}" tabindex="0"><td><div class="ds-item-cell"><span class="ds-iav">${esc(it.name.slice(0, 2))}</span><div><b>${esc(it.name)}</b><div class="ds-help">${esc(it.code)}${it.pack && it.pack !== '.' ? ` · ${esc(it.pack)}` : ''}</div></div></div></td>
-        <td>${esc(it.mfr)}</td><td>${esc(it.cat)}</td><td><span class="ds-sbar"><i style="width:${Math.max(3, p)}%;background:${color}"></i></span><span class="num">${it.stock.toLocaleString('en-PK')}</span></td>
+        <td>${esc(it.mfr)}</td><td>${esc(it.cat)}</td><td><span class="ds-sbar"${it.reorder > 0 || it.stock <= 0 ? '' : ' style="visibility:hidden" title="No reorder level set"'}><i style="width:${Math.max(3, p)}%;background:${color}"></i></span><span class="num">${it.stock.toLocaleString('en-PK')}</span></td>
         <td class="r num">${money(it.pur)}</td><td class="r num">${money(it.sale)}</td><td>${expTag(it.exp, state.anchor)}</td><td>${icon('right', 's')}</td></tr>`
     }).join('') || '<tr><td colspan="8" class="ds-empty">No item matches. Clear the search or pick another filter.</td></tr>'}</tbody></table></div></section></div>`
   const input = host.querySelector<HTMLInputElement>('#ds-item-q')!
@@ -194,7 +197,9 @@ export async function openItemDrawer(parent: HTMLElement, it: ItemRow, query: Qu
       from dbo.item i where i.icode = $1`, [it.icode]),
     query(`select coalesce(batch::text,''), expiry, qty, coalesce(godwon::text,'') from dbo.view_waseelamini_stock where icode = $1 and qty <> 0 order by expiry nulls last limit 50`, [it.icode]),
     query(`select logdate, coalesce(saleprice,0), coalesce(newsaleprice,0), coalesce(purprice,0) from dbo.itemlog where icode = $1 order by logdate desc limit 12`, [it.icode]),
-    query(`select coalesce(sum(d.packqty),0) from dbo.saledetail d join dbo.saleledger l on l.saleinvcode = d.saleinvcode where d.icode = $1 and l.date >= ${ANCHOR} - 30`, [it.icode]),
+    // units sold: the sale windows record the quantity in looseqty (packqty is 0 on every sale line), packs count their units
+    query(`select coalesce(sum(coalesce(d.looseqty,0) + coalesce(d.packqty,0) * greatest(coalesce(i.packunits,1),1)),0) from dbo.saledetail d
+      join dbo.saleledger l on l.saleinvcode = d.saleinvcode join dbo.item i on i.icode = d.icode where d.icode = $1 and l.date >= ${ANCHOR} - 30`, [it.icode]),
   ]).catch((error: unknown) => { console.warn('Item details could not be read.', error); return [[], [], [], []] as unknown[][][] })
   const d = detail[0] ?? []
   const margin = it.sale > 0 ? (it.sale - it.pur) / it.sale * 100 : 0
@@ -275,7 +280,8 @@ export const PAGES_CSS = `
 .ds-search .ds-in {padding-left:34px;}
 .ds-in {width:100%;height:40px;padding:0 12px;border:1px solid var(--p-line);border-radius:8px;background:var(--p-surface);color:var(--p-text);font:14px var(--p-font);transition:border-color .2s,box-shadow .2s;}
 .ds-in:focus {outline:0;border-color:var(--p-accent);box-shadow:0 0 0 4px var(--p-glow);}
-.ds-in[readonly] {background:var(--p-sunk);}
+.ds-in[readonly] {background:var(--p-sunk);border-color:transparent;cursor:default;}
+.ds-in[readonly]:focus {border-color:var(--p-line);box-shadow:none;}
 .ds-sr {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
 .ds-filters {display:flex;gap:6px;flex-wrap:wrap;}
 .ds-fchip {border:1px solid var(--p-line);background:var(--p-surface);border-radius:999px;padding:5px 12px;font:12.5px var(--p-font);cursor:pointer;color:var(--p-muted);transition:all .2s;}
@@ -362,6 +368,11 @@ dialog.presentation-compatibility-dialog[open].ds-report-criteria > .pbwin {marg
 dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin {width:100%!important;max-width:none!important;box-shadow:var(--p-shadow-lg);}
 /* the criteria keep the proportions of the original dialog inside the wide card (a 500px form is not stretched over 1,400px) */
 dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin > .client > .window-fields {max-width:64em;}
+/* the docked card has the height under the report header only: the source's empty spacing rows are drawn at 70% (every row still
+   grows to its content), so the last criteria (End Date, Inv. Type) are on screen instead of under the scroll fade */
+dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin > .client > .window-fields {--grid-density:.7;}
+/* with the tighter rows two stacked group boxes would touch (Item Wise Adjustment Summary): each keeps a gap under it */
+dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin > .client > .window-fields > fieldset.window-frame {margin-bottom:8px;}
 .modern-window .window-list select.ctl {max-height:18em;}
 dialog.presentation-compatibility-dialog[open].ds-report-criteria .window-list select.ctl {min-height:7.5em;}
 dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin > .tbar {padding:12px 20px 2px;}
