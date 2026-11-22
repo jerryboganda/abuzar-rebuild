@@ -2,7 +2,7 @@
 import type { Db, QueryResult, CallResult, QueryOptions } from '../runtime/wire.ts'
 import { askForToken, authHeaders } from '../runtime/apiauth.ts'
 import { Dec } from '../runtime/values.ts'
-import { RECENT_MS, forget, procedureWrites, recall, remember, rememberable, tableWritten, withTriggers } from './query-memory.ts'
+import { RECENT_MS, SETUP_MEMORY_MS, forget, readsSetupOnly, procedureWrites, recall, remember, rememberable, tablesRead, tableWritten, withTriggers } from './query-memory.ts'
 
 export { rememberable }
 
@@ -125,16 +125,28 @@ export class HttpDb implements Db {
     const wire = wireParams(params)
     if (!rememberable(text)) return this.post('/api/query', { sid: this.sid, sql: text, params: wire })
     const args = '\u0000' + text + '\u0000' + JSON.stringify(wire)
-    // drop-down lists are shared by the windows (sessions) of this browser; anything else only by the same session
-    const listKey = options?.rememberMs ? 'list' + args : ''
+    // drop-down lists and setup reads are shared by the windows (sessions) of this browser; anything else only by the same session
+    const shareMs = options?.rememberMs ?? (readsSetupOnly(text) ? SETUP_MEMORY_MS : 0)
+    const listKey = shareMs ? 'list' + args : ''
     const ownKey = this.sid + args
     const hit = (listKey && recall(listKey)) || recall(ownKey)
     if (hit) return hit
     const result = await this.post<QueryResult>('/api/query', { sid: this.sid, sql: text, params: wire })
     // a list read inside an unfinished change of this session could show that change to other windows: kept by this session only
-    if (listKey && !this.written.size) remember(listKey, text, result, Math.max(RECENT_MS, options?.rememberMs ?? 0))
+    if (listKey && this.unchangedHere(text)) remember(listKey, text, result, Math.max(RECENT_MS, shareMs))
     else remember(ownKey, text, result, RECENT_MS)
     return result
+  }
+
+  /**
+   * Whether `sql` reads none of the tables this session changed and has not committed: its result is then the same for every
+   * session.  (The SQLCA of the main window keeps an uncommitted write of its own from the login, so "no change at all" shared nothing.)
+   */
+  private unchangedHere(sql: string): boolean {
+    if (!this.written.size) return true
+    if (this.written.has('*')) return false
+    const tables = tablesRead(sql)
+    return !!tables && ![...tables].some((t) => this.written.has(t))
   }
 
   /** tables this session changed since its last COMMIT / ROLLBACK ('*': cannot be told); see app/query-memory.ts */

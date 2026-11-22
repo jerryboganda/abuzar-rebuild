@@ -3,7 +3,9 @@
 // Over the internet every query is a round trip (~150 ms from the shop to the server).  Two kinds of results are remembered:
 //  * any read-only SELECT, by the same session, for RECENT_MS (the login reads the same lists twice in a row);
 //  * drop-down lists (QueryOptions.rememberMs, see dw/model.ts lookupDataWindows), by every session of this browser, for that long
-//    (owner decision 2026-11-15: two minutes), so reopening a screen does not ask for every list again.
+//    (owner decision 2026-11-15: two minutes), so reopening a screen does not ask for every list again;
+//  * the same for a SELECT that reads only setup tables (SETUP_TABLES: user groups, rights, preferences, tax categories, ...):
+//    every screen asks for them while it opens (Purchases: ten of them, 300 ms each through Cloudflare), and they change rarely.
 // A write of this browser forgets, at once, every remembered result that reads a table the write changes: the target of an
 // INSERT/UPDATE/DELETE, every table a called procedure writes, and what the triggers of those tables write in turn (both read
 // from the database's own catalogue, once per page).  Anything that cannot be told (dynamic SQL, a statement not understood)
@@ -12,7 +14,17 @@
 import type { QueryResult } from '../runtime/wire.ts'
 
 export const RECENT_MS = 5000
-const MAX_ENTRIES = 96
+const MAX_ENTRIES = 256
+export const SETUP_MEMORY_MS = 120_000
+
+/** tables that hold the shop's set-up, not its business: changed in Manage / Basic Data, read by every screen as it opens */
+const SETUP_TABLES = new Set(['syscatelog', 'usergroups', 'groups', 'grouprights', 'userrights', 'rights', 'specialright', 'startupright', 'groupallowedgodown', 'groupallowedgroups', 'groupallowedheader', 'groupallowedprice', 'groupallowedrecipient', 'groupallowedservicecategory', 'groupallowedstartupright', 'grouppurexptemplate', 'itempurexptemplate', 'columneditstyle', 'columnpreferences', 'configsetting', 'interfacesetting', 'preferences', 'preferencescategory', 'preferencessubcategory', 'softwarepreferences', 'currency', 'taxcategory'])
+
+/** a SELECT whose every table is a setup table */
+export function readsSetupOnly(sql: string): boolean {
+  const tables = tablesRead(sql)
+  return !!tables && tables.size > 0 && [...tables].every((t) => SETUP_TABLES.has(t))
+}
 
 /** results whose value depends on the moment, or statements that change state, are never remembered */
 const VOLATILE = /\b(set_config|nextval|setval|currval|lastval|now|getdate|sysdatetime|current_timestamp|current_date|current_time|localtimestamp|clock_timestamp|statement_timestamp|timeofday|random|newid|uuid_generate_v4|gen_random_uuid|serverdate|txid_current|pg_sleep|pg_advisory_\w*)\b|\bfor\s+(update|share)\b|\binto\b|\bsp_\w+/i
