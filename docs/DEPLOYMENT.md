@@ -348,6 +348,9 @@ rights and a rights switch toggled (then cancelled), Item Form List/Detail and r
   Return 61604 on it (1 x PANADOL CF DAY TAB, Rs 5.86, posted).
 - Reports › Selected Sales and Summaries Report names a layout (`d_comp_selectedsalesandsummary`) that is in none of the
   original's libraries; the Modern view now says so instead of showing a blank page (`modern-dwview.ts`); Classic stays empty.
+- Deployed 2026-11-23 to pharmacy.polytronx.com: `db/upgrade/2026-11-22-report-indexes.sql` applied (7 s, 14 indexes valid;
+  backup `/opt/pharmacy/backups/waseela-pre-report-indexes-20261123.dump`), then `deploy.sh 7fe241cb` (version
+  `7fe241cb-944d1f4b`). Rollback: `deploy.sh 38ba21a4`; the indexes can stay.
 Checked and left as the original: RePrinting › Sale Format(2) and the summary reports are empty for an empty invoice range;
 "Selected Sales and Summaries Report" names `d_comp_selectedsalesandsummary`, which is in none of the original's libraries (only
 the menu script mentions it); after Enter on the Credit Sale customer the keyboard stays there and Pack Purchase opens in Tax
