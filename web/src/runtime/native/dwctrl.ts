@@ -810,7 +810,7 @@ export class NDwBase extends PBObject {
       const cur = this.model
       if (!cur || cur.row < 1 || cur.col < 1 || cur.colNames[cur.col - 1] !== col) return
       await this.fireItemFocus(cur.row, col)
-    })
+    }, this)
     return 1
   }
   async n_setredraw(): Promise<number> {

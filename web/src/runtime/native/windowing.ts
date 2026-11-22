@@ -194,6 +194,7 @@ async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: bool
       /* a DataWindow without a current cell takes no focus */
     }
   }
+  w.resolveReady()
   if (modal) {
     rt.modalWaiting++
     rt.yieldQueue()
@@ -226,7 +227,18 @@ export async function closeWindow(rt: Runtime, w: PBObject): Promise<number> {
   return 1
 }
 
+/**
+ * A close the user asks for (close box, tab, toolbar Exit): it waits until the window has finished opening.  In PowerBuilder the user
+ * cannot close a window while its Open script runs; closing it half-way left the rest of Open and its posted ue_newform running on a
+ * closed window (Credit Sale: three "Can not get a DataWindowChild" boxes).  `close(this)` from the window's own script is not delayed.
+ */
+export async function closeByUser(rt: Runtime, w: PBObject): Promise<number> {
+  if (w instanceof NWindow) await Promise.race([w.ready, w.closed, new Promise((r) => setTimeout(r, 20000))])
+  return closeWindow(rt, w)
+}
+
 export function registerWindowing(rt: Runtime): void {
+  rt.closeWindowByUser = (w) => closeByUser(rt, w)
   rt.closeWindow = (w) => closeWindow(rt, w)
   const def = (name: string, fn: (rt: Runtime, a: unknown[]) => unknown | Promise<unknown>, refs?: number[]) => rt.sys.set(name, refs ? { fn: (r, a) => fn(r, a), refs } : { fn: (r, a) => fn(r, a) })
   def('open', (r, a) => openWin(r, a, false, false), [0])

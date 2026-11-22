@@ -318,3 +318,21 @@ test('a listviewitem local is a ready structure', async () => {
 `)
   assert.equal(await call(rt, 'f_lvi'), 'Bravo3')
 })
+
+test('a posted event of a closed window is dropped, as PowerBuilder discards its queued messages', async () => {
+  const { Runtime } = await import('../src/runtime/interp.ts')
+  const { PBObject } = await import('../src/runtime/object.ts')
+  const rt = Object.create(Runtime.prototype) as InstanceType<typeof Runtime>
+  Object.assign(rt, { posted: [], gen: 0, draining: false, depth: 1, modalWaiting: 0, onError: (e: unknown) => { throw e } })
+  const win = Object.create(PBObject.prototype) as InstanceType<typeof PBObject>
+  Object.assign(win, { destroyed: false, parent: null })
+  const control = Object.create(PBObject.prototype) as InstanceType<typeof PBObject>
+  Object.assign(control, { destroyed: false, parent: win })
+  const ran: string[] = []
+  rt.post(async () => { ran.push('window') }, win)
+  rt.post(async () => { ran.push('control') }, control)
+  rt.post(async () => { ran.push('no target') })
+  win.destroyed = true
+  await rt.flushPosted()
+  assert.deepEqual(ran, ['no target'])
+})

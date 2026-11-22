@@ -650,7 +650,7 @@ export class WinView {
       this.ttlEl.textContent = str(w, 'title')
       if (w.name.toLowerCase() === 'w_main') setNativeTitle(this.ttlEl.textContent)
       const cls = tb.querySelector<HTMLElement>('.cls')
-      if (cls) cls.onclick = () => void ui.rt.closeWindow(w)
+      if (cls) cls.onclick = () => void ui.rt.closeWindowByUser(w)
       this.el.appendChild(tb)
       const previous = w.onProp
       const onProp = (n: string) => {
@@ -1016,7 +1016,7 @@ export class WinView {
         const spot = iconPos('exit!')
         if (spot !== null) pic.style.backgroundPosition = `-${spot * 16}px 0`
         b.appendChild(pic)
-        b.onclick = () => void this.ui.rt.closeWindow(sheet)
+        b.onclick = () => void this.ui.rt.closeWindowByUser(sheet)
         tool.appendChild(b)
       }
       this.ui.toolbarRendered(tool)

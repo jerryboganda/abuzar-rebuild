@@ -405,6 +405,9 @@ export class NControl extends PBObject {
 export class NWindow extends NControl {
   closed: Promise<void>
   resolveClosed!: () => void
+  /** the window's Open sequence (Open, its posted events, the first tab page and focus) has finished: see closeByUser */
+  ready: Promise<void>
+  resolveReady!: () => void
   isOpen = false
   closing = false
   returnValue: unknown = null
@@ -416,6 +419,7 @@ export class NWindow extends NControl {
   constructor(rt: Runtime, className: string, native = 'window') {
     super(rt, className, native)
     this.closed = new Promise<void>((r) => (this.resolveClosed = r))
+    this.ready = new Promise<void>((r) => (this.resolveReady = r))
   }
   override getNative(name: string): unknown {
     if (name === 'parentwindow') return this.parent

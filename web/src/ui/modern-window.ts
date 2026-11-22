@@ -316,7 +316,7 @@ export function applyModernWindow(view: WinView): boolean {
     button.setAttribute('aria-label', 'Close window')
     // a mouse control, as the Classic title-bar cross: no extra tab stop, and Enter in the window never closes it
     button.tabIndex = -1
-    button.onclick = () => { void view.ui.rt.closeWindow(view.w).catch((error) => view.ui.rt.onError(error)) }
+    button.onclick = () => { void view.ui.rt.closeWindowByUser(view.w).catch((error) => view.ui.rt.onError(error)) }
     close.replaceWith(button)
   }
   useSourceTabOrder(view.el, view.client, [...view.ctlViews].map(([control, binding]) => ({ element: binding.el, taborder: control.props?.get('taborder') })))

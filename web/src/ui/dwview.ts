@@ -17,7 +17,7 @@ import { commitDwValue, dwEditAutoSelect, dwEditorText, dwEditText, dwMultiline,
 import type { DwEditResult } from '../dw/edit.ts'
 import { choiceProperty, choiceSignature, choiceStyle, codeTable, sameChoiceValue, radioCaption, choiceEditText } from '../dw/choices.ts'
 import type { DwChoice, DwChoiceBinding, DwChoices } from '../dw/choices.ts'
-import { DwChoiceEditor } from './dw-choice-editor.ts'
+import { ChoiceStale, DwChoiceEditor } from './dw-choice-editor.ts'
 import { numericSpin, stepNumber } from './numeric-spin.ts'
 import { lookupSurfaceIssues } from './data-surfaces.ts'
 import type { DataSurface } from './data-surfaces.ts'
@@ -2003,7 +2003,7 @@ export class DwView {
     }
     const guard = async () => {
       if (!configured() || !(await this.canEdit(model, object, row)) || !configured()) {
-        throw new Error('The record, field or choice configuration changed. The entry was not applied.')
+        throw new ChoiceStale('The record, field or choice configuration changed. The entry was not applied.')
       }
     }
     const key = async (event: KeyboardEvent): Promise<boolean> => {

@@ -4,6 +4,13 @@ import type { DwEditResult } from '../dw/edit.ts'
 import { toStr } from '../runtime/values.ts'
 import { DwChoicePopup } from './dw-choice-popup.ts'
 
+/**
+ * The field is no longer the one being edited (the screen's script moved the cursor, the row changed, the column became read-only)
+ * or its choice configuration changed.  While the choices are still loading this only means the editor is out of date: it closes
+ * without a message.  When a value is being applied it is reported, because the user's entry was not taken.
+ */
+export class ChoiceStale extends Error {}
+
 interface ChoiceEditorHost {
   value: unknown
   checkbox?: boolean
@@ -460,6 +467,11 @@ export class DwChoiceEditor {
         'No choices are available. The stored value has not changed.'))
     } catch (error) {
       if (!this.active()) return
+      if (error instanceof ChoiceStale) {
+        this.cancel()
+        this.host.close(false)
+        return
+      }
       this.failed = true
       this.placeholder('Choices unavailable - press Enter to retry')
       this.element.setAttribute('aria-invalid', 'true')

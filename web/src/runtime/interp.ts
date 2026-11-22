@@ -155,7 +155,7 @@ export class Runtime {
   globals = new Map<string, unknown>()
   gtypes = new Map<string, string>()
   ui: UiHost | null = null
-  posted: (() => Promise<void>)[] = []
+  posted: { fn: () => Promise<void>; target?: PBObject }[] = []
   /** statement executor for embedded SQL (set by the data layer) */
   sql: ((rt: Runtime, f: Frame, st: Extract<Stmt, { k: 'sql' }>) => Promise<void>) | null = null
   /** translated retrieve statement of a DataWindow (data/sql); set by the application shell */
@@ -163,6 +163,8 @@ export class Runtime {
   windowInstances = new Map<string, PBObject>() // open window by class name (global window variables such as w_main)
   dwCatalog: import('../dw/def.ts').DwCatalog | null = null
   closeWindow: (w: PBObject) => Promise<number> = async () => 0
+  /** a close asked for by the user: waits for the window to finish opening (runtime/native/windowing.ts closeByUser) */
+  closeWindowByUser: (w: PBObject) => Promise<number> = async (w) => this.closeWindow(w)
   /** translated embedded statement by normalised original text (data/sql) */
   sqlStmt: ((key: string) => { sql: string; params: string[]; into?: string[] } | undefined) | null = null
   /** opens a server session for a transaction object */
@@ -408,7 +410,7 @@ export class Runtime {
       case 'postevent': {
         const ev = String(args[0]).replace(/!$/, '').toLowerCase()
         if (name === 'postevent') {
-          this.post(async () => void (await this.callMethod(obj, ev, args.slice(1))))
+          this.post(async () => void (await this.callMethod(obj, ev, args.slice(1))), obj)
           return 1
         }
         const r = await this.callMethod(obj, ev, args.slice(1), caller)
@@ -440,8 +442,13 @@ export class Runtime {
    */
   private draining = false
   private gen = 0
-  post(fn: () => Promise<void>): void {
-    this.posted.push(fn)
+  /**
+   * `target`: the object the posted event belongs to.  PowerBuilder drops a queued message whose window has been closed meanwhile
+   * (Cash Sale's Credit button opens a Credit Sale; closing it before its posted ue_newform ran used to run that event on the closed
+   * window, which then failed every GetChild: three "Can not get a DataWindowChild" boxes).
+   */
+  post(fn: () => Promise<void>, target?: PBObject): void {
+    this.posted.push({ fn, target })
     // A posted event only runs after the current PowerScript event has
     // returned (PowerBuilder's message queue).  A bare setTimeout would fire
     // while the window's Open is still awaiting a query, interleaving
@@ -457,7 +464,8 @@ export class Runtime {
   async drainPosted(g = this.gen): Promise<void> {
     try {
       while (g === this.gen && this.posted.length) {
-        const fn = this.posted.shift()!
+        const { fn, target } = this.posted.shift()!
+        if (target && gone(target)) continue
         try {
           await fn()
         } catch (e) {
@@ -1074,7 +1082,7 @@ export class Runtime {
         return null
       }
       if (post) {
-        this.post(async () => void (await run()))
+        this.post(async () => void (await run()), recv instanceof PBObject ? recv : undefined)
         return 1
       }
       return run()
@@ -1089,7 +1097,7 @@ export class Runtime {
       const entry = this.pick(entries, e.a.length)!
       const args = await this.evalArgs(e.a, f, entry.r)
       if (post) {
-        this.post(async () => void (await this.runEntry(self!, entry, args)))
+        this.post(async () => void (await this.runEntry(self!, entry, args)), self!)
         return 1
       }
       return this.runEntry(self!, entry, args, f)
@@ -1102,7 +1110,7 @@ export class Runtime {
         for (let i = 0; i < e.a.length; i++) args.push(REF_METHODS[name]?.includes(i) ?
           this.refOf(e.a[i], f) : await this.eval(e.a[i], f))
         if (post) {
-          this.post(async () => void (await this.callNative(self, name, args)))
+          this.post(async () => void (await this.callNative(self, name, args)), self)
           return 1
         }
         return this.callNative(self, name, args, f)
@@ -1127,7 +1135,7 @@ export class Runtime {
         const entry = this.pick(ents, e.a.length)!
         const args = await this.evalArgs(e.a, f, entry.r)
         if (post) {
-          this.post(async () => void (await this.runEntry(holder, entry, args)))
+          this.post(async () => void (await this.runEntry(holder, entry, args)), holder)
           return 1
         }
         return this.runEntry(holder, entry, args, f)
@@ -1148,7 +1156,7 @@ export class Runtime {
       if (ents.length) {
         const entry = this.pick(ents, args.length)!
         if (post) {
-          this.post(async () => void (await this.runEntry(self, entry, args, f)))
+          this.post(async () => void (await this.runEntry(self, entry, args, f)), self)
           return 1
         }
         return this.runEntry(self, entry, args, f)
@@ -1171,4 +1179,10 @@ export class Runtime {
   isNullValue(v: unknown): boolean {
     return isNull(v)
   }
+}
+
+/** the object, or the window or control it belongs to, has been destroyed (its window was closed) */
+function gone(o: PBObject): boolean {
+  for (let p: PBObject | null = o; p; p = p.parent) if (p.destroyed) return true
+  return false
 }

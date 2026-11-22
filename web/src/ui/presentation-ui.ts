@@ -346,7 +346,7 @@ export class PresentationUi extends DomUi {
     const close = document.createElement('button')
     close.textContent = '\u00d7'
     close.onclick = () => {
-      if (!this.hasModal()) void this.rt.closeWindow(window).catch((error) => this.rt.onError(error))
+      if (!this.hasModal()) void this.rt.closeWindowByUser(window).catch((error) => this.rt.onError(error))
     }
     container.append(tab, close)
     this.shell.querySelector('.presentation-tabs')!.append(container)

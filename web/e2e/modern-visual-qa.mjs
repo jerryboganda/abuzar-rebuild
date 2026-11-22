@@ -35,7 +35,7 @@ await page.evaluate(() => {
   window.__boxes = []
   const ui = window.rt.ui
   const shown = ui.messageBox.bind(ui)
-  ui.messageBox = (title, text, ...rest) => { window.__boxes.push(`${title}: ${String(text).replace(/\s+/g, ' ').slice(0, 200)}`); return shown(title, text, ...rest) }
+  ui.messageBox = (title, text, ...rest) => { window.__boxes.push(`${title}: ${String(text).replace(/\s+/g, ' ').slice(0, 200)}` + (window.__boxWhere ? ` [open: ${[...window.rt.ui.views.keys()].map((w) => w.className + ':' + (w.props.get('title') || '')).join(', ')}]` : '')); return shown(title, text, ...rest) }
   window.__answer = () => {
     for (const bar of document.querySelectorAll('.msgbox .btns, .presentation-runtime-dialog[open]')) {
       const buttons = [...bar.querySelectorAll('button')]
@@ -44,7 +44,7 @@ await page.evaluate(() => {
     }
   }
   window.closeLikeUser = async (w) => {
-    const closing = window.rt.closeWindow(w).catch(() => {})
+    const closing = (window.rt.closeWindowByUser ?? window.rt.closeWindow)(w).catch(() => {})
     for (let i = 0; i < 4; i++) {
       const done = await Promise.race([closing.then(() => true), new Promise((r) => setTimeout(() => r(false), 400))])
       if (done) return
@@ -192,7 +192,12 @@ const closeAll = async () => page.evaluate(async () => {
     await new Promise((r) => setTimeout(r, 150))
     if ([...window.rt.windowInstances.keys()].filter((n) => n !== 'w_main').length === 0 && !document.querySelector('.msgbox, .presentation-runtime-dialog[open]')) break
   }
-  return [...window.rt.windowInstances.keys()].filter((n) => n !== 'w_main')
+  // an instance that lost its name to a second one of the same class (two w_sale) is closed through its view
+  for (const w of [...window.rt.ui.views.keys()]) {
+    if (w.className === 'w_main' || [...window.rt.windowInstances.values()].includes(w)) continue
+    try { await Promise.race([window.closeLikeUser(w), new Promise((r) => setTimeout(r, 3000))]) } catch { /* next */ }
+  }
+  return [...window.rt.ui.views.keys()].map((w) => w.className).filter((n) => n !== 'w_main')
 }).catch((e) => ['close failed: ' + e])
 
 await page.screenshot({ path: `${out}/000-home.png` })
@@ -210,7 +215,7 @@ for (const leaf of todo) {
   if (n < Number(process.env.QA_FROM ?? 0)) continue
   current = leaf.path
   const id = String(n).padStart(3, '0') + '-' + leaf.path.replace(/&/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 90)
-  await page.evaluate(() => { window.__boxes.length = 0 })
+  await page.evaluate((w) => { window.__boxes.length = 0; window.__boxWhere = w }, process.env.QA_BOXWHERE === '1')
   const before = errors.length
   const t0 = Date.now()
   const res = await page.evaluate(async (pa) => {
@@ -257,12 +262,66 @@ for (const leaf of todo) {
     console.log(`  run: ${steps.join(' > ')} | boxes=${runBoxes.join(' / ').slice(0, 300)} | preview: ${preview}`)
     report.push({ id: id + '-run', path: leaf.path, steps, boxes: runBoxes, preview, errors: errors.slice(before).map((e) => e.text) })
   }
+  // QA_ELEMENTS=1: every button, tab, check box, radio button and drop-down toggle of the screen is clicked in turn; after each click
+  // the errors and message boxes are recorded and any dialog the click opened is closed again (Save/Delete/Post/Print/Close are not
+  // clicked: they write data, print or end the screen)
+  const clicks = []
+  if (process.env.QA_ELEMENTS === '1' && !/^&?Reports/.test(leaf.path)) {
+    // window objects, not names: two instances of one class (Cash Sale's Card button opens Credit Sale, both w_sale) share a name
+    const home = await page.evaluate(() => { window.__home = new Set(window.rt.ui.views.keys()); return window.__home.size })
+    const count = await page.evaluate(() => {
+      const vis = (el) => el.offsetParent !== null && el.getBoundingClientRect().width > 0
+      const w = [...document.querySelectorAll('.pbwin')].filter((x) => vis(x) && x.dataset.win !== 'w_main').at(-1)
+      if (!w) return 0
+      // the screen's own command bar (New, Add item, First ... Last, List) sits in the workspace header, outside the window
+      const els = [...w.querySelectorAll('button, [role=tab], input[type=checkbox], input[type=radio], .dw-choice-toggle, summary, [role=button]'), ...document.querySelectorAll('.toolbar .tb')].filter(vis)
+      els.forEach((e, i) => { e.dataset.qaI = String(i) })
+      return els.length
+    })
+    const skipEl = /^(save|delete|del|post|unpost|exit|close|quit|print|remove|log ?off|ok|×|x|✕)$|^(save|delete|post|print|close|exit)\b/i
+    for (let i = 0; i < Math.min(count, 120); i++) {
+      const name = await page.evaluate((k) => {
+        const el = document.querySelector(`[data-qa-i="${k}"]`)
+        if (!el || el.offsetParent === null || el.disabled) return null
+        return (el.getAttribute('aria-label') || el.title || el.textContent || el.value || el.className).replace(/&/g, '').replace(/\s+/g, ' ').trim().slice(0, 40) || el.tagName
+      }, i).catch(() => null)
+      if (name === null || skipEl.test(name) || (process.env.QA_SKIP && new RegExp(process.env.QA_SKIP, 'i').test(name))) continue
+      const e0 = errors.length
+      current = `${leaf.path} > ${name}`
+      await page.evaluate((k) => document.querySelector(`[data-qa-i="${k}"]`)?.click(), i).catch(() => {})
+      await settle(6)
+      const side = await page.evaluate(async () => {
+        const seen = []
+        for (let r = 0; r < 8; r++) {
+          const box = [...document.querySelectorAll('.msgbox, .presentation-runtime-dialog[open]')].find((b) => b.offsetParent !== null || b.open)
+          if (box) { seen.push('box: ' + box.innerText.replace(/\s+/g, ' ').slice(0, 120)); window.__answer(); await new Promise((res) => setTimeout(res, 500)); continue }
+          const extra = [...window.rt.ui.views.keys()].filter((w) => !window.__home.has(w))
+          if (!extra.length) break
+          for (const w of extra.reverse()) {
+            seen.push('opened ' + w.className)
+            const view = window.rt.ui.views.get(w)
+            const cancel = view && [...view.el.querySelectorAll('button')].find((b) => b.offsetParent && /^(cancel|close|exit)$/i.test(b.textContent.trim()))
+            if (cancel) cancel.click(); else await Promise.race([window.closeLikeUser(w), new Promise((res) => setTimeout(res, 3000))])
+            await new Promise((res) => setTimeout(res, 500))
+          }
+        }
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+        return [...new Set(seen)]
+      }).catch((e) => ['side failed ' + e])
+      clicks.push({ el: name, side, errors: errors.slice(e0).map((e) => e.text) })
+      const alive = await page.evaluate(() => [...window.__home].every((w) => window.rt.ui.views.has(w))).catch(() => false)
+      if (!alive) { clicks.push({ el: '(screen closed by ' + name + ')', side: [], errors: [] }); break }
+    }
+    current = leaf.path
+    const bad = clicks.filter((c) => c.errors.length)
+    console.log(`  elements: ${clicks.length} clicked, ${bad.length} with errors${bad.length ? ': ' + bad.map((c) => c.el + ' -> ' + c.errors[0]).join(' / ').slice(0, 400) : ''}`)
+  }
   const audit = await page.evaluate(() => window.__audit()).catch((e) => ['audit failed: ' + e])
   const boxes = await page.evaluate(() => window.__boxes.splice(0))
   const open = await page.evaluate(() => [...window.rt.windowInstances.keys()].filter((x) => x !== 'w_main'))
   const left = await closeAll()
   await settle(4)
-  const entry = { id, path: leaf.path, clicked: res, ms, windows: open, boxes, audit, errors: errors.slice(before).map((e) => e.text), leftOpen: left }
+  const entry = { id, path: leaf.path, clicked: res, ms, windows: open, boxes, audit, clicks, errors: errors.slice(before).map((e) => e.text), leftOpen: left }
   report.push(entry)
   writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 1))
   console.log(`${id} ${res} ${ms}ms win=[${open.join(',')}] boxes=${boxes.length} issues=${Math.max(0, audit.length - open.length)} errors=${entry.errors.length}${left.length ? ' LEFT ' + left.join(',') : ''}`)
