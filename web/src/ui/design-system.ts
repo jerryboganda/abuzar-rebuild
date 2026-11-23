@@ -541,7 +541,7 @@ dialog.presentation-compatibility-dialog[open]:not(.ds-report-criteria) {max-hei
 .modern-window .window-fields.has-grid > .window-option > span {background:var(--p-surface);padding-inline:2px;}
 /* list boxes: the chosen lines in the theme's selection colour (the browser's blue on grey text was unreadable) */
 .modern-window select.ctl[multiple] option:checked,.modern-window select.ctl[size] option:checked {background:var(--p-selected) linear-gradient(0deg,var(--p-selected),var(--p-selected));color:var(--p-text);}
-.modern-window select.ctl[multiple]:focus option:checked,.modern-window select.ctl[size]:focus option:checked {background:var(--p-accent) linear-gradient(0deg,var(--p-accent),var(--p-accent));color:var(--p-on-accent);}
+.modern-window select.ctl[multiple]:focus option:checked,.modern-window select.ctl[size]:focus option:checked {background:var(--p-accent) linear-gradient(0deg,var(--p-accent),var(--p-accent));color:var(--p-on-accent);-webkit-text-fill-color:var(--p-on-accent);font-weight:600;}
 .modern-window select.ctl[multiple],.modern-window select.ctl[size] {scrollbar-width:thin;scrollbar-color:var(--p-faint) transparent;}
 /* a field whose caption is hidden shows no lone required mark */
 .modern-surface .surface-field > .surface-label.presentation-visually-hidden + .surface-required {display:none!important;}

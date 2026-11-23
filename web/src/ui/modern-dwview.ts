@@ -394,6 +394,10 @@ export class ModernDwView extends DwView {
       const forms = [...transaction.children].filter((child) => child.classList.contains('entry-form'))
       const role = surface.kind === 'grid' ? 'grid' : control === forms[0] ? 'header' : control === forms.at(-1) ? 'footer' : null
       if (role) simplified = transactionLayout(role, surface.name, transaction.dataset.win ?? '', surface.fields.map((field) => field.object), !!surface.captions?.length)
+      // only the window's first grid holds its lines: a second grid (Refused Sales' stock per godown) carried the same "Lines" heading
+      if (simplified && role === 'grid' && control !== [...transaction.children].find((child) => child.classList.contains('entry-grid'))) {
+        simplified = { ...simplified, heading: '', hint: '' }
+      }
     }
     if (simplified) applySimplifiedLayout(simplified, body, this.simplified, model.colNames[model.col - 1]?.toLowerCase())
     // Approved design: captions read without a trailing colon on every Modern surface (the DataWindow text is otherwise unchanged).
