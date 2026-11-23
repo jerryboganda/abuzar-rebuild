@@ -1,3 +1,4 @@
+import { fitCriteria } from './criteria-fold.ts'
 import { DomUi } from './dom-ui.ts'
 import type { Runtime } from '../runtime/interp.ts'
 import { NWindow } from '../runtime/native/controls.ts'
@@ -259,13 +260,20 @@ export class PresentationUi extends DomUi {
       // ordinary centred dialog.  The report viewer may come to the front only after its criteria dialog was created, so the
       // decision is taken again shortly after.
       if (window.name.startsWith('w_arg_')) {
+        // criteria taller than the docked card go into two columns (once their lists are filled and the card has its size;
+        // again on every docking, since a slow report comes to the front after the first tries)
+        const fold = () => {
+          const fields = element.querySelector<HTMLElement>('.modern-window.pbwin > .client > .window-fields')
+          if (fields && element.classList.contains('ds-report-criteria')) fitCriteria(fields)
+        }
         const dock = () => {
           if (!element.isConnected && element.classList.contains('ds-report-criteria')) return
           const report = this.selected?.name === 'w_reviewreport' || [...this.views.values()].some((item) => item.w.name === 'w_reviewreport' && item.el.classList.contains('active'))
           element.classList.toggle('ds-report-criteria', report)
-          if (report) this.syncReportTop()
+          if (report) { this.syncReportTop(); requestAnimationFrame(fold) }
         }
         dock(); requestAnimationFrame(dock); setTimeout(dock, 250); setTimeout(dock, 800)
+        setTimeout(fold, 400); setTimeout(fold, 1200); setTimeout(fold, 2500)
         // the command bar and the tab strip settle while the report opens behind the dialog: follow them until the dialog closes
         const bar = this.mdi?.el.querySelector<HTMLElement>('.mh-toolbar')
         const strip = this.shell.querySelector<HTMLElement>('.presentation-tabs')

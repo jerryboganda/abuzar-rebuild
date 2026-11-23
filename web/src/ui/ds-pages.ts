@@ -376,6 +376,10 @@ dialog.presentation-compatibility-dialog[open].ds-report-criteria > .pbwin {marg
 dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin {width:100%!important;max-width:none!important;box-shadow:var(--p-shadow-lg);}
 /* the criteria keep the proportions of the original dialog inside the wide card (a 500px form is not stretched over 1,400px) */
 dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin > .client > .window-fields {max-width:64em;}
+/* criteria folded into two columns (criteria-fold.ts) use the card's whole width */
+dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin > .client > .window-fields.criteria-folded {max-width:none;}
+dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin > .client > .window-fields.criteria-tight > fieldset.window-frame {margin-bottom:0;}
+dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin > .client:has(> .window-fields.criteria-tight) > .window-actions {margin-top:8px!important;}
 /* the docked card has the height under the report header only: the source's empty spacing rows are drawn at 70% (every row still
    grows to its content), so the last criteria (End Date, Inv. Type) are on screen instead of under the scroll fade */
 dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin > .client > .window-fields {--grid-density:.7;}
