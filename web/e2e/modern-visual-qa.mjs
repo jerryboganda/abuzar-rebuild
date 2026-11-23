@@ -355,18 +355,35 @@ for (const leaf of todo) {
       current = `${leaf.path} > field ${label}`
       if (process.env.QA_TRACE) console.log('  . field ' + label)
       // the screen redraws after an entry (the tags go with the old elements): tag again and find this field by its name
-      const f = (await tagFields()).find((x) => x.label === label)
+      let f = (await tagFields()).find((x) => x.label === label)
       if (!f) { entries.push({ field: label, side: ['no longer shown'], errors: [] }); continue }
-      const el = page.locator(`[data-qa-f="${f.i}"]`).first()
+      let el = page.locator(`[data-qa-f="${f.i}"]`).first()
       if (!(await el.isVisible().catch(() => false))) { entries.push({ field: label, side: ['not visible'], errors: [] }); continue }
       try {
-        await el.click({ timeout: 3000 })
+        // Tab out of the previous cell may move the focus into this one, which then turns into its editor: tag again and retry once
+        const clicked = await el.click({ timeout: 1500 }).then(() => true, () => false)
+        if (!clicked) {
+          await page.waitForTimeout(500)
+          f = (await tagFields()).find((x) => x.label === label) ?? f
+          el = page.locator(`[data-qa-f="${f.i}"]`).first()
+          await el.click({ timeout: 3000 })
+        }
         await page.waitForTimeout(300)
         if (f.tag === 'select') await page.keyboard.press('ArrowDown')
         else await page.keyboard.type(f.date ? '01/01/2026' : '1', { delay: 20 })
         await page.keyboard.press('Tab')
       } catch (e) {
-        entries.push({ field: f.label, side: ['not clickable: ' + String(e?.message ?? e).split('\n')[0].slice(0, 120)], errors: [] })
+        // what is on top of the field's centre: the element that takes the click instead
+        const cover = await page.evaluate((k) => {
+          const el = document.querySelector(`[data-qa-f="${k}"]`)
+          if (!el) return 'gone'
+          const r = el.getBoundingClientRect()
+          const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+          const path = []
+          for (let p = top; p && path.length < 4; p = p.parentElement) path.push(p.tagName.toLowerCase() + (p.className ? '.' + String(p.className).split(' ').slice(0, 2).join('.') : '') + (p.dataset?.obj ? `[${p.dataset.obj}]` : ''))
+          return `at ${[r.left, r.top, r.width, r.height].map(Math.round).join(',')} under ${path.join(' < ')}`
+        }, f.i).catch(() => '')
+        entries.push({ field: f.label, side: ['not clickable: ' + String(e?.message ?? e).split('\n')[0].slice(0, 120) + ' ' + cover], errors: [] })
         continue
       }
       await settle(5)
