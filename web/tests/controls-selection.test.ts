@@ -137,3 +137,29 @@ test('sorted native listboxes retain selection identity across insertion, deleti
   assert.equal(await rt.callMethod(control, 'selectedindex', []), 0)
   assert.equal(await rt.callMethod(control, 'totalitems', []), 0)
 })
+
+test('FindItem matches the start of an item, ignores case, searches after the given index, and stays fast on a list filled row by row', async () => {
+  const rt = new Runtime({ load: async () => undefined })
+  registerWindowing(rt)
+  const control = await rt.instantiate('dropdownlistbox')
+  for (const text of ['Bravo', 'alpha', 'ALPINE']) await rt.callMethod(control, 'additem', [text])
+  assert.equal(await rt.callMethod(control, 'finditem', ['alp', 0]), 2)
+  assert.equal(await rt.callMethod(control, 'finditem', ['ALP', 2]), 3)
+  assert.equal(await rt.callMethod(control, 'finditem', ['zulu', 0]), -1)
+  await rt.callMethod(control, 'deleteitem', [2])
+  assert.equal(await rt.callMethod(control, 'finditem', ['alpha', 0]), -1)
+  assert.equal(await rt.callMethod(control, 'finditem', ['alp', 0]), 2)
+  // the list view's filter values: FindItem then InsertItem at 1 for every retrieved row, then Sorted
+  await rt.callMethod(control, 'reset', [])
+  const t0 = Date.now()
+  for (let row = 1; row <= 20000; row++) {
+    const value = String(row % 15000)
+    if ((await rt.callMethod(control, 'finditem', [value, 0])) as number <= 0) await rt.callMethod(control, 'insertitem', [value, 1])
+  }
+  control.pbSet('sorted', true)
+  for (let row = 1; row <= 2000; row++) await rt.callMethod(control, 'insertitem', ['x' + row, 1])
+  assert.ok(Date.now() - t0 < 8000, `took ${Date.now() - t0} ms`)
+  assert.equal(await rt.callMethod(control, 'totalitems', []), 17000)
+  assert.equal(await rt.callMethod(control, 'text', [1]), '0')
+  assert.equal(await rt.callMethod(control, 'text', [17000]), 'x999')
+})

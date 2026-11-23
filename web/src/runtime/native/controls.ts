@@ -9,6 +9,20 @@ import { numericDateMask, parseMaskedDateTime } from '../sysfuncs.ts'
 
 /** the automation object of an OLE control whose server is not installed here (fingerprint reader, ActiveX viewers): every call fails with -1,
  *  so the window opens and the device features report an error instead of the whole window failing */
+/** a prefix tree node: how many items pass through it (start with the text leading here) and the next characters */
+type PrefixNode = { c: number; k?: Map<string, PrefixNode> }
+function prefixCount(root: PrefixNode, text: string, by: number): void {
+  let node = root
+  node.c += by
+  for (const ch of text) {
+    node.k ??= new Map()
+    let next = node.k.get(ch)
+    if (!next) node.k.set(ch, (next = { c: 0 }))
+    next.c += by
+    node = next
+  }
+}
+
 class OleStub implements Member {
   pbGet(): unknown {
     return null
@@ -27,7 +41,18 @@ export class NControl extends PBObject {
     super(rt, className, native)
   }
   changed(): void {
+    this.soon = false
     for (const l of this.listeners) l()
+  }
+  private soon = false
+  /** a list's items changed: drawn once the script yields (a script that fills a list row by row, like the list view's filter values
+   *  from every retrieved row, would otherwise redraw the whole list for each item, quadratic in the rows) */
+  changedSoon(): void {
+    if (this.soon) return
+    this.soon = true
+    setTimeout(() => {
+      if (this.soon) this.changed()
+    }, 0)
   }
   override setNative(name: string, value: unknown): void {
     super.setNative(name, value)
@@ -244,13 +269,18 @@ export class NControl extends PBObject {
     }
     return a
   }
+  /** the item array and its length as last left sorted: an item added to that list is placed by a binary search instead of sorting it all again */
+  private sortedAs: { a: unknown[]; n: number } | undefined
   private sortItems(inserted = -1): number {
     if (!['listbox', 'dropdownlistbox'].includes(this.native) || this.props.get('sorted') !== true) return inserted
+    const a = this.items().a
     const selected = toNum(this.props.get('_selected') ?? 0) - 1
-    const entries = this.items().a.map((value, index) => ({ value, index }))
-    entries.sort((a, b) => compareLabels(a.value, b.value))
-    this.items().a.splice(0, this.items().a.length, ...entries.map((entry) => entry.value))
+    this.lowerIndex = undefined
+    const entries = a.map((value, index) => ({ value, index }))
+    entries.sort((x, y) => compareLabels(x.value, y.value))
+    a.splice(0, a.length, ...entries.map((entry) => entry.value))
     this.props.set('_selected', entries.findIndex((entry) => entry.index === selected) + 1)
+    this.sortedAs = { a, n: a.length }
     return entries.findIndex((entry) => entry.index === inserted)
   }
   // ---- list views (the service category chooser): items are listviewitem structures, a picture is read from the file the script just wrote
@@ -291,30 +321,55 @@ export class NControl extends PBObject {
   async n_additem(t: unknown): Promise<number> {
     if (t instanceof PBStruct) {
       this.lvItems().push(t.copy())
-      this.changed()
+      this.changedSoon()
       return this.lvItems().length
     }
-    this.items().a.push(toStr(t))
-    const index = this.sortItems(this.items().a.length - 1)
-    this.changed()
+    const index = this.place(toStr(t), this.items().a.length)
+    this.changedSoon()
     return index + 1
+  }
+  /** puts one item into the list at `requested` (0-based) or, in a sorted list box, where a stable sort of the list would leave it
+   *  (after the smaller items, among its equals where it was asked for): one binary search and one insert, not a sort of the whole
+   *  list per item. The selection follows its item. Returns the item's final 0-based position. */
+  private place(value: string, requested: number): number {
+    const a = this.items().a
+    const list = ['listbox', 'dropdownlistbox'].includes(this.native)
+    const sorted = list && this.props.get('sorted') === true
+    const known = sorted && this.sortedAs?.a === a && this.sortedAs.n === a.length
+    let at = requested
+    if (known) {
+      let lo = 0, hi = a.length
+      while (lo < hi) { const m = (lo + hi) >> 1; if (compareLabels(a[m], value) < 0) lo = m + 1; else hi = m }
+      let up = lo, end = a.length
+      while (up < end) { const m = (up + end) >> 1; if (compareLabels(a[m], value) <= 0) up = m + 1; else end = m }
+      at = Math.min(Math.max(requested, lo), up)
+    }
+    if (at === a.length) a.push(value)
+    else a.splice(at, 0, value)
+    this.indexItem(value, true)
+    if (list) {
+      const selected = toNum(this.props.get('_selected') ?? 0)
+      if (selected > at) this.props.set('_selected', selected + 1)
+    }
+    if (known) {
+      this.sortedAs!.n = a.length
+      return at
+    }
+    return sorted ? this.sortItems(at) : at
   }
   async n_insertitem(t: unknown, at: unknown): Promise<number> {
     const index = Math.min(this.items().a.length, Math.max(0, toNum(at) - 1))
-    this.items().a.splice(index, 0, toStr(t))
-    if (['listbox', 'dropdownlistbox'].includes(this.native)) {
-      const selected = toNum(this.props.get('_selected') ?? 0)
-      if (selected > index) this.props.set('_selected', selected + 1)
-    }
-    const position = this.sortItems(index)
-    this.changed()
+    const position = this.place(toStr(t), index)
+    this.changedSoon()
     return ['listbox', 'dropdownlistbox'].includes(this.native) ? position + 1 : this.items().a.length
   }
   async n_deleteitem(at: unknown): Promise<number> {
     const a = this.items().a
     const i = toNum(at) - 1
     if (i < 0 || i >= a.length) return -1
-    a.splice(i, 1)
+    const [gone] = a.splice(i, 1)
+    this.indexItem(gone, false)
+    if (this.sortedAs?.a === a && this.sortedAs.n === a.length + 1) this.sortedAs.n = a.length
     if (['listbox', 'dropdownlistbox'].includes(this.native)) {
       const selected = toNum(this.props.get('_selected') ?? 0)
       if (selected === i + 1) {
@@ -325,11 +380,12 @@ export class NControl extends PBObject {
         }
       } else if (selected > i + 1) this.props.set('_selected', selected - 1)
     }
-    this.changed()
+    this.changedSoon()
     return a.length
   }
   async n_reset(): Promise<number> {
     this.items().a.length = 0
+    if (this.sortedAs?.a === this.items().a) this.sortedAs.n = 0
     this.props.set('_selected', 0)
     if (this.native === 'dropdownlistbox') {
       this.props.set('text', '')
@@ -360,9 +416,32 @@ export class NControl extends PBObject {
     const n = toNum(this.props.get('_selected') ?? 0)
     return n > 0 ? toStr(this.items().a[n - 1]) : ''
   }
+  /** the items lower-cased in a prefix tree kept beside the list: FindItem answers "no item starts with this" in the length of the text
+   *  (the list view's filter values call FindItem for every retrieved row before inserting it: 55,000 codes in Cash Sale Return) */
+  private lowerIndex: { a: unknown[]; n: number; root: PrefixNode } | undefined
+  private prefixTree(): PrefixNode {
+    const a = this.items().a
+    if (this.lowerIndex?.a !== a || this.lowerIndex.n !== a.length) {
+      const root: PrefixNode = { c: 0 }
+      for (const x of a) prefixCount(root, toStr(x).toLowerCase(), 1)
+      this.lowerIndex = { a, n: a.length, root }
+    }
+    return this.lowerIndex.root
+  }
+  /** keeps the FindItem index in step with one item added or removed (anything else rebuilds it on the next FindItem) */
+  private indexItem(value: unknown, added: boolean): void {
+    const ix = this.lowerIndex
+    const a = this.items().a
+    if (!ix || ix.a !== a || ix.n !== (added ? a.length - 1 : a.length + 1)) return
+    prefixCount(ix.root, toStr(value).toLowerCase(), added ? 1 : -1)
+    ix.n = a.length
+  }
   async n_finditem(t: unknown, from: unknown): Promise<number> {
     const a = this.items().a
     const s = toStr(t).toLowerCase()
+    let node: PrefixNode | undefined = this.prefixTree()
+    for (const ch of s) if (!(node = node.k?.get(ch))) return -1
+    if (node.c <= 0) return -1
     for (let i = Math.max(0, toNum(from)); i < a.length; i++) if (toStr(a[i]).toLowerCase().startsWith(s)) return i + 1
     return -1
   }

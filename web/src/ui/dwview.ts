@@ -2002,9 +2002,10 @@ export class DwView {
       return true
     }
     const guard = async () => {
-      if (!configured() || !(await this.canEdit(model, object, row)) || !configured()) {
-        throw new ChoiceStale('The record, field or choice configuration changed. The entry was not applied.')
-      }
+      const why = (): string => !current() ? 'record' : model.row !== row ? `row ${model.row}/${row}` : model.col !== column + 1 ? `column ${model.col}/${column + 1}` : 'choices'
+      if (!configured()) throw new ChoiceStale(`The record, field or choice configuration changed (${why()}). The entry was not applied.`)
+      if (!(await this.canEdit(model, object, row))) throw new ChoiceStale('The field is not editable now. The entry was not applied.')
+      if (!configured()) throw new ChoiceStale(`The record, field or choice configuration changed (${why()}). The entry was not applied.`)
     }
     const key = async (event: KeyboardEvent): Promise<boolean> => {
       await guard()

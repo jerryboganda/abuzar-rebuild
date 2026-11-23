@@ -266,12 +266,13 @@ export function decorateSale(root: HTMLElement, query: Query, toolbar: (stock: s
 
 export const SALE_CSS = `
 /* ---------- Cash Sale (mockup point-of-sale layout) ---------- */
+/* the item search list stays inside the sale lines column (its grid area): wider, it covered the customer panel's Remarks and Cust. Ref No */
 .modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] {display:grid!important;grid-template-columns:minmax(0,1fr) minmax(320px,440px);gap:16px;align-items:start;}
 .modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-form:first-of-type {grid-column:2;grid-row:1;}
 .modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-control:not(.entry-auxiliary):has(.simplified-grid) {grid-column:1;grid-row:1 / span 2;}
 .modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-form ~ .entry-form {grid-column:2;grid-row:2;}
 .modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] {position:relative;}
-.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-auxiliary:not(.hidden) {grid-area:1 / 1 / 3 / 2!important;position:absolute!important;inset:auto!important;left:16px!important;top:var(--ds-aux-top,150px)!important;width:min(1120px,calc(100vw - 80px))!important;height:min(360px,42vh)!important;margin:0!important;z-index:30;border:1px solid var(--p-accent)!important;border-radius:12px;background:var(--p-surface)!important;box-shadow:var(--p-shadow-lg),0 0 0 4px var(--p-glow)!important;overflow:hidden;}
+.modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-auxiliary:not(.hidden) {grid-area:1 / 1 / 3 / 2!important;position:absolute!important;inset:auto!important;left:0!important;top:var(--ds-aux-top,150px)!important;width:100%!important;height:min(360px,42vh)!important;margin:0!important;z-index:30;border:1px solid var(--p-accent)!important;border-radius:12px;background:var(--p-surface)!important;box-shadow:var(--p-shadow-lg),0 0 0 4px var(--p-glow)!important;overflow:hidden;}
 .modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-auxiliary:not(.hidden) > .modern-surface {border:0!important;border-radius:0!important;box-shadow:none!important;height:100%!important;}
 /* the header keeps every field of the original, three to a row, the customer and the date on two columns */
 .modern-entry-window .entry-detail.ds-transaction[data-win=w_sale] > .entry-form:first-of-type .simplified-row {grid-template-columns:repeat(3,minmax(0,1fr))!important;}

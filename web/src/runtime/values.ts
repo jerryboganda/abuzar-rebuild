@@ -355,8 +355,9 @@ export function toStr(v: unknown): string {
   return String(v)
 }
 
+const labelCollator = new Intl.Collator(undefined, { sensitivity: 'base' })
 export function compareLabels(left: unknown, right: unknown): number {
-  return toStr(left).localeCompare(toStr(right), undefined, { sensitivity: 'base' })
+  return labelCollator.compare(toStr(left), toStr(right))
 }
 
 /**

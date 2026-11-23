@@ -318,7 +318,9 @@ export class DwChoiceEditor {
       await this.host.guard()
       if (this.active()) selected = await this.host.details?.(this) ?? null
     } catch (error) {
-      if (this.active()) {
+      if (error instanceof ChoiceStale) {
+        if (this.active()) { this.cancel(); this.host.close(false) }
+      } else if (this.active()) {
         this.host.error(error)
         this.host.status('Choice details could not be opened. Use the basic list or reopen the field.')
       }
@@ -580,6 +582,15 @@ export class DwChoiceEditor {
         }
         return result
       } catch (error) {
+        // the cell lost the edit (focus moved to another row or column, the list changed): the entry is dropped like a PowerBuilder
+        // edit control that is gone, with no application error box
+        if (error instanceof ChoiceStale) {
+          if (this.active()) {
+            this.cancel()
+            this.host.close(false)
+          }
+          return 'rejected'
+        }
         if (this.active()) {
           this.element.setAttribute('aria-invalid', 'true')
           this.host.status('The record or choices changed. Press Escape and reopen the field. The entry was not applied.')

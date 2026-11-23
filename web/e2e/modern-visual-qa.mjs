@@ -51,6 +51,25 @@ await page.evaluate(() => {
       window.__answer()
     }
   }
+  // after a click or an entry: message boxes answered (cautiously) and windows the action opened closed again, until the screen is back
+  window.__side = async () => {
+    const seen = []
+    for (let r = 0; r < 8; r++) {
+      const box = [...document.querySelectorAll('.msgbox, .presentation-runtime-dialog[open]')].find((b) => b.offsetParent !== null || b.open)
+      if (box) { seen.push('box: ' + box.innerText.replace(/\s+/g, ' ').slice(0, 120)); window.__answer(); await new Promise((res) => setTimeout(res, 500)); continue }
+      const extra = [...window.rt.ui.views.keys()].filter((w) => !window.__home.has(w))
+      if (!extra.length) break
+      for (const w of extra.reverse()) {
+        seen.push('opened ' + w.className)
+        const view = window.rt.ui.views.get(w)
+        const cancel = view && [...view.el.querySelectorAll('button')].find((b) => b.offsetParent && /^(cancel|close|exit)$/i.test(b.textContent.trim()))
+        if (cancel) cancel.click(); else await Promise.race([window.closeLikeUser(w), new Promise((res) => setTimeout(res, 3000))])
+        await new Promise((res) => setTimeout(res, 500))
+      }
+    }
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    return [...new Set(seen)]
+  }
   window.__leaves = () => {
     const outList = []
     const clean = (t) => String(t ?? '').replace(/<TAB>.*/g, '').replace(/\t.*/, '').trim()
@@ -290,26 +309,10 @@ for (const leaf of todo) {
       if (name === null || (process.env.QA_WRITE === '1' ? skipWrite : skipEl).test(name) || (process.env.QA_SKIP && new RegExp(process.env.QA_SKIP, 'i').test(name))) continue
       const e0 = errors.length
       current = `${leaf.path} > ${name}`
+      if (process.env.QA_TRACE) console.log('  . click ' + name)
       await page.evaluate((k) => document.querySelector(`[data-qa-i="${k}"]`)?.click(), i).catch(() => {})
       await settle(6)
-      const side = await page.evaluate(async () => {
-        const seen = []
-        for (let r = 0; r < 8; r++) {
-          const box = [...document.querySelectorAll('.msgbox, .presentation-runtime-dialog[open]')].find((b) => b.offsetParent !== null || b.open)
-          if (box) { seen.push('box: ' + box.innerText.replace(/\s+/g, ' ').slice(0, 120)); window.__answer(); await new Promise((res) => setTimeout(res, 500)); continue }
-          const extra = [...window.rt.ui.views.keys()].filter((w) => !window.__home.has(w))
-          if (!extra.length) break
-          for (const w of extra.reverse()) {
-            seen.push('opened ' + w.className)
-            const view = window.rt.ui.views.get(w)
-            const cancel = view && [...view.el.querySelectorAll('button')].find((b) => b.offsetParent && /^(cancel|close|exit)$/i.test(b.textContent.trim()))
-            if (cancel) cancel.click(); else await Promise.race([window.closeLikeUser(w), new Promise((res) => setTimeout(res, 3000))])
-            await new Promise((res) => setTimeout(res, 500))
-          }
-        }
-        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
-        return [...new Set(seen)]
-      }).catch((e) => ['side failed ' + e])
+      const side = await page.evaluate(() => window.__side()).catch((e) => ['side failed ' + e])
       clicks.push({ el: name, side, errors: errors.slice(e0).map((e) => e.text) })
       const alive = await page.evaluate(() => [...window.__home].every((w) => window.rt.ui.views.has(w))).catch(() => false)
       if (!alive) { clicks.push({ el: '(screen closed by ' + name + ')', side: [], errors: [] }); break }
@@ -318,12 +321,70 @@ for (const leaf of todo) {
     const bad = clicks.filter((c) => c.errors.length)
     console.log(`  elements: ${clicks.length} clicked, ${bad.length} with errors${bad.length ? ': ' + bad.map((c) => c.el + ' -> ' + c.errors[0]).join(' / ').slice(0, 400) : ''}`)
   }
+  // QA_FIELDS=1: every editable field and DataWindow cell of the screen is clicked like a user would (mouse), a value is typed
+  // (a date for date fields, "1" otherwise) and Tab is pressed; errors, message boxes and opened windows are recorded and undone
+  const entries = []
+  if (process.env.QA_FIELDS === '1' && !/^&?Reports/.test(leaf.path)) {
+    await page.evaluate(() => { window.__home = new Set(window.rt.ui.views.keys()) })
+    const tagFields = () => page.evaluate(() => {
+      const vis = (el) => el.offsetParent !== null && el.getBoundingClientRect().width > 4 && el.getBoundingClientRect().height > 4
+      const w = [...document.querySelectorAll('.pbwin')].filter((x) => vis(x) && x.dataset.win !== 'w_main').at(-1)
+      if (!w) return []
+      const els = [...w.querySelectorAll('input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([readonly]):not([disabled]), textarea:not([readonly]), select:not([disabled]), .o-column.editable')].filter(vis)
+      // one cell per column of a grid: its first row
+      const seen = new Set()
+      const list = []
+      for (const e of els) {
+        const key = (e.dataset.obj || e.closest('[data-field]')?.dataset.field || e.getAttribute('aria-label') || e.name || e.placeholder || '') + '|' + (e.closest('.dw')?.dataset.obj ?? e.closest('.ctl')?.dataset.obj ?? '')
+        if (e.classList.contains('o-column') && seen.has(key)) continue
+        seen.add(key)
+        list.push(e)
+      }
+      document.querySelectorAll('[data-qa-f]').forEach((e) => e.removeAttribute('data-qa-f'))
+      return list.slice(0, 80).map((e, i) => {
+        e.dataset.qaF = String(i)
+        const label = (e.dataset.obj || e.closest('[data-field]')?.dataset.field || e.getAttribute('aria-label') || e.name || e.placeholder || e.closest('label')?.textContent || e.tagName).replace(/\s+/g, ' ').trim().slice(0, 40)
+        const date = /date|dob|expiry|from|upto|to\b/i.test(label) || /date/i.test(e.type || '')
+        return { i, label, tag: e.tagName.toLowerCase(), date }
+      })
+    })
+    const fields = await tagFields()
+    const labels = [...new Set(fields.map((f) => f.label))]
+    for (const label of labels) {
+      const e0 = errors.length
+      current = `${leaf.path} > field ${label}`
+      if (process.env.QA_TRACE) console.log('  . field ' + label)
+      // the screen redraws after an entry (the tags go with the old elements): tag again and find this field by its name
+      const f = (await tagFields()).find((x) => x.label === label)
+      if (!f) { entries.push({ field: label, side: ['no longer shown'], errors: [] }); continue }
+      const el = page.locator(`[data-qa-f="${f.i}"]`).first()
+      if (!(await el.isVisible().catch(() => false))) { entries.push({ field: label, side: ['not visible'], errors: [] }); continue }
+      try {
+        await el.click({ timeout: 3000 })
+        await page.waitForTimeout(300)
+        if (f.tag === 'select') await page.keyboard.press('ArrowDown')
+        else await page.keyboard.type(f.date ? '01/01/2026' : '1', { delay: 20 })
+        await page.keyboard.press('Tab')
+      } catch (e) {
+        entries.push({ field: f.label, side: ['not clickable: ' + String(e?.message ?? e).split('\n')[0].slice(0, 120)], errors: [] })
+        continue
+      }
+      await settle(5)
+      const side = await page.evaluate(() => window.__side()).catch((e) => ['side failed ' + e])
+      entries.push({ field: f.label, side, errors: errors.slice(e0).map((e) => e.text) })
+      const alive = await page.evaluate(() => [...window.__home].every((w) => window.rt.ui.views.has(w))).catch(() => false)
+      if (!alive) { entries.push({ field: '(screen closed after ' + f.label + ')', side: [], errors: [] }); break }
+    }
+    current = leaf.path
+    const bad = entries.filter((c) => c.errors.length)
+    console.log(`  fields: ${entries.length} typed, ${bad.length} with errors${bad.length ? ': ' + bad.map((c) => c.field + ' -> ' + c.errors[0]).join(' / ').slice(0, 400) : ''}`)
+  }
   const audit = await page.evaluate(() => window.__audit()).catch((e) => ['audit failed: ' + e])
   const boxes = await page.evaluate(() => window.__boxes.splice(0))
   const open = await page.evaluate(() => [...window.rt.windowInstances.keys()].filter((x) => x !== 'w_main'))
   const left = await closeAll()
   await settle(4)
-  const entry = { id, path: leaf.path, clicked: res, ms, windows: open, boxes, audit, clicks, errors: errors.slice(before).map((e) => e.text), leftOpen: left }
+  const entry = { id, path: leaf.path, clicked: res, ms, windows: open, boxes, audit, clicks, entries, errors: errors.slice(before).map((e) => e.text), leftOpen: left }
   report.push(entry)
   writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 1))
   console.log(`${id} ${res} ${ms}ms win=[${open.join(',')}] boxes=${boxes.length} issues=${Math.max(0, audit.length - open.length)} errors=${entry.errors.length}${left.length ? ' LEFT ' + left.join(',') : ''}`)
