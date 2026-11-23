@@ -44,17 +44,7 @@ export function foldCriteria(fields: HTMLElement): boolean {
     const taller = Math.max(running, total - running)
     if (taller < best) { best = taller; split = index }
   }
-  const shift = blocks[split].start - blocks[0].start
-  for (const block of blocks.slice(split)) {
-    for (const cell of block.members) {
-      const [r0, r1] = cell.rows!, [c0, c1] = cell.cols!
-      cell.element.style.gridRow = `${r0 - shift} / ${r1 - shift}`
-      cell.element.style.gridColumn = `${c0 + tracks + 1} / ${(c1 < 0 ? tracks + 1 : c1) + tracks + 1}`
-    }
-  }
-  fields.style.setProperty('--grid-columns', `${columns} minmax(16px,.05fr) ${columns}`)
-  // the rows the moved blocks left behind would keep their minimum height under the shorter column: the template ends at the last used row
-  const used = Math.max(...cells.map((cell) => Number(cell.element.style.gridRow.split('/')[1])))
+  // the template's row tracks (it starts with an `auto` track per unplaced, hidden control); track n is grid line n to n + 1
   const rows: string[] = []
   let depth = 0, token = ''
   for (const ch of fields.style.getPropertyValue('--grid-rows').trim()) {
@@ -63,7 +53,26 @@ export function foldCriteria(fields: HTMLElement): boolean {
     if (ch === ' ' && depth === 0) { if (token) rows.push(token); token = '' } else token += ch
   }
   if (token) rows.push(token)
-  if (rows.length >= used - 1) fields.style.setProperty('--grid-rows', rows.slice(0, used - 1).join(' '))
+  const moved = blocks.slice(split), from = moved[0].start, to = moved[moved.length - 1].end
+  if (rows.length < to - 1) return why('row template')
+  // the later blocks go into a grid of their own beside the earlier ones: they keep their own row sizes instead of stretching the
+  // rows of the first column (two tall Term fields in short rows pushed the customer list down)
+  const column = document.createElement('div')
+  column.className = 'window-fields has-grid criteria-fold-column'
+  column.style.setProperty('--grid-columns', columns)
+  column.style.setProperty('--grid-rows', rows.slice(from - 1, to - 1).join(' '))
+  column.style.cssText += `;grid-column:${tracks + 2} / ${2 * tracks + 2};grid-row:${blocks[0].start} / ${from};align-self:start;margin:0;padding:0;display:grid;min-width:0`
+  for (const block of moved) {
+    for (const cell of block.members) {
+      const [r0, r1] = cell.rows!
+      cell.element.style.gridRow = `${r0 - from + 1} / ${r1 - from + 1}`
+      column.append(cell.element)
+    }
+  }
+  fields.append(column)
+  fields.style.setProperty('--grid-columns', `${columns} minmax(16px,.05fr) ${columns}`)
+  // the rows the moved blocks left keep no height: the template ends where the first column ends
+  fields.style.setProperty('--grid-rows', rows.slice(0, from - 1).join(' '))
   fields.dataset.folded = 'true'
   fields.classList.add('criteria-folded')
   return true
@@ -78,6 +87,7 @@ export function fitCriteria(fields: HTMLElement): void {
   const client = fields.parentElement
   if (!client) return
   foldCriteria(fields)
+  for (const grid of [fields, ...fields.querySelectorAll<HTMLElement>(':scope > .criteria-fold-column')]) spreadOptions(grid)
   // (run again when the lists have filled: it only ever lowers the density)
   const current = Number(fields.style.getPropertyValue('--grid-density') || 1)
   for (const density of ['.55', '.4', '.3', '.2']) {
@@ -87,4 +97,36 @@ export function fitCriteria(fields: HTMLElement): void {
   }
   // the last few pixels: the gap kept under each group box goes
   if (client.scrollHeight > client.clientHeight + 4) fields.classList.add('criteria-tight')
+}
+
+/**
+ * Options of one source row (Original / Last Saving / Billing) whose captions no longer fit their narrow source cells are set side by
+ * side in one strip over the same cells, each caption whole: in the source the radio buttons sit close together and the captions,
+ * drawn in a smaller font, fit; here a caption was cut ("Origina", "Last Savin") and the next button sat on its end.
+ */
+export function spreadOptions(fields: HTMLElement): void {
+  const rows = new Map<string, HTMLElement[]>()
+  for (const child of [...fields.children]) {
+    if (!(child instanceof HTMLElement) || !child.matches('label.window-option.grid-cell') || getComputedStyle(child).display === 'none') continue
+    rows.set(child.style.gridRow, [...(rows.get(child.style.gridRow) ?? []), child])
+  }
+  for (const [row, options] of rows) {
+    if (options.length < 2 || !options.some((option) => option.scrollWidth > option.clientWidth + 1)) continue
+    const start = (option: HTMLElement) => Number(option.style.gridColumn.split('/')[0])
+    options.sort((a, b) => start(a) - start(b))
+    const ends = options.map((option) => Number(option.style.gridColumn.split('/')[1]))
+    const strip = document.createElement('div')
+    strip.className = 'criteria-option-strip'
+    strip.style.cssText = `grid-row:${row};grid-column:${start(options[0])} / ${ends.some((end) => end < 0) ? -1 : Math.max(...ends)};` +
+      'display:flex;flex-wrap:nowrap;align-items:center;column-gap:18px;position:relative;z-index:2;width:max-content;align-self:center;background:var(--p-surface);padding:2px 6px;border-radius:6px'
+    options[0].before(strip)
+    for (const option of options) {
+      option.style.removeProperty('grid-row')
+      option.style.removeProperty('grid-column')
+      option.style.setProperty('flex', 'none')
+      option.style.setProperty('width', 'auto', 'important')
+      option.style.setProperty('position', 'static')
+      strip.append(option)
+    }
+  }
 }
