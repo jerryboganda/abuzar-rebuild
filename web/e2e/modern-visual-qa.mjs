@@ -279,13 +279,15 @@ for (const leaf of todo) {
       return els.length
     })
     const skipEl = /^(save|delete|del|post|unpost|exit|close|quit|print|remove|log ?off|ok|×|x|✕)$|^(save|delete|post|print|close|exit)\b/i
+    // QA_WRITE=1 (scratch database only): Save, Delete, Post and Print are clicked too; their questions get the cautious answer (No / Cancel)
+    const skipWrite = /^(exit|close|quit|log ?off|ok|×|x|✕)$|^(close|exit)\b/i
     for (let i = 0; i < Math.min(count, 120); i++) {
       const name = await page.evaluate((k) => {
         const el = document.querySelector(`[data-qa-i="${k}"]`)
         if (!el || el.offsetParent === null || el.disabled) return null
         return (el.getAttribute('aria-label') || el.title || el.textContent || el.value || el.className).replace(/&/g, '').replace(/\s+/g, ' ').trim().slice(0, 40) || el.tagName
       }, i).catch(() => null)
-      if (name === null || skipEl.test(name) || (process.env.QA_SKIP && new RegExp(process.env.QA_SKIP, 'i').test(name))) continue
+      if (name === null || (process.env.QA_WRITE === '1' ? skipWrite : skipEl).test(name) || (process.env.QA_SKIP && new RegExp(process.env.QA_SKIP, 'i').test(name))) continue
       const e0 = errors.length
       current = `${leaf.path} > ${name}`
       await page.evaluate((k) => document.querySelector(`[data-qa-i="${k}"]`)?.click(), i).catch(() => {})
