@@ -152,11 +152,10 @@ export class NControl extends PBObject {
     if (this.props.delete('_invaliddata')) this.changed()
     return 1
   }
-  /** the window that contains this control */
+  /** the object that contains this control: its window, tab page, tab or user object (PowerBuilder's GetParent is the immediate
+   *  parent: the line grid of an entry window posts `getparent().ue_focusfooter`, an event of its tab page) */
   async n_getparent(): Promise<unknown> {
-    let p = this.parent
-    while (p && !(p instanceof NWindow)) p = p.parent
-    return p
+    return this.parent
   }
   async n_hide(): Promise<number> {
     this.pbSet('visible', false)

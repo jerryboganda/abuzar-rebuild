@@ -163,3 +163,15 @@ test('FindItem matches the start of an item, ignores case, searches after the gi
   assert.equal(await rt.callMethod(control, 'text', [1]), '0')
   assert.equal(await rt.callMethod(control, 'text', [17000]), 'x999')
 })
+
+test('GetParent is the immediate parent (the tab page of a line grid), for controls and DataWindow controls alike', async () => {
+  const rt = new Runtime({ load: async () => undefined })
+  registerWindowing(rt)
+  const page = await rt.instantiate('userobject')
+  const grid = await rt.instantiate('datawindow')
+  const button = await rt.instantiate('commandbutton')
+  grid.parent = page
+  button.parent = page
+  assert.equal(await rt.callMethod(grid, 'getparent', []), page)
+  assert.equal(await rt.callMethod(button, 'getparent', []), page)
+})

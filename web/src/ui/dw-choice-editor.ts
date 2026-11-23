@@ -114,7 +114,7 @@ export class DwChoiceEditor {
     this.element.setAttribute('aria-description', 'Choose a value. Escape cancels. Tab accepts and moves to the next field.')
     this.browse = host.details ? document.createElement('button') : null
     this.popup = popupInput && !host.checkbox && this.element instanceof HTMLInputElement ?
-      new DwChoicePopup(this.element, () => this.choices, (index) => {
+      new DwChoicePopup(this.element, () => this.liveChoices(), (index) => {
         void (host.editable ? host.editable.settle() : Promise.resolve(true))
           .then((ok) => ok && this.choose(index)).catch(host.error)
       }, this.signal, host.showList, host.popupWidthPercent, host.popupLines) : null
@@ -274,6 +274,31 @@ export class DwChoiceEditor {
     this.browse?.remove()
   }
 
+  /** the choices as shown: when a script retrieved the drop-down after they were read (the click's ItemFocusChanged retrieves the
+   *  batches of the line), they are read again and an open list is redrawn, as PowerBuilder drops the list after those events */
+  private liveChoices(): DwChoices | null {
+    if (this.choices?.stale?.() && !this.refreshing) void this.refreshChoices()
+    return this.choices
+  }
+  private refreshing: Promise<boolean> | null = null
+  private refreshChoices(): Promise<boolean> {
+    this.refreshing ??= (async () => {
+      try {
+        const fresh = await this.host.load(false)
+        if (!this.active()) return false
+        this.choices = fresh
+        this.populate()
+        if (this.popup?.open) this.popup.show()
+        return true
+      } catch {
+        return false
+      } finally {
+        this.refreshing = null
+      }
+    })()
+    return this.refreshing
+  }
+
   async choose(index: number): Promise<boolean> {
     await this.loadingWork
     if (!this.active() || this.loading || this.failed || this.accepting) return false
@@ -281,13 +306,24 @@ export class DwChoiceEditor {
       this.host.status('Finish composing the current entry before choosing a value.')
       return false
     }
-    const choice = this.choices?.items[index]
+    let choice = this.choices?.items[index]
     if (!choice) {
       this.host.status('The selected choice is unavailable. Reopen the field and try again.')
       return false
     }
     try { this.choices!.validate(choice) }
-    catch (error) { this.host.error(error); this.host.status('The choices changed. Reopen the field before choosing.'); return false }
+    catch {
+      // the list changed under the pointer: read it again and take the same row (value and text) if it is still there
+      const picked = choice
+      const found = (await this.refreshChoices()) ? this.choices!.items.findIndex((item) => sameChoiceValue(item.value, picked.value) && item.text === picked.text) : -1
+      if (found < 0 || !this.active()) {
+        this.host.status('The choices changed. Choose again from the updated list.')
+        if (this.active()) this.popup?.show()
+        return false
+      }
+      index = found
+      choice = this.choices!.items[found]
+    }
     this.value = choice.value
     if (this.host.editable && this.element instanceof HTMLInputElement) {
       try {

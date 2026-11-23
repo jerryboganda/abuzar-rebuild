@@ -263,8 +263,8 @@ export function forgetPurchaseFacts(): void { postedCache.clear(); supplierCache
 
 export const PURCHASE_CSS = `
 /* Bill summary: the current item's RPP and average price stand on the line of their captions, as figures (the original draws
-   each beside its caption) */
-.modern-surface[aria-label=Purchasefooter] .simplified-row > .surface-caption:is([data-caption=t_rpp],[data-caption=t_avgprice]) {margin-top:-1.9em!important;text-align:right;font-family:var(--p-mono);color:var(--p-text)!important;pointer-events:none;}
+   each beside its caption); a long one (the last five purchase rates of the item) wraps right of its caption, never over it */
+.modern-surface[aria-label=Purchasefooter] .simplified-row > .surface-caption:is([data-caption=t_rpp],[data-caption=t_avgprice]) {margin-top:-1.9em!important;margin-left:6.5em!important;text-align:right;font-family:var(--p-mono);color:var(--p-text)!important;pointer-events:none;}
 .modern-entry-window .entry-detail:has(.simplified-summary) > .ds-steps {grid-column:1 / -1;grid-row:1;}
 .modern-entry-window .entry-detail:has(.ds-steps) > .entry-control:has(.simplified-summary) {grid-row:2 / span 3!important;}
 .modern-entry-window .entry-detail:has(.ds-steps) > .entry-control:has(.simplified-form:not(.simplified-summary)) {grid-row:2;}

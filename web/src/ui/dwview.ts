@@ -2136,7 +2136,8 @@ export class DwView {
         !sameChoiceValue(record.v[key], choice.value) || toStr(record.v[label]) !== choice.text) {
         throw new Error('The selected lookup row changed. Reopen the field and choose its current value.')
       }
-    } }
+    }, stale: () => child.destroyed || child.model !== data || data.buf.primary.length !== rows.length ||
+      data.buf.primary.some((record, index) => record !== rows[index]) }
     if (style.editable || style.showList || style.percentWidth !== undefined || style.lines !== undefined) {
       const childCursor = style.editable || style.showList
       let current = -1

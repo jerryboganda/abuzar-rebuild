@@ -15,6 +15,8 @@ export interface DwChoiceGrid {
 export interface DwChoices {
   items: readonly DwChoice[]
   validate(choice: DwChoice): void
+  /** the rows behind these choices changed since they were read (a script retrieved the drop-down while it was open) */
+  stale?(): boolean
   current?(): number
   highlight?(index: number): void
   grid?: DwChoiceGrid

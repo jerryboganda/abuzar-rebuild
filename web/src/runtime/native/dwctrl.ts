@@ -138,6 +138,10 @@ export class NDwBase extends PBObject {
   constructor(rt: Runtime, className: string, native = 'datawindow') {
     super(rt, className, native)
   }
+  /** the object that contains this DataWindow control (window, tab page, user object): PowerBuilder's GetParent */
+  async n_getparent(): Promise<unknown> {
+    return this.parent
+  }
 
   changed(selection?: 'column'): void {
     for (const l of this.listeners) l(selection)
