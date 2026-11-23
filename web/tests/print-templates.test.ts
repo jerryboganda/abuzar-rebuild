@@ -137,3 +137,12 @@ test('only explicit own family preferences override the global print layout', as
   session.save({ ...session.preferences, printFamilies: {} })
   assert.equal(session.printModeFor('constructor'), 'modern')
 })
+
+test('page setup: margins that leave no printable width (a 25 inch left margin) fall back to the smaller sane margin', async () => {
+  const { pageSetup } = await import('../src/ui/print.ts')
+  const model = (dw: Record<string, string>) => ({ def: { datawindow: dw } }) as unknown as Parameters<typeof pageSetup>[0]
+  const broken = pageSetup(model({ units: '2', 'print.margin.left': '25000', 'print.margin.right': '250', 'print.paper.size': '1' }))
+  assert.ok(broken.left < 40 && broken.left === broken.right, `left ${broken.left} right ${broken.right}`)
+  const normal = pageSetup(model({ units: '2', 'print.margin.left': '500', 'print.margin.right': '250', 'print.paper.size': '1' }))
+  assert.ok(normal.left > normal.right)
+})

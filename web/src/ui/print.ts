@@ -51,11 +51,19 @@ export function pageSetup(m: DwModel): PageSetup {
   let [w, h] = PAPER_MM[code] ?? PAPER_MM[9]
   const landscape = num(dw, 'print.orientation', 0) === 1
   if (landscape) [w, h] = [h, w]
+  let left = toPx(num(dw, 'print.margin.left', 110), 'x', units)
+  let right = toPx(num(dw, 'print.margin.right', 110), 'x', units)
+  // margins that leave no printable width are a design slip (the Sale/Return Summary Inv. Type Wise reports have a 25 inch left
+  // margin, 25000 thousandths for 250): every row would fall off the page, so the preview uses the other margin for both
+  if (left + right >= w * MM / 2) {
+    const sane = Math.min(left, right, toPx(110, 'x', 0))
+    left = right = sane
+  }
   return {
     width: w * MM,
     height: h * MM,
-    left: toPx(num(dw, 'print.margin.left', 110), 'x', units),
-    right: toPx(num(dw, 'print.margin.right', 110), 'x', units),
+    left,
+    right,
     top: toPx(num(dw, 'print.margin.top', 96), 'y', units),
     bottom: toPx(num(dw, 'print.margin.bottom', 96), 'y', units),
   }
