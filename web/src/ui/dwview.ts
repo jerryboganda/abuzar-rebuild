@@ -997,8 +997,9 @@ export class DwView {
         return dir === 'x' ? `${major} 0 100%/100% 100% no-repeat, ${half} 0 100%/100% 60% no-repeat, ${minor} 0 100%/100% 30% no-repeat` : `${major} 100% 0/100% 100% no-repeat, ${half} 100% 0/60% 100% no-repeat, ${minor} 100% 0/30% 100% no-repeat`
       }
       const top = document.createElement('div')
-      top.style.cssText = `position:sticky;top:0;z-index:3;height:18px;margin:-18px 0 0 -18px;padding-left:18px;background:#f0f0f0;border-bottom:1px solid #a0a0a0;overflow:hidden;width:${Math.max(widest * z, 600)}px;box-sizing:content-box`
-      top.style.backgroundImage = tick('x')
+      top.style.cssText = `position:sticky;top:0;z-index:3;height:18px;margin:-18px 0 0 -18px;padding-left:18px;color:#000;border-bottom:1px solid #a0a0a0;overflow:hidden;width:${Math.max(widest * z, 600)}px;box-sizing:content-box`
+      // the tick layers carry position and size, so they go into the background shorthand (backgroundImage rejects them)
+      top.style.background = `${tick('x')}, #f0f0f0`
       for (let i = 1; i <= 60 && i * inch < Math.min(widest, 6000) * z; i++) {
         const n = document.createElement('span')
         n.textContent = String(i)
@@ -1006,8 +1007,8 @@ export class DwView {
         top.appendChild(n)
       }
       const left = document.createElement('div')
-      left.style.cssText = `position:absolute;left:0;top:18px;bottom:0;width:18px;background:#f0f0f0;border-right:1px solid #a0a0a0;z-index:2`
-      left.style.backgroundImage = tick('y')
+      left.style.cssText = `position:absolute;left:0;top:18px;bottom:0;width:18px;border-right:1px solid #a0a0a0;z-index:2`
+      left.style.background = `${tick('y')}, #f0f0f0`
       wrap.prepend(left)
       wrap.prepend(top)
     }

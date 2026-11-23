@@ -240,6 +240,8 @@ export const DESIGN_CSS = `
   outline:none;border-color:var(--p-accent)!important;box-shadow:0 0 0 4px var(--p-glow);
 }
 .modern-surface .surface-field > .surface-value:not(.editable):not(.surface-choice):not([role=button]) {background:var(--p-sunk);border-radius:8px;color:var(--p-muted);}
+/* dark: the sunk tone is next to the surface tone, so a read-only field is recessed below the canvas with a hairline instead (it read as an editable box) */
+:is([data-theme=dark] .modern-surface,.modern-surface[data-theme=dark]) .surface-field > .surface-value:not(.editable):not(.surface-choice):not([role=button]):not(.simplified-summary *) {background:var(--p-canvas);border-color:var(--p-hair)!important;}
 .modern-surface .surface-number,.modern-surface .surface-total-value {font-family:var(--p-mono);font-variant-numeric:tabular-nums;}
 /* an open editor that does not hold the keyboard looks like any other field: only the focused one carries the accent ring */
 .modern-surface :is(input,textarea,select).surface-editor:not(:focus):not([type=checkbox]) {border-color:var(--p-line);box-shadow:none;}
@@ -333,6 +335,8 @@ export const DESIGN_CSS = `
 .modern-surface .surface-grid tbody tr:hover {background:var(--p-sunk);}
 .modern-surface .surface-grid tbody tr:hover .surface-value {background:transparent;}
 .modern-surface .surface-grid .cur {background:var(--p-selected);box-shadow:inset 3px 0 0 var(--p-accent);}
+/* the fields of the current row stay field-coloured on its tint (a tinted, empty drop-down read as disabled) */
+.modern-surface .surface-grid .cur :is(.surface-value.editable,.surface-choice,:is(input,select,textarea).surface-editor:not([type=checkbox])) {background-color:var(--p-surface);}
 .modern-surface .surface-grid .cur .surface-value {background:transparent;}
 .modern-surface .row.sel {background:var(--p-selected);box-shadow:inset 3px 0 0 var(--p-accent);}
 .modern-surface .row.sel .surface-value {background:transparent;}
@@ -363,6 +367,9 @@ export const DESIGN_CSS = `
 .modern-surface .simplified-summary .simplified-emphasis .surface-value {grid-column:3!important;justify-self:end;background:transparent!important;border:0!important;box-shadow:none!important;color:var(--p-surface)!important;font:600 26px var(--p-mono)!important;width:auto!important;padding:0!important;min-height:0!important;}
 .modern-surface .simplified-summary .simplified-emphasis .surface-required {display:none;}
 .modern-surface .simplified-summary .simplified-emphasis .surface-value {font-size:26px!important;}
+/* dark: the band in --p-text turned white (a light island); it stays a deep band with light figures */
+:is([data-theme=dark] .modern-surface,.modern-surface[data-theme=dark]) .simplified-summary .simplified-emphasis {background:var(--p-selected)!important;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--p-accent) 45%,transparent);}
+:is([data-theme=dark] .modern-surface,.modern-surface[data-theme=dark]) .simplified-summary .simplified-emphasis :is(.surface-label,.surface-value) {color:var(--p-text)!important;}
 .modern-surface .simplified-summary .simplified-emphasis {margin-top:8px!important;padding:10px 16px!important;}
 .modern-surface .simplified-summary .simplified-more {margin-top:4px!important;padding-top:4px!important;}
 .modern-surface .simplified-summary .surface-group {display:contents;}
@@ -561,6 +568,7 @@ dialog.presentation-compatibility-dialog[open]:not(.ds-report-criteria) {max-hei
 }
 /* a display-only edit (DisplayOnly = true: About's licence lines, totals shown in an edit) reads as text, not as a field to type in */
 .modern-window :is(input:not([type=checkbox]):not([type=radio]),textarea).ctl[readonly] {background:var(--p-sunk)!important;border-color:var(--p-hair)!important;cursor:default;}
+:is([data-theme=dark] .modern-window,.modern-window[data-theme=dark]) :is(input:not([type=checkbox]):not([type=radio]),textarea).ctl[readonly] {background:var(--p-canvas)!important;}
 /* the accent ring is drawn by the shadow as well: on white the 4px glow alone read as no focus where a field's own border rule wins */
 .modern-window :is(input,select,textarea).ctl:focus:not(.window-embedded *) {outline:none;border-color:var(--p-accent)!important;box-shadow:0 0 0 1px var(--p-accent),0 0 0 4px var(--p-glow);}
 /* every form: a field's caption and its required mark share one line (a long caption wraps, the mark stays at its end) */
