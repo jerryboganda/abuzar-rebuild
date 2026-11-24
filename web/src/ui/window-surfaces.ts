@@ -273,7 +273,7 @@ export const CRITERIA_WINDOW_SURFACES: readonly WindowSurface[] = [
       'em_startdate', 'em_enddate', 'dw_custcount'],
     data: [
       { control: 'dw_selected', surface: {
-        name: 'd_popup_itemselected_arglist', title: 'Selection List', kind: 'form', sourceProcessing: 1, fields: [
+        name: 'd_popup_itemselected_arglist', title: 'Selection List', kind: 'grid', fields: [
           { object: 'aliasname', labelObject: 'aliasname_t' }, { object: 'name', labelObject: 't_1' },
         ],
       } },

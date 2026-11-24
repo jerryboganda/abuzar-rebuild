@@ -221,7 +221,7 @@ const closeAll = async () => page.evaluate(async () => {
 
 await page.screenshot({ path: `${out}/000-home.png` })
 const leaves = await page.evaluate(() => window.__leaves())
-const skip = /(^|\| )(E&?xit|Exit|Change User|Log ?off|Backup|Restore|Check Database|Import|Inplace|Initializ|Lock Item|Year End|Close Year|Delete|Purge|Recalculate|Rebuild|Post All|Re-?post|Synchron|Transfer Data|Upload|Download|Send )/i
+const skip = /(^|\| )(E&?xit|Exit|Change User|Log ?off|Backup|Restore|Check Database|Import|Inplace|Initializ|Lock Item|Year End|Close Year|Delete(?!d)|Purge|Recalculate|Rebuild|Post All|Re-?post|Synchron|Transfer Data|Upload|Download|Send )/i
 const todo = leaves.filter((l) => l.enabled && !skip.test(l.path.replace(/&/g, '')) && (!filter || filter.test(l.path.replace(/&/g, ''))))
 console.log(`menu: ${leaves.length} leaves, ${leaves.filter((l) => !l.enabled).length} disabled, ${todo.length} to open`)
 writeFileSync(`${out}/leaves.json`, JSON.stringify(leaves, null, 1))

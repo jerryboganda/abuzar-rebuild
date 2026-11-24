@@ -299,12 +299,16 @@ export class ModernDwView extends DwView {
     }
     const count = model.rowCount()
     const summary = `${surface.title} / ${count} ${count === 1 ? 'row' : 'rows'}`
-    if (!count) {
-      const empty = document.createElement('p')
-      empty.className = 'surface-empty'
-      empty.textContent = 'No rows to display.'
-      body.append(empty)
-    } else if (surface.kind === 'form') {
+    // An empty grid keeps its column headers (the original's Invoice / Purchase Order Selection List shows Select / Code / Date …
+    // over no rows; side by side 2026-11-24); the empty note follows the header row.
+    const empty = () => {
+      const note = document.createElement('p')
+      note.className = 'surface-empty'
+      note.textContent = 'No rows to display.'
+      body.append(note)
+    }
+    if (!count && surface.kind !== 'grid') empty()
+    else if (surface.kind === 'form') {
       // Form-style DataWindows may hold several records; preserve every row.
       for (let row = 1; row <= count; row++) body.append(await this.makeRow(model, row, false))
     } else {
@@ -378,6 +382,7 @@ export class ModernDwView extends DwView {
       }
       spacer(items(count) - items(previous))
       body.append(table)
+      if (!count) empty()
     }
     for (const band of surface.bands ?? []) {
       if (/\./.test(band.band)) continue

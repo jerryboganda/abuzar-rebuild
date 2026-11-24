@@ -44,6 +44,9 @@ const editText = (c: PBObject): string => {
   const text = str(c, 'text')
   if (c.native !== 'editmask' || (text.trim() !== '' && !/^none$/i.test(text.trim()))) return text
   const mask = str(c, 'mask')
+  // a decimal EditMask the object file gives no mask draws its empty value as ".00" (Customer Sales Days Summary, Disc (%);
+  // side by side 2026-11-24)
+  if (mask === '' && Number(c.props.get('maskdatatype')) === 6) return '.00'
   if (!(/[#0]/.test(mask) && /^[#0,.\-+()\[\] $%]*$/.test(mask))) return text
   // a numeric mask with no value draws its 0 positions as zeros and its # positions blank (the original's Sale Summary Inv.
   // Cust Wise shows 0.00 in "##0.00" and "################0.00"; a mask without a 0 stays empty)
@@ -819,11 +822,30 @@ export class WinView {
         // order 10, Ok 20) opens in the Code field, not on Ok.
         const dw = this.firstTabDataWindow()
         if (dw && Number(dw.el.dataset.tab ?? 9999) < Number(first.dataset.tab ?? 9999)) {
-          void this.ui.focusDw(dw.o, true).then((done) => { if (!done && !this.destroyed && !this.client.contains(document.activeElement)) first.focus() })
-        } else first.focus()
+          void this.ui.focusDw(dw.o, true).then((done) => { if (!done && !this.destroyed && !this.client.contains(document.activeElement)) this.focusFirst(first) })
+        } else this.focusFirst(first)
       }
     }, 0)
     void this.ui.rt.fire(this.w, 'activate')
+  }
+
+  /** Windows checks an automatic radio button that receives the dialog's first focus when none of its group is checked:
+   *  Sale/Return Summary Inv. Type Wise opens with Standard selected although the window defines no checked option
+   *  (side by side 2026-11-24). The click goes through the control's own handler (checked + Clicked event). */
+  private focusFirst(el: HTMLElement): void {
+    // radio buttons the object file gives no tab order still take the first focus ahead of a command button: the topmost one
+    // (Select Criteria opens on Standard with its focus rectangle, not on Ok)
+    if (el instanceof HTMLButtonElement) {
+      const radios = [...this.client.querySelectorAll<HTMLInputElement>('input[type=radio]')]
+        .filter((r) => !r.disabled && r.offsetParent && Number(r.dataset.tab ?? 9999) >= 9999)
+        .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top || a.getBoundingClientRect().left - b.getBoundingClientRect().left)
+      if (radios.length) el = radios.find((r) => r.checked) ?? radios[0]
+    }
+    el.focus()
+    if (!(el instanceof HTMLInputElement) || el.type !== 'radio' || el.checked) return
+    const group = el.closest('label')?.parentElement
+    const radios = group ? [...group.querySelectorAll<HTMLInputElement>(':scope > label > input[type=radio]')] : [el]
+    if (!radios.some((r) => r.checked)) el.click()
   }
 
   /** the visible, enabled DataWindow control with the lowest tab order in this window's client area */

@@ -148,16 +148,11 @@ test('zone/top-customer criteria bind a context-only editable zone and both orig
   assert.equal(surface.data![1].surface.name, 'd_arg_top_n_customers')
 })
 
-test('item-selection preserves the source grid metadata while explicitly reflowing its one-row search form', () => {
+test('item-selection keeps the source grid (one-row search grid with headers, as the original and its sibling selection windows)', () => {
     const surface = CRITERIA_WINDOW_SURFACES.find((surface) => surface.name === 'w_arg_items_sdate_ldate_topn')!
     const search = surface.data![0].surface, definition = dataDefinition(search.name)
-    assert.equal(search.kind, 'form')
-    assert.equal(search.sourceProcessing, 1)
+    assert.equal(search.kind, 'grid')
     assert.deepEqual(dataSurfaceIssues(definition, search), [])
-    assert.ok(dataSurfaceIssues(definition, { ...search, sourceProcessing: undefined }).includes('Processing style changed'))
-    const changed = structuredClone(definition)
-    changed.datawindow.processing = '0'
-    assert.ok(dataSurfaceIssues(changed, search).includes('Processing style changed'))
     assert.deepEqual(search.fields.map((field) => field.object), ['aliasname', 'name'])
     assert.equal(definition.table.columns.find((column) => column.name === 'code')!.type, 'long')
     assert.ok(!search.fields.some((field) => field.object === 'code'))
