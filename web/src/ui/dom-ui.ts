@@ -42,9 +42,12 @@ const str = (o: PBObject, k: string): string => toStr(o.props.get(k))
  */
 const editText = (c: PBObject): string => {
   const text = str(c, 'text')
-  if (c.native !== 'editmask' || !/^none$/i.test(text.trim())) return text
+  if (c.native !== 'editmask' || (text.trim() !== '' && !/^none$/i.test(text.trim()))) return text
   const mask = str(c, 'mask')
-  return /[#0]/.test(mask) && /^[#0,.\-+()\[\] $%]*$/.test(mask) ? '' : text
+  if (!(/[#0]/.test(mask) && /^[#0,.\-+()\[\] $%]*$/.test(mask))) return text
+  // a numeric mask with no value draws its 0 positions as zeros and its # positions blank (the original's Sale Summary Inv.
+  // Cust Wise shows 0.00 in "##0.00" and "################0.00"; a mask without a 0 stays empty)
+  return mask.replace(/#/g, '').replace(/^[,\s]+/, '').replace(/^[^0]*$/, '')
 }
 const ALIGN = ['left', 'center', 'right', 'justify']
 
@@ -1726,7 +1729,9 @@ export class WinView {
     }
     else if (c.native === 'singlelineedit' || c.native === 'editmask') {
       const i = el as HTMLInputElement
-      if (i.value !== editText(c)) i.value = editText(c)
+      // (an emptied numeric mask being typed in keeps what the user has; its zeros come back once it loses the focus)
+      const shown = document.activeElement === i && str(c, 'text') === '' ? '' : editText(c)
+      if (i.value !== shown && !(document.activeElement === i && shown === '' && i.value === '')) i.value = shown
       if (c.native === 'editmask') {
         if (c.props.get('_invaliddata') === true) i.setAttribute('aria-invalid', 'true')
         else i.removeAttribute('aria-invalid')

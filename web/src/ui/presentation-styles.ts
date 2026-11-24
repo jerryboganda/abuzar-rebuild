@@ -104,7 +104,7 @@ export const PRESENTATION_CSS = `
 .modern-window .window-embedded {position:relative!important;left:auto!important;top:auto!important;width:100%!important;max-width:100%;min-width:0;color:#000;background-color:#f0f0f0;color-scheme:light;}
 /* Only a container (tab control, user object) scrolls; a link or text control never becomes a scroll region a keyboard cannot reach. */
 .modern-window .window-embedded[data-embedded-scroll] {max-height:calc(100vh - 14em);overflow:auto;}
-.modern-window .window-caption {white-space:normal;overflow-wrap:anywhere;background:transparent!important;color:var(--p-text)!important;}
+.modern-window .window-caption {white-space:normal;overflow-wrap:normal;background:transparent!important;color:var(--p-text)!important;}
 .modern-window .window-option {display:flex;align-items:center!important;gap:8px;min-height:36px;padding:6px 0!important;white-space:normal;overflow-wrap:anywhere;background:transparent!important;color:var(--p-text)!important;}
 .modern-window .window-option input {flex:none;accent-color:var(--p-accent);inline-size:24px;block-size:24px;margin:0;}
 .modern-window .window-option span {outline:none!important;}
@@ -138,7 +138,7 @@ export const PRESENTATION_CSS = `
 .modern-window .pb-calendar button:hover:not(:disabled),.modern-window .pb-calendar [role=gridcell]:hover:not([aria-disabled=true]) {background:var(--p-selected);color:var(--p-text);}
 .modern-window .pb-calendar [aria-selected=true]:focus-visible {outline-color:var(--p-on-accent);}
 .modern-window .pb-calendar [aria-disabled=true] {color:var(--p-muted);}
-.modern-window .window-field label .ctl {display:block;white-space:normal;overflow-wrap:anywhere;background:transparent!important;color:var(--p-text)!important;font-weight:600!important;text-align:left!important;}
+.modern-window .window-field label .ctl {display:block;white-space:normal;overflow-wrap:normal;background:transparent!important;color:var(--p-text)!important;font-weight:600!important;text-align:left!important;}
 .modern-window :is(input,textarea).ctl:not(.window-embedded *) {min-width:0;min-height:36px;padding:6px 10px;background:var(--p-surface)!important;border:1px solid var(--p-line)!important;border-radius:4px;}
 /* The surface background above is forced, so the text colour must follow the theme too (a source colour of black on the dark surface measured 1.38:1). */
 .modern-window :is(input,textarea,select).ctl:not(:disabled):not(.window-embedded *) {color:var(--p-text)!important;}
