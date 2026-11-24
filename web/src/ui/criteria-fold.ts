@@ -79,14 +79,14 @@ export function foldCriteria(fields: HTMLElement): boolean {
 }
 
 /**
- * Fits a docked report's criteria: two columns when the form splits into blocks, then (still too tall, or one block such as the
- * Stock Register's list spanning every row) the source's empty spacing rows are drawn smaller, step by step, until it fits.
+ * Fits a docked report's criteria: the source's empty spacing rows are drawn smaller, step by step, until it fits; a form still
+ * taller than the card scrolls. The groups stay in the original's single column (Optimum Level / Stock Management stack their
+ * four list groups as the original does; side by side 2026-11-24) - foldCriteria is no longer applied.
  * Every field keeps its own size; only blank space between the source's rows shrinks.
  */
 export function fitCriteria(fields: HTMLElement): void {
   const client = fields.parentElement
   if (!client) return
-  foldCriteria(fields)
   for (const grid of [fields, ...fields.querySelectorAll<HTMLElement>(':scope > .criteria-fold-column')]) spreadOptions(grid)
   // (run again when the lists have filled: it only ever lowers the density)
   const current = Number(fields.style.getPropertyValue('--grid-density') || 1)
