@@ -1,6 +1,6 @@
 // Drives the Modern interface through a list of steps (a JSON file) and takes screenshots: the hand tool of a visual QA session.
 //   APP_USER=... APP_PW=... node e2e/modern-qa-steps.mjs <base-url> <out-dir> <steps.json> [dark|light]
-// Steps: {menu:"Sales | Cash Sale"} {wait:ms} {shot:"name"} {click:"css"|[x,y]} {dblclick:..} {type:"text"} {key:"Enter"}
+// Steps: {menu:"Sales | Cash Sale"} {wait:ms} {shot:"name"} {click:"css"|[x,y]} {dblclick:..} {type:"text"} {typeEnv:"APP_PW"} {key:"Enter"}
 //        {eval:"js"} (result printed) {hover:"css"} {scroll:["css", dy]} {text:"css"} (innerText printed) {size:[w,h]}
 import { chromium } from 'playwright'
 import { mkdirSync, readFileSync } from 'node:fs'
@@ -31,6 +31,8 @@ for (const s of steps) {
     else if (s.dblclick) { if (Array.isArray(s.dblclick)) await page.mouse.dblclick(...s.dblclick); else await target(s.dblclick).dblclick({ timeout: 5000 }) }
     else if (s.hover) { if (Array.isArray(s.hover)) await page.mouse.move(...s.hover); else await target(s.hover).hover({ timeout: 5000 }) }
     else if (s.type !== undefined) await page.keyboard.type(s.type, { delay: s.delay ?? 40 })
+    // {typeEnv:"APP_PW"} types the value of an environment variable (the test login) without it ever appearing in a steps file or the log
+    else if (s.typeEnv) await page.keyboard.type(process.env[s.typeEnv] ?? '', { delay: s.delay ?? 40 })
     else if (s.key) await page.keyboard.press(s.key)
     else if (s.eval) console.log('eval', JSON.stringify(await page.evaluate(s.eval)))
     else if (s.text) console.log('text', await target(s.text).innerText({ timeout: 5000 }))
@@ -39,4 +41,7 @@ for (const s of steps) {
     else if (s.boxes) console.log('boxes', JSON.stringify(await page.evaluate(() => window.__boxes.splice(0))))
   } catch (e) { console.log('STEP FAILED', JSON.stringify(s), String(e?.message ?? e).split('\n')[0]) }
 }
+// close the page like a user closing the tab (pagehide releases the server sessions), then the browser
+await page.close({ runBeforeUnload: true }).catch(() => undefined)
+await new Promise((resolve) => setTimeout(resolve, 1000))
 await browser.close()

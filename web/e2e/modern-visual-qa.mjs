@@ -406,5 +406,8 @@ for (const leaf of todo) {
   writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 1))
   console.log(`${id} ${res} ${ms}ms win=[${open.join(',')}] boxes=${boxes.length} issues=${Math.max(0, audit.length - open.length)} errors=${entry.errors.length}${left.length ? ' LEFT ' + left.join(',') : ''}`)
 }
+// close the page like a user closing the tab (pagehide releases the server sessions), then the browser
+await page.close({ runBeforeUnload: true }).catch(() => undefined)
+await new Promise((resolve) => setTimeout(resolve, 1000))
 await browser.close()
 console.log(`done: ${report.length} items, ${errors.length} errors`)

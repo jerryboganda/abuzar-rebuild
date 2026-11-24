@@ -591,11 +591,14 @@ export class DwModel implements EvalHost {
         })
         out.push({ sql: `UPDATE ${t} SET ${sets.join(', ')} WHERE ${this.whereFor(r, params)}`, params, expect: 1 })
       } else if (r.st === NEW_MODIFIED) {
-        // PowerBuilder omits untouched NULL columns from INSERT, so a column
-        // with a database default receives that default.  Including NULL
-        // explicitly (as the old code did) bypasses defaults and fails on
-        // NOT NULL columns such as GroupSupplierCategory.Status.
-        const cols = this.updatableCols().filter((i) => this.def.table.columns[i].identity !== 'yes' && (r.v[i] !== null || r.mod.has(i)))
+        // PowerBuilder omits NULL columns from INSERT, so a column with a
+        // database default receives that default.  Including NULL explicitly
+        // bypasses defaults and fails on NOT NULL columns such as
+        // GroupSupplierCategory.Status.  This holds for a NULL a script set as
+        // well: the sale return copies its footer's FBRPOSFee (NULL on an open
+        // return) into SRLedger, NOT NULL DEFAULT 0, and the original stored 0
+        // on all 73 returns without a sale (measured 2026-11-25).
+        const cols = this.updatableCols().filter((i) => this.def.table.columns[i].identity !== 'yes' && r.v[i] !== null && r.v[i] !== undefined)
         const params: unknown[] = []
         const names = cols.map((i) => quoteIdent(this.dbColName(i)))
         const vals = cols.map((i) => {
