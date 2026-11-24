@@ -672,4 +672,7 @@ body.ds-boot .pbwin[data-win=w_login1] > .client > button.ctl:first-of-type {lef
 body.ds-boot .pbwin[data-win=w_login1] > .client > button.ctl:last-of-type {left:68%!important;width:32%!important;}
 body.ds-boot .pbwin[data-win=w_login1] > .client::after {content:"Forgot your password? Ask an administrator to reset it in Manage › Users.";position:absolute;left:0;right:0;top:232px;text-align:center;font:12px var(--p-font);color:var(--p-faint);}
 @media (max-width:860px){body.ds-boot .ds-login-art{display:none}body.ds-boot .pbwin[data-win=w_login1]{left:calc(50vw - 200px)!important;max-width:calc(100vw - 32px)}}
+/* captions the source draws large keep their rank: a heading (About's WASEELA) and a subheading (Abuzar Consultancy) */
+.modern-window .ctl.st.window-caption.window-caption-heading {font:700 30px/1.15 var(--p-font)!important;color:var(--p-text)!important;letter-spacing:.02em;}
+.modern-window .ctl.st.window-caption.window-caption-subheading {font:700 19px/1.25 var(--p-font)!important;color:var(--p-text)!important;}
 `

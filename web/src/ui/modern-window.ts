@@ -156,6 +156,11 @@ export function applyModernWindow(view: WinView): boolean {
   for (const name of surface.captions ?? []) {
     const element = elements.get(name)!
     element.classList.add('window-caption')
+    // a caption the source draws large (About's 30 pt "WASEELA", its 16 pt "Abuzar Consultancy") stays a heading: the uniform
+    // caption type drew it at body size over the tall empty box its large font needed
+    const sourcePx = parseFloat(element.style.fontSize)
+    if (sourcePx >= 32) element.classList.add('window-caption-heading')
+    else if (sourcePx >= 20) element.classList.add('window-caption-subheading')
     content.append(element)
     contentItems.set(name, element)
     itemControls.set(name, [name])
