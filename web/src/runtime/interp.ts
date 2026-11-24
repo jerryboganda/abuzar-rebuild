@@ -273,6 +273,9 @@ export class Runtime {
       }
       // `item[]` of menus / list boxes: filled by scripts (this.item[upperbound(this.item) + 1] = ...)
       if (f.name === 'item') obj.props.set('item', new PBArray('any'))
+      // the design-time entries of a list box / drop-down list (the filter operators = < > <= >= <> of every list tab, the
+      // AM/PM and hour lists of the schedules, report format lists): recovered from the compiled objects (array_inits)
+      if (f.name === 'item' && Array.isArray(f.value)) obj.props.set('_items', new PBArray('string', f.value.map((v) => String(v))))
     }
   }
 

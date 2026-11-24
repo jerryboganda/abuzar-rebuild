@@ -335,6 +335,13 @@ export class NDwBase extends PBObject {
     // find[1]; nothing gives it that row, so the box could not take a keystroke.  The search popups insert their own row in their
     // open event: once the window has had time to do so, a box still empty gets its row.
     if (name.toLowerCase() === 'd_find') {
+      // the Find box of a list tab has its row at once: the window's opening writes the first row's name into find[1] (Priority
+      // Setting, Lock Item Batches show "ZYTO 500MG TAB" in the original); a row given later lost that value
+      if (this.parent?.name?.toLowerCase() === 'tabpage_list' && model.rowCount() === 0) {
+        model.insertRow(0)
+        this.changed()
+        return
+      }
       setTimeout(() => {
         if (this.destroyed || this.model !== model || model.rowCount() > 0) return
         model.insertRow(0)

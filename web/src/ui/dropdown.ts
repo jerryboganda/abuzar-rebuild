@@ -151,6 +151,13 @@ export class DropdownView {
       }))
     }
     this.select.selectedIndex = toNum(this.control.props.get('_selected') ?? 0) - 1
+    // a script that sets the Text of a list without editing (`ddlb_sort.text = ls_column_name` of every entry window's List page)
+    // shows that item in the original; with no item selected the select showed nothing
+    if (this.select.selectedIndex < 0) {
+      const shown = toStr(this.control.props.get('text'))
+      const match = shown ? this.items.indexOf(shown) : -1
+      if (match >= 0) this.select.selectedIndex = match
+    }
     if (this.textVersion !== this.control.dropdownTextVersion) {
       this.textVersion = this.control.dropdownTextVersion
       this.dirty = false
