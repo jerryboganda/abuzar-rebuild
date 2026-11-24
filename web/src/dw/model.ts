@@ -349,6 +349,19 @@ export class DwModel implements EvalHost {
     return this.buf.primary.filter((r) => r.st === DATA_MODIFIED || r.st === NEW_MODIFIED).length + this.buf.deleted.length
   }
 
+  /** for status display only (the purchase "Draft · saved" badge): true when the user changed something a save writes - a deleted or new
+   *  modified row, or an updatable column with a different value. A script's SetItem of a
+   *  display column (stock, totals) after a retrieve marks the row modified but changes nothing in the database. */
+  hasPendingUpdate(): boolean {
+    if (this.buf.deleted.length) return true
+    // a column set back to the value it was retrieved with, or a NULL the window fills with its blank (the purchase script sets
+    // sitecode 0 over a NULL after every reopen), is not an edit of the user's
+    const blank = (x: unknown) => x === null || x === undefined || x === '' || x === 0 || x === '0'
+    const same = (a: unknown, b: unknown) => a === b || blank(a) && blank(b) || a !== null && b !== null && a !== undefined && b !== undefined && String(a) === String(b)
+    return this.buf.primary.some((r) => r.st === NEW_MODIFIED || r.st === DATA_MODIFIED &&
+      [...r.mod].some((i) => this.colFlag(i, 'update') && !(r.orig && same(r.orig[i], r.v[i]))))
+  }
+
   // ---------------------------------------------------------------- retrieve
   async retrieve(args: unknown[]): Promise<number> {
     if (!this.trans || !this.trans.db) {

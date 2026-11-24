@@ -9,6 +9,15 @@ export { rememberable }
 /** application user of the audit trail: every open session (and every later one) carries it as the setting `app.user` */
 let appUser = ''
 const open = new Set<HttpDb>()
+// A closed tab or a reload releases its server sessions: without this every abandoned session held a slot until the server's idle
+// limit (30 min for a session that ran a query) and a busy terminal ran into "too many open sessions" (save test 2026-11-25).
+// keepalive lets the request outlive the page; the server's close drops the connection, rolling back an open transaction.
+if (typeof addEventListener === 'function') {
+  addEventListener('pagehide', (event) => {
+    if ((event as PageTransitionEvent).persisted) return
+    for (const db of open) db.closeOnUnload()
+  })
+}
 const SESSION_TZ_NAME = 'Asia/Karachi'
 const SESSION_TZ = `SET TIME ZONE '${SESSION_TZ_NAME}'`
 
@@ -229,5 +238,14 @@ export class HttpDb implements Db {
   async close(): Promise<void> {
     open.delete(this)
     await this.post('/api/close', { sid: this.sid })
+  }
+  /** the page is going away: release the session without waiting (the request is allowed to outlive the page) */
+  closeOnUnload(): void {
+    open.delete(this)
+    if (!this.sid) return
+    try {
+      void fetch(this.base + '/api/close', { method: 'POST', keepalive: true, headers: { 'content-type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ sid: this.sid }) }).catch(() => undefined)
+    } catch { /* the page is closing */ }
   }
 }

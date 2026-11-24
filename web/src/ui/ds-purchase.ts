@@ -4,7 +4,7 @@ import { fitFloatingList, typeInto } from './ds-sale.ts'
 // all read from the window's live DataWindows.  Every button runs the window's own toolbar command (the same menu item and script),
 // so nothing here holds business logic; elements live outside the repainted data surfaces.
 
-interface Model { name: string; version: number; rowCount(): number; getItem(row: number, column: string): unknown; modifiedCount(): number; hasName(name: string): boolean }
+interface Model { name: string; version: number; rowCount(): number; getItem(row: number, column: string): unknown; modifiedCount(): number; hasPendingUpdate?(): boolean; hasName(name: string): boolean }
 export interface PurchaseContext {
   /** The window's client element and its DataWindow models by control name. */
   root: HTMLElement
@@ -30,7 +30,9 @@ export function purchaseState(ctx: PurchaseContext, onAsync: () => void): Purcha
   const code = str(header.getItem(1, 'code'))
   const rows: number[] = []
   for (let r = 1; r <= lines.rowCount(); r++) if (str(lines.getItem(r, 'itemname')) || str(lines.getItem(r, 'fullcode'))) rows.push(r)
-  const dirty = header.modifiedCount() > 0 || lines.modifiedCount() > 0
+  // a save writes only updatable columns: the window's own SetItem of stock and totals after a save or reopen is not an unsaved change
+  const pending = (m: Model) => m.hasPendingUpdate ? m.hasPendingUpdate() : m.modifiedCount() > 0
+  const dirty = pending(header) || pending(lines)
   let posted = false
   if (code) {
     const known = postedCache.get(code)

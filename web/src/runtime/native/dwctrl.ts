@@ -615,10 +615,14 @@ export class NDwBase extends PBObject {
   async n_getitemstatus(row: unknown, col: unknown, buffer?: unknown): Promise<number | string> {
     const m = await this.m()
     if (!m) return -1
-    const st = m.getStatus(toNum(row), col === 0 || col === null ? null : typeof col === 'number' ? col : toStr(col), bufferName(buffer))
+    const column = col === 0 || col === null ? null : typeof col === 'number' ? col : toStr(col)
+    const st = m.getStatus(toNum(row), column, bufferName(buffer))
     // PowerBuilder returns the RowStatus / DWItemStatus enumeration, and every
     // recovered script compares it with `notmodified!`, `new!` ... (strings in
     // the runtime).  Returning the raw 0..3 made those comparisons always false.
+    // A column's status is only NotModified! or DataModified! (New! / NewModified! describe rows): the Sale Template's
+    // `if getitemstatus(row, "saleprice", primary!) = notmodified! then setitem(... saleprice ...)` left a new line without its price.
+    if (column !== null) return st === NEW ? 'notmodified!' : st === NEW_MODIFIED ? 'datamodified!' : st === NOT_MODIFIED ? 'notmodified!' : st === DATA_MODIFIED ? 'datamodified!' : st
     return st === NOT_MODIFIED ? 'notmodified!' : st === DATA_MODIFIED ? 'datamodified!' : st === NEW ? 'new!' : st === NEW_MODIFIED ? 'newmodified!' : st
   }
   async n_setitemstatus(row: unknown, col: unknown, buffer: unknown, status: unknown): Promise<number> {
