@@ -850,7 +850,8 @@ export function fixClassData(name: string, data: Json): string[] {
   if (n === 'w_dbbackup') return fixBackupResult(data, n)
   if (n === 'w_dbbackup1') return fixBackupResult(data, n)
   if (n === 'f_validatedw') return fixValidatedW(data) ? ['required-field gate'] : []
-  if (n === 'w_cashieractivitymonitor') return fixSqlNoRows(data, n, 'open', 'cashierjob')
+  // (w_cashieractivitymonitor keeps the original's branch: with no active cashier job the SELECT finds no row, SQLCode 100, and
+  // the original shows "Unable to fetch cashier job data from database" - seen side by side 2026-11-24)
   if (n === 'w_changepassword') return fixSqlNoRows(data, 'cb_ok', 'clicked', 'users.password')
   return []
 }

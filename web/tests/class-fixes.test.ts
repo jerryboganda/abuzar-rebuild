@@ -266,9 +266,9 @@ test('cashier activity and change password treat SQLCode 100 as no rows, not a d
     return { routines }
   }
   const cashier = parse('cashierjob', 'w_cashieractivitymonitor')
-  assert.deepEqual(fixClassData('w_cashieractivitymonitor', cashier), ['w_cashieractivitymonitor.open treats SQLCode 100 as no rows'])
-  assert.match(JSON.stringify(cashier.routines.w_cashieractivitymonitor.open[0].body), /"v":100/)
+  // the Cashier Activity window keeps the original's branch: no active job is SQLCode 100, "Unable to fetch cashier job data"
   assert.deepEqual(fixClassData('w_cashieractivitymonitor', cashier), [])
+  assert.doesNotMatch(JSON.stringify(cashier.routines.w_cashieractivitymonitor.open[0].body), /"v":100/)
 
   const password = parse('components', 'w_changepassword')
   assert.deepEqual(fixClassData('w_changepassword', password), ['cb_ok.clicked treats SQLCode 100 as no rows'])
