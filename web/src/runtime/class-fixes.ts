@@ -798,7 +798,27 @@ function fixBarcodeLabelsPopup(data: Json): string[] {
 }
 
 /** Apply all corrections to one parsed class. Mutates `data`. */
+/**
+ * The owner's improvement of the original (deploy/FIX-LOG-2026-11-23, Round 2, 71 argument windows): when the first dialog (the
+ * Manufacturer / Category / Class / Packing choice) is cancelled, the window's M/C/L/P chain matched nothing, the list's data
+ * object stayed empty and the window showed "Not a DataWindowChild" over an unusable list. The chain's fall-through now opens the
+ * Manufacturer list, as the patched original does. Only open events that raise that box and have no else.
+ */
+function fixGroupingFallThrough(n: string, data: Json): string[] {
+  const body = data.routines?.[n]?.open?.[0]?.body
+  if (!Array.isArray(body) || !JSON.stringify(body).includes('Not a DataWindowChild')) return []
+  const chain = body.find((node) => node?.k === 'if' && !node.e && Array.isArray(node.ei) && node.ei.length >= 3 &&
+    /is_stringparam/.test(JSON.stringify(node.c)) && /"M"/.test(JSON.stringify(node.c)))
+  if (!chain) return []
+  chain.e = clone(chain.t)
+  return [`${n}.open: an empty grouping choice opens the Manufacturer list`]
+}
+
 export function fixClassData(name: string, data: Json): string[] {
+  return [...fixGroupingFallThrough(name.toLowerCase(), data), ...fixClassDataNamed(name, data)]
+}
+
+function fixClassDataNamed(name: string, data: Json): string[] {
   const n = name.toLowerCase()
   if (n === 'w_multi_entry') return fixMultiEntry(data) ? ['stock transfer'] : []
   if (n === 'w_sale') return fixSale(data)

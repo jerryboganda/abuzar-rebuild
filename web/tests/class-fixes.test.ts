@@ -374,3 +374,15 @@ test('cashier category hardening is scoped, idempotent and retains original calc
   assert.deepEqual(fixClassData('unrelated_window', other), [])
   assert.deepEqual(other, original)
 })
+
+test('an empty grouping choice opens the Manufacturer list (owner-approved fix of the original, FIX-LOG-2026-11-23 Round 2)', () => {
+  const text = readFileSync(resolve(import.meta.dirname, '..', '..', 'data', 'src', 'scripts', 'reports', 'w_arg_grouping_dates_pricetype4.pbs'), 'utf8')
+  const { file } = parseScriptFile(text)
+  const routines: Record<string, Record<string, Routine[]>> = Object.create(null)
+  for (const routine of file.routines) ((routines[routine.owner] ??= Object.create(null))[routine.name] ??= []).push(routine)
+  const data = { routines }
+  assert.deepEqual(fixClassData('w_arg_grouping_dates_pricetype4', data).filter((s) => s.includes('grouping')),
+    ['w_arg_grouping_dates_pricetype4.open: an empty grouping choice opens the Manufacturer list'])
+  const chain = (routines.w_arg_grouping_dates_pricetype4.open[0].body as { k: string; e?: unknown }[]).find((n) => n.k === 'if' && n.e)
+  assert.ok(chain, 'the M/C/L/P chain has an else branch')
+})
