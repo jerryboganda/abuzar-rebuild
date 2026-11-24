@@ -227,6 +227,8 @@ export const DESIGN_CSS = `
 .modern-surface .surface-field > .surface-label + .surface-required + * ,.modern-surface .surface-field > .surface-label + :not(.surface-required) {display:block;}
 .modern-surface .surface-required {font-size:0;line-height:0;}
 .modern-surface .surface-required::after {content:"*";font-size:calc(13px * var(--p-scale));line-height:1;color:var(--p-danger);margin-left:3px;}
+/* a report criteria dialog paints no required mark, as the original (the requirement is still announced and enforced) */
+.modern-window:not(.modern-entry-window) .modern-surface .surface-required::after {content:none;}
 .modern-surface th > span {display:inline;}
 .modern-surface > .surface-status.surface-status-summary {display:none;}
 /* labels and inputs (mockup .f / .in) */

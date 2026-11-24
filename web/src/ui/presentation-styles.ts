@@ -276,7 +276,7 @@ export const PRESENTATION_CSS = `
 .modern-surface {background:var(--p-surface)!important;color:var(--p-text);container-type:inline-size;}
 .modern-surface .surface-status {position:sticky;left:0;width:100cqi;max-width:100%;padding:8px 12px;margin:0;color:var(--p-muted);overflow-wrap:anywhere;}
 .modern-surface .surface-empty {padding:20px;margin:0;color:var(--p-muted);}
-.dw > .surface-missing {position:relative;padding:24px;margin:0;color:var(--p-muted);font:inherit;background:transparent;}
+/* .surface-missing is announced only (the original draws an empty control) */
 /* a grid takes the card's width and shares it in the source's column proportions (colgroup); columns narrower than their content
    (or the floor below) widen the table, which then scrolls.  At max-content every column sat at the 8em floor: the item column of the
    Cash Sale was as narrow as Disc% and the last columns were cut off. */

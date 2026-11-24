@@ -21,7 +21,7 @@ import type { DwChoiceEditor } from './dw-choice-editor.ts'
 import { lookupDialog } from './dw-lookup-dialog.ts'
 import type { LookupDialog } from './dw-lookup-dialog.ts'
 import type { PresentationDialog } from './presentation-dialogs.ts'
-import { choiceStyle, sameChoiceValue } from '../dw/choices.ts'
+import { choiceProperty, choiceStyle, sameChoiceValue } from '../dw/choices.ts'
 import { imageDataUrl } from './image-data.ts'
 import { toPx } from './pb.ts'
 
@@ -177,14 +177,15 @@ export class ModernDwView extends DwView {
   /**
    * A DataWindow object the application names but does not contain (Reports › Selected Sales and Summaries Report names
    * d_comp_selectedsalesandsummary, which is in none of the original's libraries): the original draws an empty control; the
-   * Modern view says why instead of showing a blank page.
+   * view stays blank like the original; the reason is announced only to assistive technology.
    */
   protected override paintWithoutDefinition(): void {
     this.root.textContent = ''
     const name = this.ctl.dwName
     if (!name) return
+    // the original draws an empty control: the view stays blank, the reason is only announced to assistive technology
     const note = document.createElement('p')
-    note.className = 'surface-empty surface-missing'
+    note.className = 'surface-missing presentation-visually-hidden'
     note.setAttribute('role', 'status')
     note.textContent = `Nothing to show: the layout "${name}" is not part of the installed application.`
     this.root.append(note)
@@ -334,7 +335,8 @@ export class ModernDwView extends DwView {
           label.classList.add('presentation-visually-hidden')
         }
         th.append(label)
-        if (dwRequired(field.object, model.overrides)) th.append(this.requiredHint(`${this.identity}-${name}-required`))
+        // the original paints no mark on a required grid column: the requirement is announced, not drawn
+        if (dwRequired(field.object, model.overrides)) th.append(Object.assign(this.requiredHint(`${this.identity}-${name}-required`), { className: 'presentation-visually-hidden' }))
         if (field.numeric) th.classList.add('surface-number')
         if (field.spin) th.classList.add('surface-spin-heading')
         head.append(th)
@@ -989,7 +991,10 @@ export class ModernDwView extends DwView {
       if (field.choice && !field.toggle && !field.radio && enabled) {
         value.classList.add('surface-choice')
         value.setAttribute('aria-haspopup', 'listbox')
-        if (!automatic) {
+        // The original draws a drop-down's arrow at rest only when the column uses the arrow as its border (dddw/ddlb
+        // useasborder=yes); otherwise the arrow appears with the editor on the focused field (side by side 2026-11-24).
+        const border = ['dddw', 'ddlb'].some((prefix) => choiceProperty(field.object, `${prefix}.useasborder`, model.overrides) === 'yes')
+        if (!automatic && border) {
           const arrow = document.createElement('span')
           arrow.className = 'surface-choice-arrow'
           arrow.setAttribute('aria-hidden', 'true')
