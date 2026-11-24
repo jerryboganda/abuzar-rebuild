@@ -307,6 +307,18 @@ export class Runtime {
     if (child.native === 'groupbox' && child.props.get('text') === 'none' && Number(child.props.get('borderstyle')) === 5) {
       child.props.set('visible', false)
     }
+    // The owner's improvement of the original (deploy/FIX-LOG-2026-11-23, reports.pbd / reports_cust.pbd): a report's "All" box is
+    // ticked by default (the visible cbx_all of every argument window those libraries declare, except the transaction-type window),
+    // and User Wise Discount / Sales Commission start with Cash and Credit ticked
+    if (child.native === 'checkbox') {
+      let top: PBObject = parent
+      while (top.parent) top = top.parent
+      const owner = top.className
+      const library = String((declaring as { library?: string }).library ?? '').toLowerCase()
+      if (child.name === 'cbx_all' && /^reports(_cust)?(\.pbd)?$/.test(library) && owner !== 'w_arg_sdate_ldate_transaction' &&
+        child.props.get('visible') !== false) child.props.set('checked', true)
+      if (owner === 'w_arg_users_sdate_ldate' && (child.name === 'cbx_cash' || child.name === 'cbx_credit')) child.props.set('checked', true)
+    }
     // scripts written for this control in the window / menu classes of the chain (most derived first), then the control's own class chain
     const nm = cd.name.toLowerCase()
     const mine = windowClasses.slice().reverse().filter((c) => c.routines.get(nm)).map((c) => ({ cls: c, owner: nm }))

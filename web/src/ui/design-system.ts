@@ -335,6 +335,8 @@ export const DESIGN_CSS = `
 .modern-surface .surface-grid tbody tr:hover {background:var(--p-sunk);}
 .modern-surface .surface-grid tbody tr:hover .surface-value {background:transparent;}
 .modern-surface .surface-grid .cur {background:var(--p-selected);box-shadow:inset 3px 0 0 var(--p-accent);}
+/* a one-row grid of a dialog (the Machine of a criteria window, a lookup's code and name) is a field, not a list: no current-row tint */
+.modern-window .window-data .modern-surface .surface-grid .cur:only-child {background:transparent;box-shadow:none;}
 /* the fields of the current row stay field-coloured on its tint (a tinted, empty drop-down read as disabled) */
 .modern-surface .surface-grid .cur :is(.surface-value.editable,.surface-choice,:is(input,select,textarea).surface-editor:not([type=checkbox])) {background-color:var(--p-surface);}
 .modern-surface .surface-grid .cur .surface-value {background:transparent;}
