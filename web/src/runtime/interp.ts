@@ -302,6 +302,11 @@ export class Runtime {
     }
     // the declaring class redefines fields of the control
     this.applyFields(child, cd.fields)
+    // a group box the object file records with the caption "none" and the lowered border (gb_2 of nine criteria windows such as
+    // Daily Sale Summary - Invoice Wise) is not drawn by the original: no frame, no caption (side by side 2026-11-24)
+    if (child.native === 'groupbox' && child.props.get('text') === 'none' && Number(child.props.get('borderstyle')) === 5) {
+      child.props.set('visible', false)
+    }
     // scripts written for this control in the window / menu classes of the chain (most derived first), then the control's own class chain
     const nm = cd.name.toLowerCase()
     const mine = windowClasses.slice().reverse().filter((c) => c.routines.get(nm)).map((c) => ({ cls: c, owner: nm }))
