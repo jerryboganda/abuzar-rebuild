@@ -308,14 +308,16 @@ export class Runtime {
       child.props.set('visible', false)
     }
     // The owner's improvement of the original (deploy/FIX-LOG-2026-11-23, reports.pbd / reports_cust.pbd): a report's "All" box is
-    // ticked by default (the visible cbx_all of every argument window those libraries declare, except the transaction-type window),
-    // and User Wise Discount / Sales Commission start with Cash and Credit ticked
+    // ticked by default in the argument windows built on w_listarguments (the ancestor and each descendant's copy; not the hidden
+    // boxes, not the transaction-type window) and in w_arg_cat_sdate_ldate. Windows with an All box of their own (w_arguements /
+    // w_popup_forselection_walias descendants such as Optimum Level or Customer Days Summary) keep it unticked (side by side
+    // 2026-11-24). User Wise Discount / Sales Commission start with Cash and Credit ticked.
     if (child.native === 'checkbox') {
       let top: PBObject = parent
       while (top.parent) top = top.parent
       const owner = top.className
-      const library = String((declaring as { library?: string }).library ?? '').toLowerCase()
-      if (child.name === 'cbx_all' && /^reports(_cust)?(\.pbd)?$/.test(library) && owner !== 'w_arg_sdate_ldate_transaction' &&
+      const listArgs = windowClasses.some((c) => c.name === 'w_listarguments') || owner === 'w_arg_cat_sdate_ldate'
+      if (child.name === 'cbx_all' && listArgs && owner !== 'w_arg_sdate_ldate_transaction' &&
         child.props.get('visible') !== false) child.props.set('checked', true)
       if (owner === 'w_arg_users_sdate_ldate' && (child.name === 'cbx_cash' || child.name === 'cbx_credit')) child.props.set('checked', true)
     }
