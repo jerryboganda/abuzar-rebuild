@@ -28,6 +28,8 @@ interface ChoiceEditorHost {
     enter(): Promise<void>
     value(): unknown
   }
+  /** the record's current value of the field (a script may have set it after the editor opened) */
+  recordValue?(): unknown
   load(retry: boolean): Promise<DwChoices>
   current(): boolean
   guard(): Promise<void>
@@ -218,8 +220,18 @@ export class DwChoiceEditor {
   start(): void { this.loadingWork = this.load(false) }
   read(): string { return this.host.editable && this.element instanceof HTMLInputElement ? this.element.value : toStr(this.value) }
   ownsFocus(): boolean { return this.element.contains(document.activeElement) }
+  /** a plain drop-down, radio group or checkbox shows the record's value: a script's SetItem after the editor opened (the Cashier
+   *  Job sets its owner to the signed-in user) must reach it, unless the user has a pending pick of their own */
+  syncRecordValue(): void {
+    if (this.host.editable || !this.host.recordValue || !this.active()) return
+    const now = this.host.recordValue()
+    if (!sameChoiceValue(this.value, this.original) || sameChoiceValue(now, this.original)) return
+    this.original = this.value = now
+    if (!this.loading && !this.failed) this.populate()
+  }
   syncValue(): void {
-    if (!this.host.editable || !this.active()) return
+    if (!this.host.editable) return this.syncRecordValue()
+    if (!this.active()) return
     const value = this.host.editable.value()
     if (sameChoiceValue(value, this.original)) return
     this.original = this.value = value

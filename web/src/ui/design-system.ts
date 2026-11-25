@@ -679,4 +679,8 @@ body.ds-boot .pbwin[data-win=w_login1] > .client::after {content:"Forgot your pa
 /* captions the source draws large keep their rank: a heading (About's WASEELA) and a subheading (Abuzar Consultancy) */
 .modern-window .ctl.st.window-caption.window-caption-heading {font:700 30px/1.15 var(--p-font)!important;color:var(--p-text)!important;letter-spacing:.02em;}
 .modern-window .ctl.st.window-caption.window-caption-subheading {font:700 19px/1.25 var(--p-font)!important;color:var(--p-text)!important;}
+/* Session Monitor: the source's one-line options band (Maximum Users Allowed / Refresh after every n Seconds) is drawn as a Modern form
+   (label above its field, spin buttons): it keeps its own height at the bottom of the page and the list takes the rest */
+.pbwin[data-win=w_connectionmonitor] .page > .ctl:has(.surface-spin-controls) {top:auto!important;bottom:0!important;height:auto!important;min-height:112px;overflow:visible!important;}
+.pbwin[data-win=w_connectionmonitor] .page > .ctl.raised:not(.hidden):not(:has(.surface-spin-controls)) {height:calc(100% - 120px)!important;}
 `

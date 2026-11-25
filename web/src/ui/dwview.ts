@@ -2017,6 +2017,7 @@ export class DwView {
     }
     const choice: DwChoiceEditor = new DwChoiceEditor({
       value: model.getItem(row, column + 1),
+      recordValue: () => model.getItem(row, column + 1),
       checkbox: style.kind === 'checkbox',
       radio: style.kind === 'radio' ? style.columns : undefined,
       showList: (style.kind === 'lookup' || style.kind === 'list') && style.showList,
