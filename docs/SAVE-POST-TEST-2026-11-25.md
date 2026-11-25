@@ -141,7 +141,9 @@ Final pass on the deployed build (423c0eb6 = 04f4cf23 plus padding, legend and t
 `QA_REPORTS=1 QA_ELEMENTS=1 QA_FIELDS=1` over the **141 report leaves** (1,226 criteria-dialog elements clicked, 0 errors). The two "issues=1" lines (Cash Sale, Credit Sale) are the runner's window-list
 detection coming back empty on a slow open; both windows render and were clicked. Credit Sale's Customer drop-down shows `0` in the original too.
 Toolbar title: a long window title wraps to two lines and is drawn at 14px when longer than 26 characters (`.mh-title[data-long]`); measured over 187 screens at 1440 px: cut titles 44 with the two lines alone, 14 with both; names over 40 characters now use 13px on three lines (`data-xlong`): **0 of the 44 titles of 39+ characters are cut** (the full name is also in the tooltip, the breadcrumb and the tab).
-Left as designed: Optimum Level Report's four stacked list groups scroll at 1080 px (original layout, decided 2026-11-24).
+Optimum Level Report (`w_arg_manf_cat_class_packing`): the original is a 485px-tall window (four stacked groups of 101px, measured in classic mode); the Modern form was 1,070px because every list box had a 10em (140px) minimum, whose rule outranked the criteria rule meant to size it.
+`fitCriteria` now lowers the lists (6em, 5em, 4.5em; the default for criteria lists is 7.5em) while the form still scrolls, after the spacing steps: at 1080px all four groups fit (758px, no scroll), at 900px the overflow is 130px (was 406px).
+Survey of 85 criteria dialogs at 900px: 6 still scroll by 10-164px (Optimum Level 130, Customer Sales Detail 107, Item Basic Data Changes 164, Sales Tax 31, Days Summary 14, Header Wise 10), with Ok / Cancel pinned; Customer Sales Detail fits at 1080px. Report-leaf walk repeated on this build: 141 leaves, 1,226 elements, 0 errors.
 
 ## Left in the scratch database
 

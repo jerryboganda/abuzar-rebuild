@@ -95,6 +95,12 @@ export function fitCriteria(fields: HTMLElement): void {
     if (Number(density) >= current) continue
     fields.style.setProperty('--grid-density', density)
   }
+  // still too tall (Optimum Level: four list groups): the list boxes, drawn seven rows tall for comfort, come down toward the original's
+  // three, one step at a time, while the form still scrolls
+  for (const em of ['6em', '5em', '4.5em']) {
+    if (client.scrollHeight <= client.clientHeight + 4) break
+    fields.style.setProperty('--criteria-list-min', em)
+  }
   // the last few pixels: the gap kept under each group box goes
   if (client.scrollHeight > client.clientHeight + 4) fields.classList.add('criteria-tight')
 }
