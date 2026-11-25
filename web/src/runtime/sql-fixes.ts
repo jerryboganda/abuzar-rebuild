@@ -48,7 +48,7 @@ const ADMIN: Record<string, Entry> = {
   ]
  },
  "d_conectionmonitorlist": {
-  "sql": "SELECT pid::integer AS id, datname::text AS databasename, coalesce(client_hostname, host(client_addr))::text AS computername, client_port::integer AS connection, NULL::integer AS username, $2::integer AS mysession, application_name::text AS program, backend_start::timestamp(3) AS startedon, NULL::text AS domainname, NULL::text AS osusername FROM pg_stat_activity WHERE datname = current_database() AND $1::text IS NOT NULL ORDER BY pid",
+  "sql": "SELECT pid::integer AS id, datname::text AS databasename, coalesce(client_hostname, host(client_addr))::text AS computername, client_port::integer AS connection, CASE WHEN application_name LIKE 'waseela (%)' THEN nullif(translate(application_name, translate(application_name, '0123456789', ''), ''), '') END::integer AS username, $2::integer AS mysession, application_name::text AS program, backend_start::timestamp(3) AS startedon, NULL::text AS domainname, NULL::text AS osusername FROM pg_stat_activity WHERE datname = current_database() AND $1::text IS NOT NULL ORDER BY pid",
   "params": [
    "as_db",
    "ai_mysessionid"

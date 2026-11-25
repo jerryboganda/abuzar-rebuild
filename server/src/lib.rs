@@ -187,6 +187,9 @@ async fn open_session(State(st): State<AppState>, Json(req): Json<OpenReq>) -> R
     }
     if let Some(user) = req.user.as_deref() {
         sqlx::query("SELECT set_config('app.user', $1, false)").bind(user).execute(&mut conn).await.map_err(db_err)?;
+        // the Session Monitor lists the application's connections: the connection names its signed-in user, as the original's
+        // session table (tempdb..SysIsolaation, filled at login) did
+        sqlx::query("SELECT set_config('application_name', $1, false)").bind(format!("waseela ({user})")).execute(&mut conn).await.map_err(db_err)?;
         init.insert("user".into(), json!(user));
     }
     let sid = uuid::Uuid::new_v4().to_string();
