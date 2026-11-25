@@ -117,6 +117,16 @@ The File and Item menu of the window each of the 63 non-report menu leaves opens
 * `QA_ELEMENTS=1 QA_FIELDS=1` over the 61 non-report screens: 244 elements clicked, 250 fields typed, 0 errors, every field reachable. The message boxes are the windows' own
   validations (required item name, "Item can not be sold, its Stock is Zero", "Confirm Changes", ...). Nothing is saved by the walks.
 
+## Report screens: every criteria dialog and every preview element (2026-11-25)
+
+`QA_ELEMENTS=1 QA_FIELDS=1 QA_REPORTS=1` over all **141 report menu leaves**: the criteria dialog each opens (3,251 elements clicked, 196 fields typed; Cancel left for the run), then
+`QA_RUN=1 QA_ELEMENTS=1 QA_REPORTS=1`: each report run like a user (every dialog answered with Ok, "All" ticked) and the **2,671 elements of the preview toolbar clicked** (Print and Close skipped).
+Result: no page error except one flow, **Category Wise | Gross Profit → preview toolbar Retrieve → close the "Select format" window with its × button**: `f_retrieve_report3` reads
+`as_reparg = message.powerobjectparm; as_reparg.i_status` after a window that only returns through Ok, so closing it without Ok leaves nothing in the message object ("Null object reference").
+The script is the original's own (the window has no Cancel); with Ok the report runs. 20 of the 141 runs showed no report on the first look: 12 stopped on the report's own input validation
+(a name / supplier / sales person / invoice number has to be chosen), 6 were only slower than the walk's 3 s wait (Reorder Level Report, Manufacturer List and Dead Item List render after 20 to 120 s: the
+report is 818 / 126 pages; Dead Item List's query takes 23 s on the unvacuumed local scratch database against 6.5 s on the original SQL Server, production's tables are vacuumed and analysed since 2026-11-14).
+
 ## Left in the scratch database
 
 Rows named `QA 1125 ...` and `QA CLASS 1125` (Basic Data), purchases 12281-12283 (posted), purchase return 1489, sales 588887-588888,
