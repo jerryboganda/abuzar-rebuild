@@ -33,8 +33,38 @@ export interface StartupOptions {
   onAuthenticated?: (context: AuthenticatedPresentationContext) => Promise<void>
 }
 
+/**
+ * Names of the SQL Server Agent jobs and their schedules the original installation uses (read from the shop's msdb, 2026-11-25).  The application's global
+ * variables carry them as initial values that the decompiler did not recover, so the Job Schedule window and the preferences read an empty name.  Here they are rows
+ * of `dbo.sysjobs` / `dbo.sysjobschedules`, written by `sp_ActivateJob` / `sp_AdjustJobSchedule`, run by `server/src/jobs.rs` (JOBS=schedule).
+ */
+export const JOB_GLOBALS: Record<string, string> = {
+  gs_clientjob: 'autobackupclient', gs_clientjobschedule: 'autobackupscheduleclient',
+  gs_autocashsalepostingjob: 'autocashsaleposting', gs_autocashsalepostingjobschedule: 'autocashsalepostingschedule',
+  gs_autocreditsalepostingjob: 'autocreditsaleposting', gs_autocreditsalepostingjobschedule: 'autocreditsalepostingschedule',
+  gs_autoinpatientservicesjob: 'autoinpatientservice', gs_autoinpatientservicesjobschedule: 'autoinpatientserviceschedule',
+  gs_autosatisfyduejob: 'AutoSatisfyDue', gs_autosatisfyduejobschedule: 'AutoSatisfyDue_Schedule',
+  gs_autocreatescheduledsmsjob: 'AutoCreateScheduledSMS', gs_autocreatescheduledsmsjobschedule: 'AutoCreateScheduledSMS_Schedule',
+  gs_autocheckedinguestservicesjob: 'AutoCheckedInGuestService', gs_autocheckedinguestservicesjobschedule: 'AutoCheckedInGuestServiceschedule',
+  gs_stockverificationjob: 'AutoStockVerification', gs_stockverificationjobschedule: 'autostockverification',
+  gs_stockreportjob: 'TSQL_Job_StockReport', gs_stockreportjobschedule: 'TSQL_Job_StockReportSchedule 1',
+  gs_stockledgerjob: 'TSQL_Job_StockLedger', gs_stockledgerjobschedule: 'TSQL_Job_StockLedgerSchedule 1',
+  gs_autosendcrsdatajob: 'AutoSendStockAndSalesToCRS', gs_autosendcrsdatajobschedule: 'AutoSendStockAndSalesToCRS',
+  gs_autoimportstockjob: 'AutoImportStockFromParentServer', gs_autoimportstockjobschedule: 'AutoImportStockFromParentServerSchedule',
+  gs_autodatafetchfromchildserver: 'AutoDataFetchFromChildServer', gs_autodatafetchfromchildserver_schedule: 'AutoDataFetchFromChildServer_Schedule',
+  gs_autodatamigration: 'AutoDataMigration', gs_autodatamigrationschedule: 'AutoDataMigration_Schedule',
+  gs_autodoctortokenreset: 'AutoDoctorTokenReset', gs_autodoctortokenresetschedule: 'AutoDoctorTokenReset_Schedule',
+  gs_autoemployeetimout: 'AutoEmployeeTimout', gs_autotimeout_attendance_schedule: 'SP_AutoTimeOut_Attendance_Schedule',
+  gs_autopatientrecservice: 'AutoPatientRecService', gs_autopatientrecserviceschedule: 'AutoPatientRecServiceschedule',
+  gs_autopostvisit: 'AutoPostVisit', gs_autopostvisitschedule: 'AutoPostVisitschedule',
+  gs_autopostvisitappointmentjob: 'AutoPostVisitAppointment', gs_autopostvisitappointmentjobschedule: 'AutoPostVisitAppointmentschedule',
+  gs_autopurgepostedsales: 'AutoPurgePostedSales', gs_autopurgepostedsales_schedule: 'AutoPurgePostedSales_Schedule',
+  gs_autorestrictselectedclassitems: 'AutoRestrictSelectedClassItems', gs_autorestrictselectedclassitemsschedule: 'AutoRestrictSelectedClassItems_Schedule',
+}
+
 export function applyConfig(rt: Runtime, c: AppConfig): void {
   const g = rt.globals
+  for (const [name, value] of Object.entries(JOB_GLOBALS)) g.set(name, value)
   g.set('gs_company', c.company)
   g.set('gs_servername', c.server)
   g.set('gs_dbname', c.database)

@@ -107,9 +107,14 @@ The File and Item menu of the window each of the 63 non-report menu leaves opens
   stock register (moving average) and packing-wise trading P&L reports read), `SP_AutoStockVerification` (8 h) and `SP_AutoTimeOut_Attendance` (10 min); the others are backups (`backup.exe`) and
   parent/child-server and CRS transfers. The translated procedures exist in PostgreSQL and work (on the scratch database `sp_stockledger()` added the 35 ledger rows of the 20 documents posted during the tests), but nothing called them,
   so on production the ledger would stop growing with the first new posted document (it ends at 2025-01-04 today, like the posted documents: no new transaction yet).
-  `server/src/jobs.rs` is the missing scheduler: `JOBS=all` (or `JOBS=stockledger,applysalepromotions,...`) runs the procedures on the original's intervals, each on its own connection, off by default
-  (it writes to the database, so enabling it on production is the owner's decision). To enable: set `JOBS: all` in `/opt/pharmacy/compose.yml` (environment of `pharmacy-app`) and `docker compose up -d`.
-  The Job Schedule window itself still reads an empty list (its Agent tables do not exist in PostgreSQL).
+  **Fixed (this round)**: the Job Schedule window works end to end. It reads and writes `dbo.sysjobs` / `dbo.sysjobschedules` (the translated `sp_ActivateJob` / `sp_AdjustJobSchedule` existed; the schedule
+  DataWindow was stubbed to an empty result, the job-name globals were empty, and an unconfigured schedule had no row to type an interval into): the globals carry the original's job and schedule names
+  (`app/startup.ts`), `d_backupschedule` reads the tables and shows one empty row for a job without a schedule, and the interval/unit cells fit their box. Checked in the browser: Activate + Every 5 Hours + Save
+  wrote `autobackupclient | 1 | autobackupscheduleclient | 8 | 5` and the window shows it again when reopened. `server/src/jobs.rs` is the scheduler that runs the jobs: `JOBS=schedule` runs
+  the known jobs (promotions, stock ledger, stock verification, attendance time-out) that the window has activated, on the interval it saved, and nothing until somebody activates one (the shop's backups
+  are `backup.exe` jobs and stay with the host's own backup); `JOBS=all` or a list runs the four fixed jobs on the original's intervals. Neither is on in production yet (it writes to the database: the
+  owner's decision). To enable the window-driven mode: `JOBS: schedule` in the environment of `pharmacy-app` in `/opt/pharmacy/compose.yml`, `docker compose up -d`; then activate **Stock ledger** (every 2 hours) in
+  Job Schedule → Stock.
 
 ## Walks after the fixes (2026-11-25, local server, scratch DB, Light theme)
 

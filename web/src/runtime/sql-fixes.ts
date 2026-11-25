@@ -6,20 +6,22 @@
 type Entry = { sql: string; params: string[] }
 type Tables = { dw?: Record<string, Entry>; stmt?: Record<string, Entry>; proc?: Record<string, unknown> }
 
+// d_backupschedule(_2012): the schedule row of a job (the original reads msdb); a job that has none yet shows one empty row, so its interval can be entered (the original's
+// jobs exist up front) and sp_AdjustJobSchedule creates the rows on Save.
 const ADMIN: Record<string, Entry> = {
  "d_databasesname": {
   "sql": "SELECT datname AS name FROM pg_database WHERE datallowconn ORDER BY datname",
   "params": []
  },
  "d_backupschedule": {
-  "sql": "SELECT NULL::integer AS schedule_id, NULL::text AS unit, NULL::integer AS unitvalue, NULL::text AS occurancetime WHERE false",
+  "sql": "SELECT sjs.schedule_id::integer AS schedule_id, sjs.freq_subday_type::integer AS unit, sjs.freq_subday_interval::integer AS unitvalue, sjs.active_start_time::bigint AS occurancetime FROM dbo.sysjobschedules AS sjs JOIN dbo.sysjobs AS sj ON sj.job_id = sjs.job_id WHERE sj.name = $1::citext AND sjs.name = $2::citext UNION ALL SELECT NULL::integer, NULL::integer, NULL::integer, NULL::bigint WHERE NOT EXISTS (SELECT 1 FROM dbo.sysjobschedules AS s2 JOIN dbo.sysjobs AS j2 ON j2.job_id = s2.job_id WHERE j2.name = $1::citext AND s2.name = $2::citext)",
   "params": [
    "as_jobname",
    "as_backupschedulename"
   ]
  },
  "d_backupschedule_2012": {
-  "sql": "SELECT NULL::integer AS schedule_id, NULL::text AS unit, NULL::integer AS unitvalue, NULL::text AS occurancetime WHERE false",
+  "sql": "SELECT sjs.schedule_id::integer AS schedule_id, sjs.freq_subday_type::integer AS unit, sjs.freq_subday_interval::integer AS unitvalue, sjs.active_start_time::bigint AS occurancetime FROM dbo.sysjobschedules AS sjs JOIN dbo.sysjobs AS sj ON sj.job_id = sjs.job_id WHERE sj.name = $1::citext AND sjs.name = $2::citext UNION ALL SELECT NULL::integer, NULL::integer, NULL::integer, NULL::bigint WHERE NOT EXISTS (SELECT 1 FROM dbo.sysjobschedules AS s2 JOIN dbo.sysjobs AS j2 ON j2.job_id = s2.job_id WHERE j2.name = $1::citext AND s2.name = $2::citext)",
   "params": [
    "as_jobname",
    "as_backupschedulename"

@@ -431,6 +431,16 @@ export const DESIGN_CSS = `
 .pbwin[data-win=w_about] .ctl {font-family:var(--p-font)!important;}
 .pbwin[data-win=w_about] .window-caption {overflow:visible!important;height:auto!important;line-height:1.5!important;}
 /* the three groups (company, license, system information) fit a 900 px window: slimmer license boxes and caption rows, so System Information is not cut off below the fold */
+/* Job Schedule: the schedule DataWindow (interval + unit) sits in a 143 x 28 box of the source: the surface's status line and field boxes did not fit and the unit cell fell outside the
+   clipped box, so the interval could not be typed; its box grows to hold both cells side by side */
+.pbwin[data-win=w_job_schedule] .ctl.lowered:has(> .dw [data-field=unitvalue]) {width:162px!important;max-width:162px!important;height:34px!important;overflow:visible!important;}
+.pbwin[data-win=w_job_schedule] .dw.modern-surface:has([data-field=unitvalue]) {width:162px!important;max-width:162px!important;height:34px!important;min-height:0!important;overflow:visible!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;}
+.pbwin[data-win=w_job_schedule] .dw.modern-surface:has([data-field=unitvalue]) .surface-status {display:none!important;}
+.pbwin[data-win=w_job_schedule] .dw.modern-surface:has([data-field=unitvalue]) .surface-body {padding:0!important;margin:0!important;}
+.pbwin[data-win=w_job_schedule] .dw.modern-surface:has([data-field=unitvalue]) .surface-row {display:flex!important;flex-wrap:nowrap!important;gap:6px;width:100%!important;max-width:162px!important;padding:0!important;margin:0!important;min-height:0!important;box-sizing:border-box;}
+.pbwin[data-win=w_job_schedule] .dw.modern-surface:has([data-field=unitvalue]) .surface-field {flex:1 1 0!important;width:auto!important;min-width:0!important;max-width:none!important;padding:0!important;min-height:0!important;}
+.pbwin[data-win=w_job_schedule] .dw.modern-surface:has([data-field=unitvalue]) .surface-field[data-field=unit] {flex:1.8 1 0!important;}
+.pbwin[data-win=w_job_schedule] .dw.modern-surface:has([data-field=unitvalue]) .surface-value {min-height:30px!important;height:30px!important;min-width:0!important;width:100%!important;max-width:100%!important;box-sizing:border-box;}
 .pbwin[data-win=w_about] .window-fields {--grid-density:.72;}
 .pbwin[data-win=w_about] .window-fields .window-button {white-space:nowrap!important;}
 .pbwin[data-win=w_about] .window-fields .window-field input.ctl {min-height:30px!important;height:30px!important;}
