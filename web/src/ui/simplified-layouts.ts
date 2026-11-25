@@ -113,7 +113,7 @@ export function applySimplifiedLayout(layout: SimplifiedLayout, body: HTMLElemen
   }
   // Captions read as in the approved mockup: no trailing colon (the text comes from the DataWindow and is otherwise unchanged).
   for (const label of body.querySelectorAll<HTMLElement>('.surface-label, th > span:first-child')) {
-    if (label.childElementCount === 0 && /:\s*$/.test(label.textContent ?? '')) label.textContent = label.textContent!.replace(/\s*:\s*$/, '')
+    if (label.childElementCount === 0 && /(^\s*:|:\s*$)/.test(label.textContent ?? '')) label.textContent = label.textContent!.replace(/^\s*:\s*|\s*:\s*$/g, '')
   }
   if (layout.emphasis) body.querySelector<HTMLElement>(`.surface-field[data-field="${layout.emphasis}"]`)?.classList.add('simplified-emphasis')
   if (layout.kind === 'grid') {

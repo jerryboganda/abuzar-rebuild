@@ -179,6 +179,9 @@ async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: bool
     await rt.fire(t, 'selectionchanging', [0, first])
     await rt.fire(t, 'selectionchanged', [0, first])
   }
+  // the blank form the tab's SelectionChanged posts (`ue_newform`: header row, first line, footer) is there before the window takes the keyboard: the sale windows
+  // total their lines in `dw_detail.GetFocus`, so the original's blank Credit Sale starts with Misc(+) / Sales 1.00 (the POS fee), not 0.00 (measured 2026-11-25)
+  if (tabs.length) await rt.flushPosted()
   // the DataWindow that holds the keyboard when the window comes up gets its GetFocus (the entry windows open the item list popup from it: Cash Sale and Refused Sale start with
   // the detail grid focused, the Purchase Order with its header)
   const fd = w.lastFocusDw
