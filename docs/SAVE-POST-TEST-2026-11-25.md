@@ -148,6 +148,8 @@ Survey of 85 criteria dialogs at 900px: 6 still scroll by 10-164px (Optimum Leve
 Last pass on the deployed build 73db8e4c (2026-11-26): `QA_ELEMENTS=1 QA_FIELDS=1` over all 203 screens = 245 elements clicked, 251 fields typed, 0 errors (screens 1-142 in one run, screens 143-203 re-run after the desktop app had stopped the local
 servers mid-walk: that run's "Failed to fetch" errors were the stopped servers, not the app); the 141 report leaves 1,226 elements 0 errors (previous build 423c0eb6 plus the list-height change, same 0). Criteria dialogs that scroll: **0 of 85 at a 1080px viewport**, 6 at 900px.
 
+Criteria dialogs on a short window (d927da50, 2026-11-26): `fitCriteria` draws the title bar, fields and button row closer (`criteria-snug`: title padding, 32px inputs, 34px buttons) before the lists give up their last rows (floor 4.5em). Survey of **102 distinct criteria windows** (each reached through its Select Format -> Ok) at a 900px viewport: **1 scrolls** (Optimum Level, 104px, its four groups need about 700px; it fits at 1080px), at 1080px none. Report-leaf walk on this build: 141 leaves, 1,226 elements, 0 errors.
+
 ## Left in the scratch database
 
 Rows named `QA 1125 ...` and `QA CLASS 1125` (Basic Data), purchases 12281-12283 (posted), purchase return 1489, sales 588887-588888,
