@@ -387,6 +387,7 @@ dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window
 dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin > .client > .window-fields > fieldset.window-frame {margin-bottom:8px;}
 .modern-window .window-list select.ctl {max-height:18em;}
 dialog.presentation-compatibility-dialog[open].ds-report-criteria .window-list select.ctl {min-height:7.5em;}
+dialog.presentation-compatibility-dialog[open].ds-report-criteria .window-fields > .window-list.grid-cell[data-window-frame-member] {margin-top:8px;}
 dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin > .tbar {padding:12px 20px 2px;}
 /* ---------- Group Rights (Manage › Groups): the original rights grid as the mockup's matrix — level shown by weight and a
    tint instead of the source's blue bands, permissions as switches (the cell, its click handling and the saved value are unchanged) */
