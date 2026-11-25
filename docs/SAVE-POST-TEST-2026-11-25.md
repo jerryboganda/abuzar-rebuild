@@ -56,6 +56,33 @@ address and licence data: never commit them to the public repository.
   shortest text, rounded to 16 digits (`Evaluate('String(58557/100)')` = `585.57`, `54145/100` = `541.45`, `10/3` = `3.333333333333334`,
   `1/3` = `0.3333333333333333`, `1/10+2/10` = `0.3`); the rebuild expanded to 17 digits first. `runtime/values.ts`, test in `tests/dw-itemstatus.test.ts`.
 
+## Side by side with the original (2026-11-25, 63 screens)
+
+Every menu screen of the original `abuzar.exe` (read-only walk by Win32 menu messages, `PrintWindow` captures) was compared with the Modern
+frontend. Fixed (commits f9072e29, d5fed75b, deployed):
+
+| Screen | Difference | Fix |
+|---|---|---|
+| Sale Promotion | default name `<Enter Promotion Name Here>` shown in capitals in the original | a column's Case (upper / lower) applies to the display and the editor's start text; an untouched Case=Upper edit is not a change |
+| Quotation | default customer `****CASH SALES CUSTOMER` showed empty | an editable drop-down follows a value a script sets after the editor was built |
+| Customer Form | Opening Date comes before Name (Local Language) | `InterfaceSetting` ties (same SequenceId): SQL Server's order is reproduced for the two visible pairs (`runtime/sql-fixes.ts`) |
+| Groups (and the other `w_listview_form` lists) | "Find:" box missing | `d_find` gets its row, the original's keypressed / editchanged script runs |
+| Cash Sale item popup | Location column pushed out of the popup | long cells are cut short (`ui/ds-purchase.ts`) |
+| About | System Information below the fold; "More Info. . ." wrapped | compact rows (`ui/design-system.ts`) |
+| Item Basic Data supplier grid | heading `:Bonus` | stray leading colon dropped with the trailing ones |
+
+Not code defects (nothing to change):
+
+* **Adjustment Decrease shows a "Post" button** the original's File menu does not have (and Print is hidden): the menu items are shown or hidden by the user's
+  group rights; the test user's group differs from the original session's `ADMIN`.
+* **Job Schedule** shows Activate off / Every blank: the schedule lives in SQL Server Agent jobs (`msdb`), which PostgreSQL does not have; the window reads an empty list by design.
+* **About licence lines** are blank (licensed-to, product licence id): the original reads its activation data; licensing is not reproduced (decision, `CLAUDE.md`).
+* Stock figures and times differ between the screens (live data of two databases).
+
+Open (display only, saved values match): a blank **Credit Sale** shows Misc(+) / Sales 0.00 where the original shows 1.00 (the POS fee). The rebuild runs the same
+`wf_grandtotal`; the original's first call at open comes from a PowerBuilder event the rebuild does not raise. Firing `dw_detail.losefocus` by hand gives 1.00, but the
+first-focus DataWindow is `dw_detail` itself, so the trigger is another one (not found yet). The fee is applied at the first item / customer change and at save (stored `misccharges` = 1.00).
+
 ## Left in the scratch database
 
 Rows named `QA 1125 ...` and `QA CLASS 1125` (Basic Data), purchases 12281-12283 (posted), purchase return 1489, sales 588887-588888,
