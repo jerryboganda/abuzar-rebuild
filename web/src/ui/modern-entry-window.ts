@@ -94,6 +94,9 @@ export function applyModernListWindow(view: WinView): boolean {
   decoration.classList.add('entry-decoration')
   decoration.setAttribute('aria-hidden', 'true')
   pages[0].replaceChildren(group('entry-list', [group('entry-criteria', [sort, filter]), group('entry-search', [findLabel, help, find, element('st_2')]), list, decoration]))
+  // The original paints d_find's one blank field on a list window that never retrieves it (Groups: "Find:" box under the criteria); the Modern
+  // surface hides an empty form, so the Find box would vanish. A row of its own keeps the field (and its keypressed / editchanged script) alive.
+  if (findView.ctl.model && !findView.ctl.model.rowCount()) findView.ctl.model.insertRow(0)
   findView.useContextSurface(ENTRY_FIND_SURFACE, new Map([['find', findLabel]]))
   listView.useContextSurface(surface)
   tab.classList.add('entry-tabs', 'entry-control')

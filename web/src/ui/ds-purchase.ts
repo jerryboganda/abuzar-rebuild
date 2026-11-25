@@ -303,6 +303,8 @@ export const PURCHASE_CSS = `
 .modern-entry-window .entry-detail.ds-transaction > .entry-auxiliary:not(.hidden) {grid-column:1;grid-row:3;align-self:start;justify-self:start;width:min(880px,100%)!important;z-index:30;height:min(360px,60vh)!important;border:1px solid var(--p-hair);border-radius:12px;box-shadow:var(--p-shadow-lg);background:var(--p-surface);overflow:hidden;animation:ds-drop .16s var(--p-ease);transition:margin-top .12s;}
 .modern-entry-window .entry-detail.ds-transaction > .entry-auxiliary:not(.hidden) > .modern-surface {width:100%!important;height:100%!important;border:0!important;box-shadow:none!important;border-radius:12px;padding:0!important;}
 .modern-entry-window .entry-detail.ds-transaction > .entry-auxiliary .simplified-head {display:none;}
+/* the item list shows all of its columns (the original's popup ends with Location): a long manufacturer name is cut short instead of pushing Location out of the popup */
+.modern-entry-window .entry-detail.ds-transaction > .entry-auxiliary .surface-grid td {max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .modern-entry-window .entry-detail.ds-transaction > .entry-auxiliary:not(.hidden) tr.cur {background:var(--p-selected)!important;}
 /* the bill summary's computed figures read as plain right-aligned numbers (mockup); fields the user can type in stay boxes */
 .modern-surface .simplified-summary .surface-value[aria-readonly=true]:not(.simplified-emphasis *) {background:transparent!important;border-color:transparent!important;box-shadow:none!important;text-align:right;font-family:var(--p-mono);padding-right:2px!important;}

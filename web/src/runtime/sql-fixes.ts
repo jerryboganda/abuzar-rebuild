@@ -68,7 +68,12 @@ const REPLACE: Record<string, (sql: string) => string> = {
   d_wholesaleinvreport_manfwise_full: (s) => s.replace(/(?<!\.)\bprintbalance\b/g, 'saleledger.printbalance'),
   d_zafartractor_transferinvreport: (s) => s.replaceAll('max(headerno)', 'max(th.headerno)'),
   d_stockinhand_transitstock_crosstab: (s) => s.replaceAll('ORDER BY t.name, t.gcode', 'ORDER BY max(t.name), t.gcode'),
-  d_cust_student_servicetemplatedetail: (s) => s.replace(/(?<!customer)studentservicetemplatedetail\.rowid/g, 'customerstudentservicetemplatedetail.rowid'),
+  // `Order By ModuleId, SequenceId` has ties (two columns on the same sequence); SQL Server's sort returns them in no stated order. The shop's data has
+  // two visible tied pairs the original lists the other way round than colname order (measured on the original, 2026-11-25): the Customer form shows
+  // Opening Date before Name (Local Language), the pack/bonus setting lists discperc2 before bonusqty. The rest of the ties come out in colname order.
+  d_interfacesettingcols: (s) => s.replace(/ORDER BY moduleid, sequenceid, colname\b/,
+    "ORDER BY moduleid, sequenceid, CASE WHEN (moduleid, colname) IN ((24, 'accounts_openingdate'), (16, 'discperc2')) THEN 0 WHEN (moduleid, colname) IN ((24, 'accounts_localaccountname'), (16, 'bonusqty')) THEN 1 ELSE 2 END, colname"),
+  d_cust_student_servicetemplatedetail:(s) => s.replace(/(?<!customer)studentservicetemplatedetail\.rowid/g, 'customerstudentservicetemplatedetail.rowid'),
 }
 
 /** Apply the corrections to the parsed sql.json tables. Returns what changed. */

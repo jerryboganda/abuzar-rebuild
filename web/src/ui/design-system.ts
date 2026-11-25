@@ -430,6 +430,11 @@ export const DESIGN_CSS = `
 .pbwin[data-win=w_about] .window-caption,.pbwin[data-win=w_about] .window-field label .ctl {white-space:nowrap!important;overflow-wrap:normal!important;}
 .pbwin[data-win=w_about] .ctl {font-family:var(--p-font)!important;}
 .pbwin[data-win=w_about] .window-caption {overflow:visible!important;height:auto!important;line-height:1.5!important;}
+/* the three groups (company, license, system information) fit a 900 px window: slimmer license boxes and caption rows, so System Information is not cut off below the fold */
+.pbwin[data-win=w_about] .window-fields {--grid-density:.72;}
+.pbwin[data-win=w_about] .window-fields .window-button {white-space:nowrap!important;}
+.pbwin[data-win=w_about] .window-fields .window-field input.ctl {min-height:30px!important;height:30px!important;}
+.pbwin[data-win=w_about] .window-fields .ctl.st.window-caption {padding-top:0!important;padding-bottom:0!important;line-height:1.35!important;}
 .presentation-ui[data-theme=dark] .modern-window .tabctl.window-embedded,.modern-window[data-theme=dark] .tabctl.window-embedded {color-scheme:dark;}
 .modern-window .tabctl.window-embedded button.ctl {background:var(--p-surface)!important;color:var(--p-text)!important;border:1px solid var(--p-line)!important;border-radius:8px;}
 /* drop-downs of a tab page are drawn by the theme, enabled or not (the native disabled widget was a light grey box in the dark theme) */

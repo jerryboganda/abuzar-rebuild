@@ -410,7 +410,8 @@ export class ModernDwView extends DwView {
     if (simplified) applySimplifiedLayout(simplified, body, this.simplified, model.colNames[model.col - 1]?.toLowerCase())
     // Approved design: captions read without a trailing colon on every Modern surface (the DataWindow text is otherwise unchanged).
     if (!simplified) for (const label of body.querySelectorAll<HTMLElement>('.surface-label, th > span:first-child')) {
-      if (label.childElementCount === 0 && /:\s*$/.test(label.textContent ?? '')) label.textContent = label.textContent!.replace(/\s*:\s*$/, '')
+      // (the Item Basic Data supplier grid's heading is ":Bonus": the stray leading colon goes too)
+      if (label.childElementCount === 0 && /(^\s*:|:\s*$)/.test(label.textContent ?? '')) label.textContent = label.textContent!.replace(/^\s*:\s*|\s*:\s*$/g, '')
     }
     if (this.changes.signal.aborted || this.stale) return
     if (revision !== this.revision || paintRevision !== this.paintRevision || this.ctl.model !== model || editor !== this.editor) {
