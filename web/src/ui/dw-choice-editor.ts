@@ -229,6 +229,13 @@ export class DwChoiceEditor {
     this.original = this.value = now
     if (!this.loading && !this.failed) this.populate()
   }
+  /** after any change of the record: the open editor follows a value a script set (Quotation sets its customer to the cash-sales
+   *  customer after the window opened) unless the user has typed or picked something of their own */
+  syncAfterChange(): void {
+    if (!this.host.editable) return this.syncRecordValue()
+    if (this.textWritten || this.draftChoice || this.ownsFocus() && this.read() !== this.originalText) return
+    this.syncValue()
+  }
   syncValue(): void {
     if (!this.host.editable) return this.syncRecordValue()
     if (!this.active()) return

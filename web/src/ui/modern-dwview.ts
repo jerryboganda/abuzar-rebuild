@@ -66,7 +66,7 @@ export class ModernDwView extends DwView {
       this.lookup.cancel()
     }
     const model = this.ctl.model
-    if (this.choiceEdit && this.editor === this.choiceEdit.element) this.choiceEdit.syncRecordValue()
+    if (this.choiceEdit && this.editor === this.choiceEdit.element) this.choiceEdit.syncAfterChange()
     const draft = this.takeEditor()
     if (draft && (this.ctl.destroyed || model !== this.boundModel || model?.rowAt(draft.row) !== this.boundRow)) {
       if (!this.discardUnchangedTextEditor() && !this.discardUnchangedChoiceEditor()) this.retainStaleDraft(draft.value)

@@ -1696,6 +1696,13 @@ export class DwView {
     if (typeof v === 'string' && (kind === 'number' || kind === 'decimal') && v.trim() !== '' && Number.isFinite(Number(v))) {
       v = kind === 'decimal' ? Dec.parse(v) : Number(v)
     }
+    // the column's Case (upper / lower) applies to what it shows, not only to what is typed: the sale promotion's default name
+    // `<Enter Promotion Name Here>` shows in capitals (side by side with the original, 2026-11-25)
+    if (kind === 'string' && typeof v === 'string') {
+      const casing = (m.overrides.get(`${o.name.toLowerCase()}.edit.case`) ?? o['edit.case'] ?? 'any').toLowerCase()
+      if (casing === 'upper') v = v.toUpperCase()
+      else if (casing === 'lower') v = v.toLowerCase()
+    }
     if (typeof v === 'number' || v instanceof Dec || v instanceof PBDate || v instanceof PBTime || v instanceof PBDateTime) return formatValue(v, useFmt || undefined)
     if ((typeof v === 'string' || v === null || v === undefined) && /['"@;]/.test(useFmt)) return stringFormat(v ?? null, useFmt)
     return formatValue(v, useFmt || undefined)
@@ -2383,7 +2390,8 @@ export class DwView {
     const editMask = choiceProperty(o, 'editmask.mask', m.overrides)
     const limit = dwTextLimit(m, ci, o)
     if (limit) input.maxLength = limit
-    let sourceText = dwEditorText(m, o, v)
+    // A Case = Upper/Lower edit shows the text in that case from the start (the original's edit control converts what it is given)
+    let sourceText = dwEditText(m, ci, o, dwEditorText(m, o, v))
     this.editorInitial = sourceText
     input.value = sourceText
     this.editorFromModel = true
@@ -2467,7 +2475,7 @@ export class DwView {
         return false
       }
       this.editor = null
-      const cur = temporal ? storedText : toStr(v)
+      const cur = temporal ? storedText : dwEditText(m, ci, o, toStr(v)) // an untouched Case = Upper edit is not a change
       if (input.value !== domText(cur)) input.value = dwEditText(m, ci, o, input.value)
       const text = readText()
       if (input.isConnected) input.remove()
