@@ -27,11 +27,12 @@ Nothing was written to production or to the original app's database.
 | A plain drop-down kept showing "Choose a value" after a script set the record's value following the editor's creation (Cashier Job's Job Owner) | `DwChoiceEditor.syncRecordValue` | this commit |
 | Server time was the start of the transaction (`localtimestamp`), so the back-date check (`ServerDate.LastTransDate`) refused saves ("Back Date Invoice Check violates", Change Items Price 4 of 5 times) and stale times were stored | `statement_timestamp()` in `GetDateTime`, dynamic `GETDATE()` and the fiscalization stamps | 29d646ed |
 
-## Known limitation
+## Session Monitor
 
-* The Session Monitor shows PostgreSQL connections of the database, not the original's application sessions
-  (`tempdb.dbo.SysIsolaation`, filled at login): computer/user names are blank and your own session is not highlighted.
-  Registering application sessions needs a server-side change (the Rust server is built in CI).
+The server (commit e96c7735, compiled and deployed on the VPS) names each connection `waseela (<usercode>)` (`application_name`) when
+the client opens it with its user, and the monitor query shows that user code, like the original's session table
+(`tempdb..SysIsolaation`, filled at login). Computer names are the client addresses (a browser has no computer name) and your own
+session is not highlighted (no session id in the browser).
 
 ## Open (a deployment step, not code)
 
@@ -48,7 +49,11 @@ Nothing was written to production or to the original app's database.
 * The Lock Item Batches / Priority Setting lists open sorted descending although "Ascending" is checked: `w_multi_entry`
   initialises `is_sortsequence` to "D" and the original's script only ticks the radio.
 * A purchase return lowers stock at save, before posting (as the earlier return 1488 did); quotation and refused sale store 0 for
-  invoice total / sale price (the original's scripts never write them).
+  invoice total / sale price (the original's scripts never write them). The rebuild runs the recovered scripts as they are
+  (`w_purchasereturn.wf_updateitemstock*` run in the save), so the timing is the original's own code.
+* The purchase summary's RPP shows `585.5700000000001`: PowerScript `string(double)` of a double prints 16 significant digits with
+  the last one rounded from the 17th (measured with the original's DataWindow engine: `1/3` -> `0.3333333333333333`,
+  `10/3` -> `3.333333333333334`, `0.1+0.2` -> `0.3`); the rule is in `runtime/values.ts` and was left as measured.
 * Dates follow the browser's regional order (month first in the test browser), as the original follows Windows.
 
 ## Left in the scratch database
