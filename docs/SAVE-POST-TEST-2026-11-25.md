@@ -132,6 +132,10 @@ The script is the original's own (the window has no Cancel); with Ok the report 
 (a name / supplier / sales person / invoice number has to be chosen), 6 were only slower than the walk's 3 s wait (Reorder Level Report, Manufacturer List and Dead Item List render after 20 to 120 s: the
 report is 818 / 126 pages; Dead Item List's query takes 23 s on the unvacuumed local scratch database against 6.5 s on the original SQL Server, production's tables are vacuumed and analysed since 2026-11-14).
 
+Criteria dialogs taller than the window (measured at 900 px viewport height, 122 distinct dialogs): 8 have content below the visible body: Optimum Level Report (`w_arg_manf_cat_class_packing`, four list groups, 406 px more),
+Daily Sales Summary with Profit (`w_arg_godown_sinv_linv_sale_sret`, 78 px), Daily Reports Sale summary (60), Sales Tax Report (39), Net Sale Summary (15), Days Summary (14), Sale with header wise summaries (10), Machine and Invoice Range (2).
+They scroll inside the dialog with Ok / Cancel pinned below and a fade at the edge, as the original window (1904 PBU tall for the largest) does on a short screen; no change.
+
 ## Left in the scratch database
 
 Rows named `QA 1125 ...` and `QA CLASS 1125` (Basic Data), purchases 12281-12283 (posted), purchase return 1489, sales 588887-588888,
