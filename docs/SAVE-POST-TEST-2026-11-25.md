@@ -137,6 +137,11 @@ Daily Sales Summary with Profit (`w_arg_godown_sinv_linv_sale_sret`, 78 px), Dai
 They are height-dependent: at a 1080 px viewport only Optimum Level Report still overflows (226 px; four list groups stacked as in the original, 1904 PBU tall), the other seven fit. It scrolls inside the dialog with Ok / Cancel pinned below and a fade at the edge; no change.
 The right-most input of an entry grid (Quotation Item Description, Refused Sale Sale Price, Price Policy Expiry Date) no longer touches the card's border (`td.surface-field:last-child` gets 10px end padding).
 
+Final pass on the deployed build (04f4cf23, 2026-11-25, Light theme, 1440x900): `QA_ELEMENTS=1 QA_FIELDS=1` over all **203 screens** (245 elements clicked, 251 fields typed, 0 page errors) and
+`QA_REPORTS=1 QA_ELEMENTS=1 QA_FIELDS=1` over the **141 report leaves** (1,226 criteria-dialog elements clicked, 0 errors). The two "issues=1" lines (Cash Sale, Credit Sale) are the runner's window-list
+detection coming back empty on a slow open; both windows render and were clicked. Credit Sale's Customer drop-down shows `0` in the original too.
+Left as designed: the toolbar title of a long report name is cut with an ellipsis (full name in the tooltip, the breadcrumb and the tab); Optimum Level Report's four stacked list groups scroll at 1080 px (original layout).
+
 ## Left in the scratch database
 
 Rows named `QA 1125 ...` and `QA CLASS 1125` (Basic Data), purchases 12281-12283 (posted), purchase return 1489, sales 588887-588888,
