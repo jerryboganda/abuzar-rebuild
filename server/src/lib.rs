@@ -13,6 +13,7 @@ pub mod auth;
 pub mod fiscal;
 pub mod fs;
 pub mod inet;
+pub mod jobs;
 pub mod sqlsub;
 
 use std::collections::HashMap;

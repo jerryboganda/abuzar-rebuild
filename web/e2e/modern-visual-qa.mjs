@@ -3,6 +3,8 @@
 // boxes, clipped captions, controls outside their window, overlapping controls, windows that do not fit.
 //
 //   APP_USER=... APP_PW=... node e2e/modern-visual-qa.mjs <base-url> <out-dir> [filter-regex] [theme: dark|light]
+//   QA_ELEMENTS=1 / QA_FIELDS=1 click every element / type into every field (QA_REPORTS=1 also on the report screens: with QA_RUN=1 the elements of the
+//   preview are clicked after the run, without it those of the criteria dialog that opens)
 //
 // Nothing is saved by the walk: every window is closed with No/Cancel, like a user leaving.
 import { chromium } from 'playwright'
@@ -285,7 +287,7 @@ for (const leaf of todo) {
   // the errors and message boxes are recorded and any dialog the click opened is closed again (Save/Delete/Post/Print/Close are not
   // clicked: they write data, print or end the screen)
   const clicks = []
-  if (process.env.QA_ELEMENTS === '1' && !/^&?Reports/.test(leaf.path)) {
+  if (process.env.QA_ELEMENTS === '1' && (!/^&?Reports/.test(leaf.path) || process.env.QA_REPORTS === '1')) {
     // window objects, not names: two instances of one class (Cash Sale's Card button opens Credit Sale, both w_sale) share a name
     const home = await page.evaluate(() => { window.__home = new Set(window.rt.ui.views.keys()); return window.__home.size })
     const count = await page.evaluate(() => {
@@ -324,7 +326,7 @@ for (const leaf of todo) {
   // QA_FIELDS=1: every editable field and DataWindow cell of the screen is clicked like a user would (mouse), a value is typed
   // (a date for date fields, "1" otherwise) and Tab is pressed; errors, message boxes and opened windows are recorded and undone
   const entries = []
-  if (process.env.QA_FIELDS === '1' && !/^&?Reports/.test(leaf.path)) {
+  if (process.env.QA_FIELDS === '1' && (!/^&?Reports/.test(leaf.path) || process.env.QA_REPORTS === '1')) {
     await page.evaluate(() => { window.__home = new Set(window.rt.ui.views.keys()) })
     const tagFields = () => page.evaluate(() => {
       const vis = (el) => el.offsetParent !== null && el.getBoundingClientRect().width > 4 && el.getBoundingClientRect().height > 4

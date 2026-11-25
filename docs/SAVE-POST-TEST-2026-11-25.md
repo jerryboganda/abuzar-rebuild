@@ -87,6 +87,30 @@ Found and fixed after the table (commit 87871ecb, deployed):
 * **Refused Sale**: its item list took a grid row of its own and pushed the godown stock grid 360 px down; it now drops over the lines card.
 * Item Basic Data supplier grid heading `:Bonus`: the leading colon is dropped on the simplified surfaces too.
 
+## Menus compared item by item (2026-11-25, second round)
+
+The File and Item menu of the window each of the 63 non-report menu leaves opens was read from the running original (Win32 menu, ADMIN) and from the rebuild
+(same leaves): after the fixes below there is **no difference in the entries or in their enabled state on any of the 63 windows**.
+
+| Finding | Cause | Fix |
+|---|---|---|
+| Customer Form lacked "Set Guarantee Person", "View Customer Comments" (and Show Account Ledger kept no caption); the purchase, patient, visit-appointment, service and Modify Sale Invoices menus lost 5 more items' captions and click scripts | the decompiler named the routines of 11 menu items `None`; the class builder merged them under one owner and only the last of each event survived | `data/src/scripts/*/m_*.pbs`: the owner is the item's field name (taken from the p-code, 6 files, order checked); `re-tools` still writes `None` |
+| `Print` missing on Purchase Return / Opening / Loose / Orders, Cash and Credit Sale, the sale returns, Quotation and the three Adjustment windows; Adjustment Decrease showed a `Post` the original does not have; the sale windows' post entry is "Post Sale Invoices" / "Post Sale Returns" in the original; Priority Setting and Lock Item Batches have no Item menu | the scripts and p-code say `m_print.Visible = false` and nothing shows it again, yet the running original lists it; the cause (a PowerBuilder menu rule) was not found | `web/src/runtime/menu-fixes.ts` copies the measured result per window (test `tests/menu-fixes.test.ts`); without it the transaction windows could not print the current invoice |
+
+### The two things set aside before, now settled
+
+* **About, licence lines**: they come from the report-header files (`f_reportheaderinfo`: `serviceheads.pbd`, `mgmtcomp.pbd`). With the files in the server's file root the dialog shows
+  "Fazal Din's Pharma Plus", "NRY Pacific / Franchise Fazal Din's" and the licence id exactly like the original (checked locally); the production server has the files since this morning, so it
+  shows them. The last licence-id digit group differs (`.3567.0.7968` against `.3567.6.7968`): the original derives it from its activation counter, which is not reproduced (licensing decision).
+* **Job Schedule** shows nothing saved because the rebuild never had a scheduler: the original's screen configures **SQL Server Agent jobs** and the shop's server runs nine of them. The four local ones matter:
+  `SP_ApplySalePromotions` (every 10 min: switches customers' promotion discounts on and off), `SP_StockLedger` (every 2 h: copies new posted documents into `stockledger`, which the stock-in-hand-on-a-back-date,
+  stock register (moving average) and packing-wise trading P&L reports read), `SP_AutoStockVerification` (8 h) and `SP_AutoTimeOut_Attendance` (10 min); the others are backups (`backup.exe`) and
+  parent/child-server and CRS transfers. The translated procedures exist in PostgreSQL and work (on the scratch database `sp_stockledger()` added the 35 ledger rows of the 20 documents posted during the tests), but nothing called them,
+  so on production the ledger would stop growing with the first new posted document (it ends at 2025-01-04 today, like the posted documents: no new transaction yet).
+  `server/src/jobs.rs` is the missing scheduler: `JOBS=all` (or `JOBS=stockledger,applysalepromotions,...`) runs the procedures on the original's intervals, each on its own connection, off by default
+  (it writes to the database, so enabling it on production is the owner's decision). To enable: set `JOBS: all` in `/opt/pharmacy/compose.yml` (environment of `pharmacy-app`) and `docker compose up -d`.
+  The Job Schedule window itself still reads an empty list (its Agent tables do not exist in PostgreSQL).
+
 ## Walks after the fixes (2026-11-25, local server, scratch DB, Light theme)
 
 * `e2e/modern-visual-qa.mjs` over all 203 menu screens: 0 page errors, 0 layout issues; one message box (Cashier Activity Window: "Unable to fetch cashier job data from database", the original shows the same).

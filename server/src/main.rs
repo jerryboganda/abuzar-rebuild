@@ -18,6 +18,12 @@ async fn main() -> anyhow::Result<()> {
             anyhow::bail!("BIND={bind} listens on the network but API_TOKEN is not set; set API_TOKEN (recommended) or ALLOW_INSECURE_LAN=1 to override");
         }
     }
+    // the original's SQL Server Agent jobs (stock ledger, sale promotions ...): only when JOBS asks for them, see jobs.rs
+    if let Ok(value) = std::env::var("JOBS") {
+        let scale = std::env::var("JOBS_SCALE").ok().and_then(|s| s.parse().ok()).unwrap_or(1);
+        let started = trader_server::jobs::start(database_url.clone(), &value, scale);
+        tracing::info!("{started} periodic job(s) started (JOBS={value})");
+    }
     let state = AppState::new(database_url);
 
     let reaper = state.clone();
