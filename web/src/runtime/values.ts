@@ -332,14 +332,16 @@ function wrap(n: number, bits: number, signed: boolean): number {
   return r
 }
 
-/** a double as text with 16 significant digits, the last one rounded up from the 17th (1/3 = 0.3333333333333333, 10/3 = 3.333333333333334: the DataWindow engine of the original) */
+/** a double as text: the shortest text that reads back as the same double, rounded to 16 significant digits when it has more (1/3 = 0.3333333333333333, 10/3 = 3.333333333333334, 58557/100 = 585.57: the DataWindow engine of the original) */
 function doubleText(v: number): string {
   if (!Number.isFinite(v)) return String(v)
   const abs = Math.abs(v)
   if (abs >= 1e15 || abs < 1e-6) return String(Number(v.toPrecision(15)))
   const intDigits = abs >= 1 ? Math.floor(Math.log10(abs)) + 1 : 0
   const places = Math.max(0, 16 - intDigits)
-  const s = Dec.parse(v.toPrecision(17)).round(places).toString()
+  // from the shortest text that reads back as the same double (585.57, not its 17-digit expansion 585.57000000000005): the original's
+  // engine prints 58557/100 as 585.57 and 541.45 as 541.45, and still 10/3 as 3.333333333333334 (measured 2026-11-25)
+  const s = Dec.parse(String(v)).round(places).toString()
   return s.includes('.') ? s.replace(/0+$/, '').replace(/\.$/, '') : s
 }
 

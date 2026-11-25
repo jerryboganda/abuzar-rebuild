@@ -37,3 +37,11 @@ test('INSERT leaves out a column whose value is NULL, even when a script set it'
   assert.match(stmt.sql, /^INSERT INTO dbo\."?srledger"? \("?code"?\) VALUES \(\$1\)$/)
   assert.deepEqual(stmt.params, [7])
 })
+
+// String(double) of the original: measured with its DataWindow engine (`Evaluate('String(58557/100)')` = 585.57, 541.45 = 541.45,
+// 10/3 = 3.333333333333334, 1/3 = 0.3333333333333333, 1/10+2/10 = 0.3): the shortest text of the double, rounded to 16 digits.
+import { toStr } from '../src/runtime/values.ts'
+test('a double prints as its shortest text, rounded to 16 significant digits', () => {
+  for (const [value, text] of [[58557 / 100, '585.57'], [54145 / 100, '541.45'], [82870 / 100, '828.7'], [10 / 3, '3.333333333333334'],
+    [1 / 3, '0.3333333333333333'], [0.1 + 0.2, '0.3']] as const) assert.equal(toStr(value), text)
+})

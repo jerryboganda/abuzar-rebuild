@@ -22,6 +22,7 @@ Nothing was written to production or to the original app's database.
 | Closed tabs never released their server sessions; the test server filled its 60 slots | `pagehide` + keepalive close in `app/httpdb.ts`; QA runners close the page before the browser | 65126d6c, c9250052 |
 | The purchase badge said "Draft · not saved" on a saved invoice (the window's own SetItem after a reopen) | `DwModel.hasPendingUpdate` used by `ui/ds-purchase.ts` | 65126d6c |
 | Open Sale Returns, and a second return against a sale, failed with a NOT NULL violation (`srledger.fbrposfee`): a NULL a script set was sent explicitly in the INSERT. PowerBuilder leaves NULL columns out, so the default 0 applies (the original has 73 such returns, all 0) | `dw/model.ts` + test | c9250052 |
+| `String(double)` printed 585.5700000000001 (RPP, any price with a double rounding artefact): now the shortest text rounded to 16 digits, measured with the original's engine | `runtime/values.ts` + test | this commit |
 | Session Monitor listed nothing: the connection query filtered by the app's database name (`trader`) instead of the actual PostgreSQL database; user name showed 0 for text; computer name blank | `datname = current_database()`, client address as computer name, user name left blank (`runtime/sql-fixes.ts`) | this commit |
 | Session Monitor's bottom options band ("Maximum Users Allowed", "Refresh after every n Seconds") was clipped to a 30 px strip, the spin buttons unreachable | window-specific layout rule in `ui/design-system.ts` | this commit |
 | A plain drop-down kept showing "Choose a value" after a script set the record's value following the editor's creation (Cashier Job's Job Owner) | `DwChoiceEditor.syncRecordValue` | this commit |
@@ -51,10 +52,9 @@ session is not highlighted (no session id in the browser).
 * A purchase return lowers stock at save, before posting (as the earlier return 1488 did); quotation and refused sale store 0 for
   invoice total / sale price (the original's scripts never write them). The rebuild runs the recovered scripts as they are
   (`w_purchasereturn.wf_updateitemstock*` run in the save), so the timing is the original's own code.
-* The purchase summary's RPP shows `585.5700000000001`: PowerScript `string(double)` of a double prints 16 significant digits with
-  the last one rounded from the 17th (measured with the original's DataWindow engine: `1/3` -> `0.3333333333333333`,
-  `10/3` -> `3.333333333333334`, `0.1+0.2` -> `0.3`); the rule is in `runtime/values.ts` and was left as measured.
-* Dates follow the browser's regional order (month first in the test browser), as the original follows Windows.
+* The purchase summary's RPP showed `585.5700000000001` (fixed, commit below): the original's DataWindow engine prints a double as its
+  shortest text, rounded to 16 digits (`Evaluate('String(58557/100)')` = `585.57`, `54145/100` = `541.45`, `10/3` = `3.333333333333334`,
+  `1/3` = `0.3333333333333333`, `1/10+2/10` = `0.3`); the rebuild expanded to 17 digits first. `runtime/values.ts`, test in `tests/dw-itemstatus.test.ts`.
 
 ## Left in the scratch database
 
