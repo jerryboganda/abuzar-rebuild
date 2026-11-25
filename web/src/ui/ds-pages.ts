@@ -388,6 +388,11 @@ dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window
 .modern-window .window-list select.ctl {max-height:18em;}
 dialog.presentation-compatibility-dialog[open].ds-report-criteria .window-list select.ctl:is([size],[multiple]) {min-height:var(--criteria-list-min,7.5em);}
 dialog.presentation-compatibility-dialog[open].ds-report-criteria .window-fields > .window-list.grid-cell[data-window-frame-member] {margin-top:8px;}
+dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin.criteria-snug > .tbar {padding:6px 20px 0;}
+dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin.criteria-snug > .client > .window-actions {padding-block:8px;margin-top:4px!important;}
+dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin.criteria-snug > .client > .window-actions > .ctl {height:34px!important;min-height:0!important;}
+dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin.criteria-snug .window-fields .window-field.grid-cell {padding-block:1px;row-gap:3px;}
+dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin.criteria-snug .window-fields .window-field.grid-cell > input.ctl {height:32px!important;min-height:0!important;}
 dialog.presentation-compatibility-dialog[open].ds-report-criteria .modern-window.pbwin > .tbar {padding:12px 20px 2px;}
 /* ---------- Group Rights (Manage › Groups): the original rights grid as the mockup's matrix — level shown by weight and a
    tint instead of the source's blue bands, permissions as switches (the cell, its click handling and the saved value are unchanged) */
