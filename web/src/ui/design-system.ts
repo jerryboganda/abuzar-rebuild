@@ -129,6 +129,9 @@ export const DESIGN_CSS = `
 .presentation-ui .ds-home-bar .mh-title {font-size:17px;font-weight:600;letter-spacing:-.01em;color:var(--p-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 /* a long window title gives way to the commands: it shortens with an ellipsis (the full title is the tab's and the tooltip's) */
 .presentation-ui .toolbar.mh-toolbar > .mh-title {flex:0 1 auto;min-width:6em;overflow:hidden;text-overflow:ellipsis;}
+/* a long window title (a report's name beside twenty toolbar buttons) wraps to a second line before it is cut */
+.presentation-ui .toolbar.mh-toolbar > .mh-title {white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;line-height:1.15;}
+.presentation-ui .toolbar.mh-toolbar > .mh-title[data-long] {font-size:14px;}
 /* the frame's status line keeps no 3-D bevel of the original (a white edge and divider on the dark theme) */
 .presentation-ui .ds-statusbar > .status {border:0!important;box-shadow:none!important;}
 .presentation-ui .ds-statusbar > .ds-status-right {border-left:1px solid var(--p-hair)!important;padding-left:16px;}

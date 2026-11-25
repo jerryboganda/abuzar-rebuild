@@ -455,7 +455,11 @@ export class PresentationUi extends DomUi {
     this.mdi?.el.querySelectorAll<HTMLElement>('.menubar .mi').forEach((mi) => mi.classList.toggle('ds-current', !!module && mi.textContent?.trim() === module))
     this.header?.refresh()
     const heading = this.mdi?.el.querySelector<HTMLElement>('.mh-toolbar .mh-title')
-    if (heading) { heading.textContent = this.selected && !this.homeActive ? String(this.selected.props.get('title') || this.selected.name) : ''; heading.title = heading.textContent }
+    if (heading) {
+      heading.textContent = this.selected && !this.homeActive ? String(this.selected.props.get('title') || this.selected.name) : ''
+      heading.title = heading.textContent
+      heading.toggleAttribute('data-long', heading.textContent.length > 26)
+    }
     const notice = this.shell?.querySelector('.presentation-compatibility')
     if (notice) notice.textContent = this.selected && this.views.get(this.selected)?.el.classList.contains('modern-entry-window')
       ? 'Modern entry layout preview / Production workflow acceptance is pending'

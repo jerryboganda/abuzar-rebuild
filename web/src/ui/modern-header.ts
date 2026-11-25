@@ -204,6 +204,7 @@ export function groupToolbar(tool: HTMLElement, title = ''): void {
   heading.className = 'mh-title'
   heading.textContent = title
   heading.title = title
+  heading.toggleAttribute('data-long', title.length > 26)
   tool.replaceChildren(heading, ...order.flatMap((key) => key === 'output' ? [spacer, ...(groups.has(key) ? [groups.get(key)!] : [])] : groups.has(key) ? [groups.get(key)!] : []))
 }
 

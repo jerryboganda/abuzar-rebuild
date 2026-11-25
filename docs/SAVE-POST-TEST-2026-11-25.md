@@ -140,7 +140,8 @@ The right-most input of an entry grid (Quotation Item Description, Refused Sale 
 Final pass on the deployed build (04f4cf23, 2026-11-25, Light theme, 1440x900): `QA_ELEMENTS=1 QA_FIELDS=1` over all **203 screens** (245 elements clicked, 251 fields typed, 0 page errors) and
 `QA_REPORTS=1 QA_ELEMENTS=1 QA_FIELDS=1` over the **141 report leaves** (1,226 criteria-dialog elements clicked, 0 errors). The two "issues=1" lines (Cash Sale, Credit Sale) are the runner's window-list
 detection coming back empty on a slow open; both windows render and were clicked. Credit Sale's Customer drop-down shows `0` in the original too.
-Left as designed: the toolbar title of a long report name is cut with an ellipsis (full name in the tooltip, the breadcrumb and the tab); Optimum Level Report's four stacked list groups scroll at 1080 px (original layout).
+Toolbar title: a long window title wraps to two lines and is drawn at 14px when longer than 26 characters (`.mh-title[data-long]`); measured over 187 screens at 1440 px: cut titles 44 with the two lines alone, **14 with both** (all report names of 38-58 characters; the full name stays in the tooltip, the breadcrumb and the tab).
+Left as designed: Optimum Level Report's four stacked list groups scroll at 1080 px (original layout, decided 2026-11-24).
 
 ## Left in the scratch database
 
