@@ -11,7 +11,9 @@
 //!     and runs the procedure of each known job when its interval has passed since the last run (the first run one interval after the server started).  Nothing runs
 //!     until somebody activates a job in that window.
 //!   * `JOBS=all` or a list (`JOBS=stockledger,applysalepromotions`): fixed jobs on the original's intervals, whatever the tables say.
+//!
 //! Both can be combined (`JOBS=schedule,stockledger`).  Each run uses its own connection; a failure is logged and tried again next time.
+//!
 //! `JOBS_SCALE=<n>` divides every interval (and the poll) by n (a test run).
 
 use std::time::Duration;

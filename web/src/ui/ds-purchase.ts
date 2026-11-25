@@ -305,7 +305,7 @@ export const PURCHASE_CSS = `
 .modern-entry-window .entry-detail.ds-transaction > .entry-auxiliary .simplified-head {display:none;}
 /* Refused Sale opens with its item list up (the original floats it over the form): it drops over the lines card under the first line instead of taking a grid row of its own,
    which pushed the godown stock grid and the item facts 360 px down the page */
-.modern-entry-window .entry-detail.ds-transaction[data-win=w_refusedsales] > .entry-auxiliary:not(.hidden) {grid-row:2;margin-top:132px;margin-bottom:-130px;}
+.modern-entry-window .entry-detail.ds-transaction[data-win=w_refusedsales] > .entry-auxiliary:not(.hidden) {grid-row:2;margin-top:132px;margin-bottom:-130px;border:1px solid var(--p-hair)!important;background:var(--p-surface)!important;box-shadow:var(--p-shadow-lg)!important;}
 .modern-entry-window .entry-detail.ds-transaction[data-win=w_refusedsales] > [data-entry-control$=dw_detail] {grid-column:1;grid-row:1;}
 .modern-entry-window .entry-detail.ds-transaction[data-win=w_refusedsales] > [data-entry-control$=dw_itemsdetail] {grid-column:1;grid-row:2;}
 .modern-entry-window .entry-detail.ds-transaction[data-win=w_refusedsales] > [data-entry-control$=dw_footer] {grid-column:1;grid-row:3;}
