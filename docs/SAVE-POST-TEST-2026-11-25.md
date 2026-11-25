@@ -79,9 +79,19 @@ Not code defects (nothing to change):
 * **About licence lines** are blank (licensed-to, product licence id): the original reads its activation data; licensing is not reproduced (decision, `CLAUDE.md`).
 * Stock figures and times differ between the screens (live data of two databases).
 
-Open (display only, saved values match): a blank **Credit Sale** shows Misc(+) / Sales 0.00 where the original shows 1.00 (the POS fee). The rebuild runs the same
-`wf_grandtotal`; the original's first call at open comes from a PowerBuilder event the rebuild does not raise. Firing `dw_detail.losefocus` by hand gives 1.00, but the
-first-focus DataWindow is `dw_detail` itself, so the trigger is another one (not found yet). The fee is applied at the first item / customer change and at save (stored `misccharges` = 1.00).
+Found and fixed after the table (commit 87871ecb, deployed):
+
+* **Blank Credit Sale** showed Misc(+) / Sales 0.00, the original 1.00 (the POS fee): the sale windows total their lines in `dw_detail.GetFocus`, which the rebuild raised before
+  the blank form (`ue_newform`, posted by the tab's SelectionChanged) existed. The window now waits for the posted events before the first DataWindow takes the keyboard
+  (`runtime/native/windowing.ts`).
+* **Refused Sale**: its item list took a grid row of its own and pushed the godown stock grid 360 px down; it now drops over the lines card.
+* Item Basic Data supplier grid heading `:Bonus`: the leading colon is dropped on the simplified surfaces too.
+
+## Walks after the fixes (2026-11-25, local server, scratch DB, Light theme)
+
+* `e2e/modern-visual-qa.mjs` over all 203 menu screens: 0 page errors, 0 layout issues; one message box (Cashier Activity Window: "Unable to fetch cashier job data from database", the original shows the same).
+* `QA_ELEMENTS=1 QA_FIELDS=1` over the 61 non-report screens: 244 elements clicked, 250 fields typed, 0 errors, every field reachable. The message boxes are the windows' own
+  validations (required item name, "Item can not be sold, its Stock is Zero", "Confirm Changes", ...). Nothing is saved by the walks.
 
 ## Left in the scratch database
 
