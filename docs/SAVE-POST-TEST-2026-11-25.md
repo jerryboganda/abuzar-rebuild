@@ -145,6 +145,9 @@ Optimum Level Report (`w_arg_manf_cat_class_packing`): the original is a 485px-t
 `fitCriteria` now lowers the lists (6em, 5em, 4.5em; the default for criteria lists is 7.5em) while the form still scrolls, after the spacing steps: at 1080px all four groups fit (758px, no scroll), at 900px the overflow is 130px (was 406px).
 Survey of 85 criteria dialogs at 900px: 6 still scroll by 10-164px (Optimum Level 130, Customer Sales Detail 107, Item Basic Data Changes 164, Sales Tax 31, Days Summary 14, Header Wise 10), with Ok / Cancel pinned; Customer Sales Detail fits at 1080px. Report-leaf walk repeated on this build: 141 leaves, 1,226 elements, 0 errors.
 
+Last pass on the deployed build 73db8e4c (2026-11-26): `QA_ELEMENTS=1 QA_FIELDS=1` over all 203 screens = 245 elements clicked, 251 fields typed, 0 errors (screens 1-142 in one run, screens 143-203 re-run after the desktop app had stopped the local
+servers mid-walk: that run's "Failed to fetch" errors were the stopped servers, not the app); the 141 report leaves 1,226 elements 0 errors (previous build 423c0eb6 plus the list-height change, same 0). Criteria dialogs that scroll: **0 of 85 at a 1080px viewport**, 6 at 900px.
+
 ## Left in the scratch database
 
 Rows named `QA 1125 ...` and `QA CLASS 1125` (Basic Data), purchases 12281-12283 (posted), purchase return 1489, sales 588887-588888,
