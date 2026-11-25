@@ -529,6 +529,7 @@ dialog.presentation-compatibility-dialog[open].ds-report-criteria {padding-inlin
 .modern-surface .surface-total-value:not(.surface-number) {font-family:var(--p-font)!important;}
 /* an editor in the first column of a line grid starts under its heading, clear of the card edge and the row mark */
 .modern-entry-window .modern-surface table.surface-grid tbody td.surface-field:first-child:has(> .surface-value.editable) {padding-inline-start:10px!important;}
+.modern-entry-window .modern-surface table.surface-grid tbody td.surface-field:last-child:has(> .surface-value.editable) {padding-inline-end:10px!important;}
 /* a dialog never grows past the screen (a long option list ran under the application header) */
 dialog.presentation-compatibility-dialog[open]:not(.ds-report-criteria) {max-height:calc(100vh - 32px)!important;}
 /* a list inside a group box ends above the group's border */

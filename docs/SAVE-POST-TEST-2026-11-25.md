@@ -134,7 +134,8 @@ report is 818 / 126 pages; Dead Item List's query takes 23 s on the unvacuumed l
 
 Criteria dialogs taller than the window (measured at 900 px viewport height, 122 distinct dialogs): 8 have content below the visible body: Optimum Level Report (`w_arg_manf_cat_class_packing`, four list groups, 406 px more),
 Daily Sales Summary with Profit (`w_arg_godown_sinv_linv_sale_sret`, 78 px), Daily Reports Sale summary (60), Sales Tax Report (39), Net Sale Summary (15), Days Summary (14), Sale with header wise summaries (10), Machine and Invoice Range (2).
-They scroll inside the dialog with Ok / Cancel pinned below and a fade at the edge, as the original window (1904 PBU tall for the largest) does on a short screen; no change.
+They are height-dependent: at a 1080 px viewport only Optimum Level Report still overflows (226 px; four list groups stacked as in the original, 1904 PBU tall), the other seven fit. It scrolls inside the dialog with Ok / Cancel pinned below and a fade at the edge; no change.
+The right-most input of an entry grid (Quotation Item Description, Refused Sale Sale Price, Price Policy Expiry Date) no longer touches the card's border (`td.surface-field:last-child` gets 10px end padding).
 
 ## Left in the scratch database
 
