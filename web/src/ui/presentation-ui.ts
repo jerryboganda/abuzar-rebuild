@@ -459,6 +459,7 @@ export class PresentationUi extends DomUi {
       heading.textContent = this.selected && !this.homeActive ? String(this.selected.props.get('title') || this.selected.name) : ''
       heading.title = heading.textContent
       heading.toggleAttribute('data-long', heading.textContent.length > 26)
+      heading.toggleAttribute('data-xlong', heading.textContent.length > 40)
     }
     const notice = this.shell?.querySelector('.presentation-compatibility')
     if (notice) notice.textContent = this.selected && this.views.get(this.selected)?.el.classList.contains('modern-entry-window')

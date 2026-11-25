@@ -132,6 +132,7 @@ export const DESIGN_CSS = `
 /* a long window title (a report's name beside twenty toolbar buttons) wraps to a second line before it is cut */
 .presentation-ui .toolbar.mh-toolbar > .mh-title {white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;line-height:1.15;}
 .presentation-ui .toolbar.mh-toolbar > .mh-title[data-long] {font-size:14px;}
+.presentation-ui .toolbar.mh-toolbar > .mh-title[data-xlong] {font-size:13px;-webkit-line-clamp:3;line-clamp:3;line-height:1.1;}
 /* the frame's status line keeps no 3-D bevel of the original (a white edge and divider on the dark theme) */
 .presentation-ui .ds-statusbar > .status {border:0!important;box-shadow:none!important;}
 .presentation-ui .ds-statusbar > .ds-status-right {border-left:1px solid var(--p-hair)!important;padding-left:16px;}
