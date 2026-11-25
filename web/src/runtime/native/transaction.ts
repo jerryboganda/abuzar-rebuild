@@ -69,7 +69,10 @@ export class NTransaction extends PBObject implements DwTrans {
   async n_getdatetime(ref?: unknown): Promise<number> {
     const db = await this.ensureDb()
     if (!db || !(ref instanceof Ref)) return -1
-    const r = await db.query('SELECT localtimestamp(3)', [])
+    // the current time, like SQL Server's GETDATE(): PostgreSQL's localtimestamp is the start of the transaction, and the
+    // application's connection stays in one transaction for a long time, so the back-date checks (ServerDate.LastTransDate)
+    // refused saves with "Back Date Invoice Check violates" and stale times were stored (save test 2026-11-25)
+    const r = await db.query('SELECT statement_timestamp()::timestamp(3)', [])
     await ref.set(fromWire('timestamp', r.rows[0]?.[0]))
     this.setOk(1)
     return 1

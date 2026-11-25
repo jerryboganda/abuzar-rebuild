@@ -116,7 +116,7 @@ test('a sale invoice is posted to the FBR service as one JSON document and its f
   assert.equal(r.dataobject(), 'd_saleinvoice_json')
   assert.deepEqual(sent, [{ url: 'http://localhost:8524/api/IMSFiscal/GetInvoiceNumberByModel', method: 'POST', body: HEADER + ITEM + ITEM.slice(0, -1) + ']}', content_type: 'application/json' } as never])
   const update = f.log.find((s) => s.sql.startsWith('UPDATE'))!
-  assert.match(update.sql, /UPDATE dbo\.saleledger SET fiscalized = 'Y', fiscalizedon = localtimestamp\(3\), fiscalinvoiceno = \$1 WHERE saleinvcode = \$2$/)
+  assert.match(update.sql, /UPDATE dbo\.saleledger SET fiscalized = 'Y', fiscalizedon = statement_timestamp\(\)::timestamp\(3\), fiscalinvoiceno = \$1 WHERE saleinvcode = \$2$/)
   assert.deepEqual(update.params, ['900001FBR1', 7])
   assert.equal(f.commits(), 1)
   assert.equal(r.invalidated(), 1)

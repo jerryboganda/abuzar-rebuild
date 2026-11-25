@@ -15,7 +15,7 @@ export function translateDynamicSql(text: string): { sql: string; params: string
     .replace(/#(\w+)/g, 'tmp_$1') // temporary tables are named tmp_<name> in the translated routines
     .replace(/\[(\w+)\]/g, '$1')
     .replace(/\bisnull\s*\(/gi, 'coalesce(')
-    .replace(/\bgetdate\s*\(\s*\)/gi, 'localtimestamp(3)')
+    .replace(/\bgetdate\s*\(\s*\)/gi, 'statement_timestamp()::timestamp(3)') // GETDATE() is the statement's time, not the transaction's
     .replace(/\blen\s*\(/gi, 'length(')
   return { sql, params: [] }
 }

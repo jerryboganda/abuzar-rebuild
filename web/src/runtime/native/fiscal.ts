@@ -104,8 +104,8 @@ export async function fiscalizeInvoice(rt: Runtime, sale: boolean, code: number)
       const text = (sale ? 'Fiscalization Done, Fiscal Invoice No.: ' : 'Fiscalization Done, Fiscal Invoice No.:') + fbr.msg
       try {
         await db.exec(sale
-          ? "UPDATE dbo.saleledger SET fiscalized = 'Y', fiscalizedon = localtimestamp(3), fiscalinvoiceno = $1 WHERE saleinvcode = $2"
-          : "UPDATE dbo.srledger SET fiscalized = 'Y', fiscalizedon = localtimestamp(3), fiscalinvoiceno = $1 WHERE srinvcode = $2 AND fiscalized = 'N'",
+          ? "UPDATE dbo.saleledger SET fiscalized = 'Y', fiscalizedon = statement_timestamp()::timestamp(3), fiscalinvoiceno = $1 WHERE saleinvcode = $2"
+          : "UPDATE dbo.srledger SET fiscalized = 'Y', fiscalizedon = statement_timestamp()::timestamp(3), fiscalinvoiceno = $1 WHERE srinvcode = $2 AND fiscalized = 'N'",
         [fbr.msg, code])
       } catch {
         // the PostURL result (1) stays the return code: the listener answers "0" and nothing is committed
@@ -183,8 +183,8 @@ export async function fiscalizeProcedure(t: NTransaction, sigs: Record<string, P
         const end = response.indexOf('","Code":"100"') + 1
         const fiscal = mid(response, 19, end - 19)
         await db.exec(sale
-          ? "UPDATE dbo.saleledger SET fiscalized = 'Y', fiscalizedon = localtimestamp(3), fiscalinvoiceno = $1 WHERE saleinvcode = $2"
-          : "UPDATE dbo.srledger SET fiscalized = 'Y', fiscalizedon = localtimestamp(3), fiscalinvoiceno = $1 WHERE srinvcode = $2",
+          ? "UPDATE dbo.saleledger SET fiscalized = 'Y', fiscalizedon = statement_timestamp()::timestamp(3), fiscalinvoiceno = $1 WHERE saleinvcode = $2"
+          : "UPDATE dbo.srledger SET fiscalized = 'Y', fiscalizedon = statement_timestamp()::timestamp(3), fiscalinvoiceno = $1 WHERE srinvcode = $2",
         [fiscal, code])
       }
     }
