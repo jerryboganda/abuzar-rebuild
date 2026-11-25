@@ -35,14 +35,14 @@ the client opens it with its user, and the monitor query shows that user code, l
 (`tempdb..SysIsolaation`, filled at login). Computer names are the client addresses (a browser has no computer name) and your own
 session is not highlighted (no session id in the browser).
 
-## Open (a deployment step, not code)
+## Header files on the production server (done 2026-11-25)
 
-* **`serviceheads.pbd` and `mgmtcomp.pbd` are not on the production server.** The original reads the company name and the report
-  headers from these two vendor files (`af_get_header_setting`, `af_get_app_setting`) through the server's file root. The
-  desktop deployment had them in `FS_ROOT` (`deploy/parity/rebuild-dist/files/`); on the VPS `/srv/files` is empty and is not a
-  mounted volume, so (a) the company name and report headers are empty there and (b) Group Wise Header Setting shows no rows.
-  Copying the files needs a persistent volume for `FS_ROOT` in `/opt/pharmacy/compose.yml` and the owner's go-ahead (the
-  files carry the client's name, address and licence data). Nothing in the code needs to change.
+`serviceheads.pbd` and `mgmtcomp.pbd` (company name and report headers; the original reads them through the server's file root at
+login) were missing on the VPS. They were copied byte for byte from the shop's installation (`deploy/Application`, same SHA-1 as
+the staged copies in `deploy/parity/rebuild-dist/files/`) into the persistent Docker volume `pharmacy_files` (`/srv/files` of
+`pharmacy-app`), owner `postgres`; the server reports both (`/api/fs/exists`: 2658 and 2603 bytes). The volume survives redeploys.
+Rollback: `docker exec pharmacy-app rm /srv/files/serviceheads.pbd /srv/files/mgmtcomp.pbd`. The files hold the client's name,
+address and licence data: never commit them to the public repository.
 
 ## Verified against the original's own behaviour (no change)
 
