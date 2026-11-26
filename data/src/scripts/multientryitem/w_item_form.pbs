@@ -176,7 +176,6 @@
 			destroy lt_transobject
 			return -1
 		end if
-		return
 	end if
 	if not isnull(this.iblob_notes) then
 		SQL UpdateBlob ItemNotes Set Notes =:this.iblob_notes Where Icode =:al_icode USING lt_transobject;
@@ -1341,7 +1340,6 @@
 				messagebox("Active", "You Cann't Mark this item as Active No~r~nStock exist for this item~r~nStock In Hand = " + string(ld_qty))
 				return 1
 			end if
-			return
 		end if
 	case "saleprice"
 		if long(data) > 0 and not isnull(long(data)) then
@@ -1400,7 +1398,6 @@
 			messagebox("Discounted Purchase Price Validation!", "Discounted Purchase Price should not be greater than Purchase Price")
 			return 1
 		end if
-		return
 	end choose
 	return ::message.returnvalue
 
@@ -1604,21 +1601,21 @@
 				end if
 			end if
 		elseif key = keyf8! then
-			ll_icode = gfunc_1("namesearch", 1)
+			ll_icode = f_drilldown_itemsearch("namesearch", 1)
 			ll_found = parent.parent.parent.id_list.find("code = " + string(ll_icode), 1, parent.parent.parent.id_list.rowcount())
 			if ll_found > 0 then
 				ll_row = ll_found
 				parent.parent.parent.id_list.scrolltorow(ll_row)
 			end if
 		elseif key = keyf9! then
-			ll_icode = gfunc_2("criteriasearch", 1)
+			ll_icode = f_drilldown_itemsearch("criteriasearch", 1)
 			ll_found = parent.parent.parent.id_list.find("code = " + string(ll_icode), 1, parent.parent.parent.id_list.rowcount())
 			if ll_found > 0 then
 				ll_row = ll_found
 				parent.parent.parent.id_list.scrolltorow(ll_row)
 			end if
 		elseif key = keyf3! then
-			ll_icode = gfunc_3("itemsearch", 1)
+			ll_icode = f_drilldown_itemsearch("itemsearch", 1)
 			ll_found = parent.parent.parent.id_list.find("code = " + string(ll_icode), 1, parent.parent.parent.id_list.rowcount())
 			if ll_found > 0 then
 				ll_row = ll_found
@@ -1704,20 +1701,20 @@
 			parent.parent.parent.id_dwcontrol.setredraw(false)
 			if parent.parent.parent.is_sortsequence = "A" then
 				if parent.parent.parent.ii_type = 1 then
-					ll_found_row = gfunc_5(data, parent.parent.parent.id_dwcontrol, sl_columnname)
+					ll_found_row = f_binarysearch(data, parent.parent.parent.id_dwcontrol, sl_columnname)
 				elseif parent.parent.parent.ii_type = 3 then
 					if isdate(data) then
-						ll_found_row = gfunc_6(data, parent.parent.parent.id_dwcontrol, sl_columnname)
+						ll_found_row = f_binarysearch_date(data, parent.parent.parent.id_dwcontrol, sl_columnname)
 					end if
 				else
-					ll_found_row = gfunc_7(long(data), parent.parent.parent.id_dwcontrol, sl_columnname)
+					ll_found_row = f_binarysearch_long(long(data), parent.parent.parent.id_dwcontrol, sl_columnname)
 				end if
 			elseif parent.parent.parent.ii_type = 1 then
-				ll_found_row = gfunc_8(data, parent.parent.parent.id_dwcontrol, sl_columnname)
+				ll_found_row = f_binarysearch_string(data, parent.parent.parent.id_dwcontrol, sl_columnname)
 			elseif parent.parent.parent.ii_type = 3 then
 				ll_found_row = parent.parent.parent.id_dwcontrol.find(sl_columnname + " <=DateTime('" + data + "')", 1, 99999)
 			else
-				ll_found_row = gfunc_9(long(data), parent.parent.parent.id_dwcontrol, sl_columnname)
+				ll_found_row = f_binarysearchdesc_long(long(data), parent.parent.parent.id_dwcontrol, sl_columnname)
 			end if
 			if ll_found_row > 0 then
 				parent.parent.parent.tab_retrieve.tabpage_detail.enabled = true
@@ -1785,7 +1782,6 @@
 				messagebox("Alias Name Validation", "Item does not exist")
 				return 1
 			end if
-			return
 		end if
 	end choose
 	return 0

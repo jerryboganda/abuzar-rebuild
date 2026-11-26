@@ -104,46 +104,8 @@ function fixMultiEntry(data: Json): boolean {
   return true
 }
 
-function removeSpuriousReturns(body: Json, markers: string[]): number {
-  let removed = 0
-  const walk = (o: Json): void => {
-    if (Array.isArray(o)) { for (const v of o) walk(v); return }
-    if (!o || typeof o !== 'object') return
-    if (o.k === 'if' && Array.isArray(o.t) && o.t.length && o.t[o.t.length - 1]?.k === 'return') {
-      const cond = JSON.stringify(o.c || {})
-      if (markers.some((m) => cond.includes(m)) && o.t.some((n: Json) => n?.k === 'if')) {
-        while (o.t.length && o.t[o.t.length - 1]?.k === 'return') o.t.pop()
-        removed++
-      }
-    }
-    for (const v of Object.values(o)) walk(v)
-  }
-  walk(body)
-  return removed
-}
-
-function fixPurchase(data: Json): string[] {
-  const out: string[] = []
-  const save = data.routines?.w_purchase?.ue_save?.[0]?.body
-  if (Array.isArray(save)) {
-    // `return` is only valid inside the inner duplicate/expiry checks; the
-    // decompiler copied it to the end of each outer validation block, which
-    // aborted every save even when the check had passed.
-    const n = removeSpuriousReturns(save, ['ForceUniqueSuppInvNoInPur', 'forceuniquegrnnoinpur', 'ls_expiry', 'ld_expiry'])
-    if (n) out.push(`purchase save returns (${n})`)
-  }
-  return out
-}
-
 function fixJournalVoucher(data: Json): string[] {
   const out: string[] = []
-  const save = data.routines?.w_journalvoucher?.ue_save?.[0]?.body
-  if (Array.isArray(save)) {
-    // The decompiler left an unconditional `return` after the category
-    // 5/14/17 validation blocks, so Save validated and then did nothing.
-    const n = removeSpuriousReturns(save, ['ii_vouchertype'])
-    if (n) out.push(`journal voucher save returns (${n})`)
-  }
   const post = data.routines?.w_journalvoucher?.ue_postopen?.[0]?.body
   if (Array.isArray(post)) {
     // `d_InvJournalVoucherDetail.patientcode` has no DropDownDataWindow in
@@ -204,10 +166,7 @@ function fixBackupResult(data: Json, name: string): string[] {
 function fixCashierShift(data: Json): string[] {
   const body = data.routines?.cb_ok?.clicked?.[0]?.body
   if (!Array.isArray(body)) return []
-  // Bytecode guards 518/928 -> 1028, 1398/1574 -> 1628 and 2060 -> 6676
-  // continue after their inner validations; only the failure branches return.
-  const n = removeSpuriousReturns(body, ['dw_figures', 'dw_cash'])
-  const out = n ? [`cashier shift close returns (${n})`] : []
+  const out: string[] = []
   let updates = 0
   const retainDirty = (node: Json): void => {
     if (!node || typeof node !== 'object') return
@@ -692,37 +651,6 @@ function fixSale(data: Json): string[] {
     if (counter.n) out.push('w_sale init defaults')
   }
 
-  const saveBody = data.routines?.w_sale?.ue_save?.[0]?.body
-  if (Array.isArray(saveBody)) {
-    const markers = ['SaleOnZeroPrice', 'AllowSaleAboveRetailPriceInSale', 'ApplySalesTaxOnSavingBeforeUserPwd', 'PreserveSaleInvHistory', 'SaveBalanceOnSalePosting']
-    let removed = 0
-    const walk = (o: Json): void => {
-      if (Array.isArray(o)) { for (const v of o) walk(v); return }
-      if (!o || typeof o !== 'object') return
-      if (o.k === 'if' && Array.isArray(o.t) && o.t.length && o.t[o.t.length - 1]?.k === 'return') {
-        const cond = JSON.stringify(o.c || {})
-        if (markers.some((m) => cond.includes(m)) && o.t.some((n: Json) => n?.k === 'if')) {
-          while (o.t.length && o.t[o.t.length - 1]?.k === 'return') o.t.pop()
-          removed++
-        }
-      }
-      // a validation return copied to the end of `choose case ii_saletype`
-      // aborted every credit sale
-      if (o.k === 'choose' && Array.isArray(o.cs)) {
-        for (const c of o.cs) {
-          const b = c?.b
-          if (Array.isArray(b) && b.length && b[b.length - 1]?.k === 'return' && b.some((n: Json) => n?.k === 'if')) {
-            while (b.length && b[b.length - 1]?.k === 'return') b.pop()
-            removed++
-          }
-        }
-      }
-      for (const v of Object.values(o)) walk(v)
-    }
-    walk(saveBody)
-    if (removed) out.push('w_sale save returns')
-  }
-
   const ue = data.routines?.dw_itemsdetail?.ue_enterkey?.[0]?.body
   if (Array.isArray(ue) && !JSON.stringify(ue).includes('wf_grandtotal')) {
     let p = 0
@@ -822,7 +750,6 @@ function fixClassDataNamed(name: string, data: Json): string[] {
   const n = name.toLowerCase()
   if (n === 'w_multi_entry') return fixMultiEntry(data) ? ['stock transfer'] : []
   if (n === 'w_sale') return fixSale(data)
-  if (n === 'w_purchase') return fixPurchase(data)
   if (n === 'w_journalvoucher') return fixJournalVoucher(data)
   if (n === 'w_cashiershift_closing') return fixCashierShift(data)
   if (n === 'w_cashierjobactivity_changecategory') return fixCashierCategory(data)

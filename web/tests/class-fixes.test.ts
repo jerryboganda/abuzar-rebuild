@@ -299,24 +299,7 @@ test('the f_validatedw fix leaves a class without the duplicated gate untouched'
   assert.deepEqual(body, [{ k: 'return', e: { k: 'num', v: 1, dec: false } }])
 })
 
-test('the journal voucher fix removes the decompiler trailing save return', () => {
-  const inner = { k: 'if', c: { k: 'bin', op: '<', l: { k: 'id', n: 'll_credit' }, r: { k: 'num', v: 1, dec: false } }, t: [{ k: 'return' }], ei: [] }
-  const outer = {
-    k: 'if',
-    c: { k: 'bin', op: '=', l: { k: 'mem', o: { k: 'id', n: 'this' }, n: 'ii_vouchertype' }, r: { k: 'num', v: 5, dec: false } },
-    t: [inner, { k: 'return' }],
-    ei: [],
-  }
-  const body = [outer]
-  const data = { routines: { w_journalvoucher: { ue_save: [{ body }] } } }
-
-  assert.deepEqual(fixClassData('w_journalvoucher', data), ['journal voucher save returns (1)'])
-  assert.deepEqual(outer.t, [inner])
-  // Idempotent: the trailing return is gone.
-  assert.deepEqual(fixClassData('w_journalvoucher', data), [])
-})
-
-test('cashier closing removes only three decompiler fall-through returns, preserving all validation and rollback branches', () => {
+test('cashier closing keeps every validation and rollback return and only defers the update flags', () => {
   const { file, errors } = parseScriptFile(readFileSync(resolve(import.meta.dirname, '..', '..', 'data', 'src',
     'scripts', 'cashierjob', 'w_cashiershift_closing.pbs'), 'utf8'))
   assert.deepEqual(errors, [])
@@ -330,10 +313,8 @@ test('cashier closing removes only three decompiler fall-through returns, preser
   }
   const before = returned(data)
   assert.deepEqual(fixClassData('w_cashiershift_closing', data),
-    ['cashier shift close returns (3)', 'cashier shift deferred update flags (2)'])
-  const after = returned(data)
-  assert.equal(before.length - after.length, 3)
-  assert.deepEqual(after.filter((node) => node.k === 'return' && node.e), before.filter((node) => node.k === 'return' && node.e))
+    ['cashier shift deferred update flags (2)'])
+  assert.deepEqual(returned(data), before)
   for (const [owner, entries] of Object.entries(data.routines)) {
     for (const [name, value] of Object.entries(entries)) {
       if (owner !== 'cb_ok' || name !== 'clicked') assert.deepEqual(value, saved.routines[owner][name])

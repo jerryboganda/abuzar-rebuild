@@ -15,7 +15,6 @@
 				if wf_commitform() = false then
 					return
 				end if
-				return
 			end if
 		else
 			triggerevent("ue_save")
@@ -23,7 +22,6 @@
 				return
 			end if
 		end if
-		return
 	end if
 	ls_pagesize = this.id_master.getitemstring(1, "invoicesize")
 	if ls_pagesize = "F" then
@@ -518,7 +516,6 @@
 		messagebox("Exception Occur", "Details are:~r~n" + exdw.getmessage())
 	catch (throwable exobj)
 		messagebox("Exception Occur", "Details are:~r~n" + exobj.getmessage())
-		goto L780
 	end try
 
 // w_sale.ue_view_itemnotes() returns 0 [event]
@@ -543,7 +540,6 @@
 		messagebox("Exception Occur", "Details are:~r~n" + exdw.getmessage())
 	catch (throwable exobj)
 		messagebox("Exception Occur", "Details are:~r~n" + exobj.getmessage())
-		goto L430
 	end try
 
 // w_sale.ue_save_withnocommit() returns long [event]
@@ -4083,7 +4079,6 @@
 				ll_retcode = 0
 				return ll_retcode
 			end if
-			return
 		end if
 		if not isnull(ll_pk) then
 			this.dw_refusedsaleheader.setitem(ll_headerrows, "code", ll_pk)
@@ -4119,7 +4114,6 @@
 			ll_retcode = 0
 			return ll_retcode
 		end if
-		return
 	end if
 	return ll_retcode
 
@@ -5563,7 +5557,6 @@
 		else
 			return 1
 		end if
-		return
 	end if
 	lds_quotationdetail = create datastore
 	lds_quotationheader = create datastore
@@ -5595,7 +5588,6 @@
 			else
 				return 1
 			end if
-			return
 		end if
 	end if
 	ll_found = 0
@@ -6734,7 +6726,6 @@
 				messagebox(ls_msgtitle, ls_msgdetail, stopsign!)
 				return 0
 			end if
-			return
 		end if
 	next
 	setredraw(true)
@@ -6820,7 +6811,6 @@
 				messagebox(ls_msgtitle, ls_msgdetail, stopsign!)
 				return 0
 			end if
-			return
 		end if
 	next
 	setredraw(true)
@@ -6918,7 +6908,6 @@
 				messagebox(ls_msgtitle, ls_msgdetail, stopsign!)
 				return 0
 			end if
-			return
 		end if
 	next
 	ll_detailrows = this.id_detail.rowcount()
@@ -6987,7 +6976,6 @@
 					ll_retflag = -3
 					return ll_retflag
 				end if
-				return
 			end if
 			if ls_autopatientreg = "Y" then
 				ll_custcode = this.id_master.object.custcode[1]
@@ -7114,7 +7102,6 @@
 		else
 			return
 		end if
-		return
 	end if
 
 // w_sale.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
@@ -8877,9 +8864,7 @@
 				this.id_master.setfocus()
 				return 0
 			end if
-			return
 		end if
-		return
 	end if
 	return 1
 
@@ -8964,7 +8949,6 @@
 					ll_retcode = 0
 					return ll_retcode
 				end if
-				return
 			end if
 		else
 			ll_retcode = 0
@@ -10552,7 +10536,6 @@
 		else
 			return 1
 		end if
-		return
 	end if
 	return 0
 
@@ -11332,7 +11315,6 @@
 			messagebox("Invoice Total Validation", "Sale Invoice Total can not be -ve value.", stopsign!)
 			return -1
 		end if
-		return
 	end if
 	wf_setoutstandingamount()
 	return 0
@@ -11746,12 +11728,11 @@
 								exit
 							end if
 							if this.id_detail.object.bonusqty[ll_counter] > ld_bonusqty then
-								goto L1548
+								messagebox("Sale Order Enforcement", "Row No. " + trim(string(ll_counter)) + ", item bonus qty exceeds remaing sale order qty.")
+								lb_abort = true
+								ls_column = "bonusqty"
+								exit
 							end if
-							messagebox("Sale Order Enforcement", "Row No. " + trim(string(ll_counter)) + ", item bonus qty exceeds remaing sale order qty.")
-							lb_abort = true
-							ls_column = "bonusqty"
-							exit
 						end if
 						if (ll_option = 3 or ll_option = 5 or ll_option = 7 or ll_option = 8) and this.id_detail.object.saleprice[ll_counter] <> lds_saleorderdetail.object.saleprice[ll_found] then
 							messagebox("Sale Order Enforcement", "Row No. " + trim(string(ll_counter)) + ", item sale price does not match sale order details")
@@ -11767,12 +11748,11 @@
 								exit
 							end if
 							if this.id_detail.object.discperc[ll_counter] <> lds_saleorderdetail.object.discperc[ll_found] then
-								goto L2438
+								messagebox("Sale Order Enforcement", "Row No. " + trim(string(ll_counter)) + ", item discount % does not match sale order details")
+								lb_abort = true
+								ls_column = "discperc"
+								exit
 							end if
-							messagebox("Sale Order Enforcement", "Row No. " + trim(string(ll_counter)) + ", item discount % does not match sale order details")
-							lb_abort = true
-							ls_column = "discperc"
-							exit
 						end if
 					else
 						messagebox("Sale Order Enforcement", "Row No. " + trim(string(ll_counter)) + " is not valid sale order row")
@@ -11796,7 +11776,6 @@
 			end if
 			return 0
 		end if
-		return
 	end if
 	return 0
 
@@ -12297,7 +12276,6 @@
 			messagebox("Fiscalization Problem", "Unable to Un-Fiscalize Sale Invoice~r~nReasons are:-~r~n" + ls_errtext, stopsign!)
 			return
 		end if
-		return
 	end if
 
 // w_sale.wf_find_motorvehiclecode(string as_chasisno, ref long al_code) returns long
@@ -12490,9 +12468,7 @@
 				messagebox("Apply Sales Tax Schedule", "Problem in verification of Customer Sales Tax Exemption Status.~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
 				return -1
 			end if
-			return
 		end if
-		return
 	end if
 	if this.ib_apply_stax_schedule_on_unit_stax and upper(ls_exempt) = "N" then
 		if ai_mode = 1 then
@@ -12556,7 +12532,6 @@
 						messagebox("Apply Sales Tax Schedule", "Problem faced in Applying Sales Tax Schedule on Saving.~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
 						return -1
 					end if
-					return
 				end if
 			next
 			if wf_validate_price_discount_matters(1, al_usercode, lds_local) < 0 then
@@ -12617,7 +12592,6 @@
 						messagebox("Apply Sales Tax Schedule", "Problem faced in Applying Sales Tax Schedule on Saving.~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
 						return -1
 					end if
-					return
 				end if
 			next
 		end if
@@ -12746,7 +12720,6 @@
 				destroy lds_groupdiscinfo
 				return -1
 			end if
-			return
 		end if
 		if f_stringpreferences("AllowSaleBelowRPP") = "N" and round(ld_rpp, 2) > round(ld_itemamount, 2) then
 			messagebox("Price Validation", "Sale Price become less than RPP" + "~r~nNet Sale Price = " + string(round(ld_itemamount, 2), "###,###,##0.00") + "~r~nRPP = " + string(round(ld_rpp, 2), "###,###,##0.00") + "~r~nPlease Change Sale Price or Setting In Preferences", stopsign!)
@@ -12827,7 +12800,6 @@
 			messagebox("Accumulated Sales Discount %age Validation", "Accumulated Sales Discount %age is more than the allowed cautious limit~r~nKindly write reason for exceeding cautious limit in customer reference no. 2~r~n~r~nActual Accumulated Sales Invoice Discount  =" + trim(string(ld_actual_accumdiscperc, "###0.00")) + "%~r~nAllowed Accumulated Sales Invoice Discount Cautious Limit  = " + trim(string(ld_accumdiscperccaution, "###0.00")) + "%", stopsign!, ok!)
 			return -1
 		end if
-		return
 	end if
 	return 0
 
@@ -12951,7 +12923,6 @@
 				destroy lds_groupdiscinfo
 				return -1
 			end if
-			return
 		end if
 		if f_stringpreferences("AllowSaleBelowRPP") = "N" and round(ld_rpp, 2) > round(ld_itemamount, 2) then
 			messagebox("Price Validation", "Sale Price become less than RPP" + "~r~nNet Sale Price = " + string(round(ld_itemamount, 2), "###,###,##0.00") + "~r~nRPP = " + string(round(ld_rpp, 2), "###,###,##0.00") + "~r~nPlease Change Sale Price or Setting In Preferences", stopsign!)
@@ -13032,7 +13003,6 @@
 			messagebox("Accumulated Sales Discount %age Validation", "Accumulated Sales Discount %age is more than the allowed cautious limit~r~nKindly write reason for exceeding cautious limit in customer reference no. 2~r~n~r~nActual Accumulated Sales Invoice Discount  =" + trim(string(ld_actual_accumdiscperc, "###0.00")) + "%~r~nAllowed Accumulated Sales Invoice Discount Cautious Limit  = " + trim(string(ld_accumdiscperccaution, "###0.00")) + "%", stopsign!, ok!)
 			return -1
 		end if
-		return
 	end if
 	return 0
 
@@ -13929,9 +13899,7 @@
 				this.id_detail.setcolumn("SalePrice")
 				return
 			end if
-			return
 		end if
-		return
 	end if
 	if f_stringpreferences("SaleOnZeroPrice") = "N" then
 		ll_found = this.id_detail.find("saleprice = 0 OR ISNull(saleprice)", 1, this.id_detail.rowcount())
@@ -13942,7 +13910,6 @@
 			this.id_detail.setcolumn("SalePrice")
 			return
 		end if
-		return
 	end if
 	ll_found = this.id_detail.find("looseqty + bonusqty <= 0 ", 1, this.id_detail.rowcount())
 	if ll_found > 0 then
@@ -13975,7 +13942,6 @@
 		if wf_validate_price_discount_matters(0, gl_usercode, this.id_detail) < 0 then
 			return
 		end if
-		return
 	end if
 	wf_grandtotal()
 	if this.ii_saletype = 2 then
@@ -14135,7 +14101,6 @@
 			if wf_validate_price_discount_matters(0, ll_salesmancode, this.id_detail) < 0 then
 				return
 			end if
-			return
 		end if
 		ll_mastercurrrow = this.id_master.getrow()
 		ll_footercurrrow = this.id_footer.getrow()
@@ -14336,7 +14301,6 @@
 						messagebox("Balance Saving Problem", "Unable to save balance on sales posting.")
 						return
 					end if
-					return
 				end if
 			end if
 		case 2
@@ -14364,10 +14328,8 @@
 						messagebox("Balance Saving Problem", "Unable to save balance on sales posting.")
 						return
 					end if
-					return
 				end if
 			end if
-			return
 		end choose
 		ll_counter = 0
 		SQL SELECT COUNT ( *) INTO :ll_counter FROM saleledger WHERE saleledger.saleinvcode =:ll_invid USING this.it_transobject;
@@ -14426,7 +14388,6 @@
 					messagebox("Sales History!", ls_errtext)
 					return
 				end if
-				return
 			end if
 			if lb_continue then
 				this.ids_invoiceinfo.retrieve(ll_invid)
@@ -15363,7 +15324,6 @@
 				return
 			end if
 		end if
-		return
 	end if
 	if lb_listtab then
 		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
@@ -15393,7 +15353,6 @@
 			postevent("ue_new")
 			return
 		end if
-		return
 	end if
 	if ll_invcode < 0 or isnull(ll_invcode) then
 		return
@@ -15442,7 +15401,6 @@
 				end if
 				return
 			end if
-			return
 		end if
 		if gs_company = "DWSMALLCREDIT" and ls_invoicesize = "F" then
 			for ll_counter = 2 to this.id_print.rowcount()
@@ -16958,7 +16916,6 @@
 					messagebox("Group Customer Category Validation", "Current group does not have enough permissions for sale ~r~n" + "against the customer whose alias name provided in alias name box.")
 					return 1
 				end if
-				return
 			end if
 			if ll_res > 0 then
 				setitem(row, "custcode", li_custcode)
@@ -16992,7 +16949,6 @@
 								messagebox("Group Customer Category Validation", "Current group does not have enough permissions for sale ~r~n" + "against the customer.")
 								return 1
 							end if
-							return
 						end if
 						setitem(row, "patientcode", ll_patientcode)
 						parent.parent.parent.id_master.setitem(1, "custcode", ll_custcode)
@@ -17061,7 +17017,6 @@
 							messagebox("Group Customer Category Validation", "Current group does not have enough permissions for sale ~r~n" + "against the customer whose patient is selected in the list box.")
 							return 1
 						end if
-						return
 					end if
 					parent.parent.parent.id_master.setitem(1, "custcode", ll_custcode)
 					parent.parent.parent.id_master.object.custcode.protect = 1
@@ -17119,7 +17074,6 @@
 								messagebox("Group Customer Category Validation", "Current group does not have enough permissions for sale ~r~n" + "against the customer.")
 								return 1
 							end if
-							return
 						end if
 						setitem(row, "guestcode", ll_guestcode)
 						parent.parent.parent.id_master.setitem(1, "custcode", ll_custcode)
@@ -17169,7 +17123,6 @@
 							messagebox("Group Customer Category Validation", "Current group does not have enough permissions for sale ~r~n" + "against the customer whose patient is selected in the list box.")
 							return 1
 						end if
-						return
 					end if
 					parent.parent.parent.id_master.setitem(1, "custcode", ll_custcode)
 					parent.parent.parent.id_master.object.custcode.protect = 1
@@ -17186,7 +17139,6 @@
 				messagebox("Guest Validation", "Guest does not exist or Already Inactive.")
 				return 1
 			end if
-			return
 		end if
 	case "studentregno"
 		if not (isnull(data) or data = "") then
@@ -17209,7 +17161,6 @@
 								messagebox("Group Customer Category Validation", "Current group does not have enough permissions for sale ~r~n" + "against the customer.")
 								return 1
 							end if
-							return
 						end if
 						setitem(row, "Studentcode", ll_studentcode)
 						parent.parent.parent.id_master.setitem(1, "custcode", ll_custcode)
@@ -17259,7 +17210,6 @@
 							messagebox("Group Customer Category Validation", "Current group does not have enough permissions for sale ~r~n" + "against the customer whose patient is selected in the list box.")
 							return 1
 						end if
-						return
 					end if
 					parent.parent.parent.id_master.setitem(1, "custcode", ll_custcode)
 					parent.parent.parent.id_master.object.custcode.protect = 1
@@ -17276,7 +17226,6 @@
 				messagebox("Student Validation", "Student does not exist or Already Inactive.")
 				return 1
 			end if
-			return
 		end if
 	case "chasisno"
 		if not (isnull(data) or data = "") then
@@ -17299,7 +17248,6 @@
 								messagebox("Group Customer Category Validation", "Current group does not have enough permissions for sale ~r~n" + "against the customer.")
 								return 1
 							end if
-							return
 						end if
 						setitem(row, "motorvehiclecode", ll_motorvehiclecode)
 						parent.parent.parent.id_master.setitem(1, "custcode", ll_custcode)
@@ -17349,7 +17297,6 @@
 							messagebox("Group Customer Category Validation", "Current group does not have enough permissions for sale ~r~n" + "against the customer whose patient is selected in the list box.")
 							return 1
 						end if
-						return
 					end if
 					parent.parent.parent.id_master.setitem(1, "custcode", ll_custcode)
 					parent.parent.parent.id_master.object.custcode.protect = 1
@@ -17366,7 +17313,6 @@
 				messagebox("Motor Vehicle Validation", "Motor Vehicle does not exist or Already Inactive.")
 				return 1
 			end if
-			return
 		end if
 	case "currencycode"
 		if long(data) > 0 then

@@ -134,24 +134,6 @@ function fixMultiEntry(body: Json): boolean {
 }
 
 
-function removeSpuriousReturns(body: Json, markers: string[]): number {
-  let removed = 0
-  const walk = (o: Json): void => {
-    if (Array.isArray(o)) { for (const v of o) walk(v); return }
-    if (!o || typeof o !== 'object') return
-    if (o.k === 'if' && Array.isArray(o.t) && o.t.length && o.t[o.t.length - 1]?.k === 'return') {
-      const cond = JSON.stringify(o.c || {})
-      if (markers.some((m) => cond.includes(m)) && o.t.some((n: Json) => n?.k === 'if')) {
-        while (o.t.length && o.t[o.t.length - 1]?.k === 'return') o.t.pop()
-        removed++
-      }
-    }
-    for (const v of Object.values(o)) walk(v)
-  }
-  walk(body)
-  return removed
-}
-
 function fixValidatedW(data: Json): boolean {
   const body = data.routines?.f_validatedw?.f_validatedw?.[0]?.body
   if (!Array.isArray(body)) return false
@@ -213,39 +195,6 @@ export function applyRuntimeClassFixes(out: string): string[] {
       ws.routines.w_sale.wf_inititeminfo[0].body = normalizeStatusOr(widened)
       if (counter.n) messages.push(`w_sale: ${counter.n} default gate(s)`)
 
-      // The decompiler added unconditional `return`s at the end of several
-      // preference/validation blocks in ue_save.  They abort saving even when
-      // the nested check passed.  Remove only the trailing return of a block
-      // that already contains a nested if with its own return.
-      const saveBody = ws.routines?.w_sale?.ue_save?.[0]?.body
-      if (Array.isArray(saveBody)) {
-        const markers = ['SaleOnZeroPrice', 'AllowSaleAboveRetailPriceInSale', 'ApplySalesTaxOnSavingBeforeUserPwd', 'PreserveSaleInvHistory', 'SaveBalanceOnSalePosting']
-        let removed = 0
-        const walkSave = (o: Json): void => {
-          if (Array.isArray(o)) { for (const v of o) walkSave(v); return }
-          if (!o || typeof o !== 'object') return
-          if (o.k === 'if' && Array.isArray(o.t) && o.t.length && o.t[o.t.length - 1]?.k === 'return') {
-            const cond = JSON.stringify(o.c || {})
-            if (markers.some((m) => cond.includes(m)) && o.t.some((n: Json) => n?.k === 'if')) {
-              while (o.t.length && o.t[o.t.length - 1]?.k === 'return') o.t.pop()
-              removed++
-            }
-          }
-          if (o.k === 'choose' && Array.isArray(o.cs)) {
-            for (const c of o.cs) {
-              const b = c?.b
-              if (Array.isArray(b) && b.length && b[b.length - 1]?.k === 'return' && b.some((n: Json) => n?.k === 'if')) {
-                while (b.length && b[b.length - 1]?.k === 'return') b.pop()
-                removed++
-              }
-            }
-          }
-          for (const v of Object.values(o)) walkSave(v)
-        }
-        walkSave(saveBody)
-        if (removed) messages.push(`w_sale: removed ${removed} spurious save return(s)`)
-      }
-
       const ue = ws.routines?.dw_itemsdetail?.ue_enterkey?.[0]?.body
       if (Array.isArray(ue) && !JSON.stringify(ue).includes('wf_grandtotal')) {
         let p = 0
@@ -267,30 +216,6 @@ export function applyRuntimeClassFixes(out: string): string[] {
     save(out, 'w_sale.json', ws)
   }
 
-
-  const wp = load(out, 'w_purchase.json')
-  if (wp) {
-    const saveBody = wp.routines?.w_purchase?.ue_save?.[0]?.body
-    if (Array.isArray(saveBody)) {
-      const n = removeSpuriousReturns(saveBody, ['ForceUniqueSuppInvNoInPur', 'forceuniquegrnnoinpur', 'ls_expiry', 'ld_expiry'])
-      if (n) {
-        save(out, 'w_purchase.json', wp)
-        messages.push(`w_purchase: removed ${n} spurious save return(s)`)
-      }
-    }
-  }
-
-  const wj = load(out, 'w_journalvoucher.json')
-  if (wj) {
-    const saveBody = wj.routines?.w_journalvoucher?.ue_save?.[0]?.body
-    if (Array.isArray(saveBody)) {
-      const n = removeSpuriousReturns(saveBody, ['ii_vouchertype'])
-      if (n) {
-        save(out, 'w_journalvoucher.json', wj)
-        messages.push(`w_journalvoucher: removed ${n} spurious save return(s)`)
-      }
-    }
-  }
 
   const fv = load(out, 'f_validatedw.json')
   if (fv && fixValidatedW(fv)) {

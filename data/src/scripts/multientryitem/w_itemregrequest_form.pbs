@@ -140,7 +140,6 @@
 		if wf_commitform() = false then
 			return 0
 		end if
-		return
 	end if
 	if lb_listtab then
 		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
@@ -701,7 +700,6 @@
 				messagebox("Active", "You Cann't Mark this item as Active No~r~nStock exist for this item~r~nStock In Hand = " + string(ld_qty))
 				return 1
 			end if
-			return
 		end if
 	case "saleprice"
 		if long(data) > 0 and not isnull(long(data)) then
@@ -760,7 +758,6 @@
 			messagebox("Discounted Purchase Price Validation!", "Discounted Purchase Price should not be greater than Purchase Price")
 			return 1
 		end if
-		return
 	end choose
 	return ::message.returnvalue
 
@@ -907,7 +904,7 @@
 	s_popup_selection lstr_selection
 	s_datastore lstr_ds
 	if key = keyf3! then
-		ll_icode = gfunc_1("itemsearch", 1)
+		ll_icode = f_drilldown_itemsearch("itemsearch", 1)
 		ll_found = parent.parent.parent.id_list.find("code = " + string(ll_icode), 1, parent.parent.parent.id_list.rowcount())
 		if ll_found > 0 then
 			ll_row = ll_found
@@ -930,14 +927,14 @@
 			ll_row = 0
 		end if
 	elseif key = keyf8! then
-		ll_icode = gfunc_2("namesearch", 1)
+		ll_icode = f_drilldown_itemsearch("namesearch", 1)
 		ll_found = parent.parent.parent.id_list.find("code = " + string(ll_icode), 1, parent.parent.parent.id_list.rowcount())
 		if ll_found > 0 then
 			ll_row = ll_found
 			parent.parent.parent.id_list.scrolltorow(ll_row)
 		end if
 	elseif key = keyf9! then
-		ll_icode = gfunc_3("criteriasearch", 1)
+		ll_icode = f_drilldown_itemsearch("criteriasearch", 1)
 		ll_found = parent.parent.parent.id_list.find("code = " + string(ll_icode), 1, parent.parent.parent.id_list.rowcount())
 		if ll_found > 0 then
 			ll_row = ll_found

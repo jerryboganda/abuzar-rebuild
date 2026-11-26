@@ -115,26 +115,24 @@
 		ll_rowcount = parent.dw_detail.rowcount()
 		for ll_counter = 1 to ll_rowcount
 			if parent.dw_detail.getitemstring(ll_counter, "selected") = "Y" then
-				if lb_omitspecialcharges and parent.dw_detail.getitemstring(ll_counter, "OmitSpecialCharges") = "Y" then
-					goto L1368
+				if not (lb_omitspecialcharges and parent.dw_detail.getitemstring(ll_counter, "OmitSpecialCharges") = "Y") then
+					ll_classcode = parent.dw_detail.object.classcode[ll_counter]
+					ll_studentcode = parent.dw_detail.object.studentcode[ll_counter]
+					ll_servicecode = parent.dw_detail.object.servicecode[ll_counter]
+					ls_classname = parent.dw_detail.object.classname[ll_counter]
+					ls_servicename = parent.dw_detail.object.servicename[ll_counter]
+					ls_studentname = parent.dw_detail.object.studentname[ll_counter]
+					ld_fee = parent.dw_detail.object.fee[ll_counter]
+					ld_flatdisc = parent.dw_detail.object.flatdiscount[ll_counter]
+					ld_discperc = parent.dw_detail.object.discperc[ll_counter]
+					lt_transobject.generate_svc_for_studentfee(ll_classcode, ll_studentcode, ls_remarks, ll_servicecode, ld_fee, ld_flatdisc, ld_discperc, gl_usercode, ll_serviceinvcode)
+					if lt_transobject.sqlcode <> 0 then
+						messagebox("Student Fee Generation", "Some Problem Occurred while Generating Student Fee.~r~nClass Name = " + ls_classname + "~r~nService Name = " + ls_servicename + "~r~nStudent Name = " + ls_studentname + "~r~n~r~nDetails are:-~r~n" + lt_transobject.sqlerrtext)
+						SQL rollback USING lt_transobject;
+						lb_ok = false
+						exit
+					end if
 				end if
-				ll_classcode = parent.dw_detail.object.classcode[ll_counter]
-				ll_studentcode = parent.dw_detail.object.studentcode[ll_counter]
-				ll_servicecode = parent.dw_detail.object.servicecode[ll_counter]
-				ls_classname = parent.dw_detail.object.classname[ll_counter]
-				ls_servicename = parent.dw_detail.object.servicename[ll_counter]
-				ls_studentname = parent.dw_detail.object.studentname[ll_counter]
-				ld_fee = parent.dw_detail.object.fee[ll_counter]
-				ld_flatdisc = parent.dw_detail.object.flatdiscount[ll_counter]
-				ld_discperc = parent.dw_detail.object.discperc[ll_counter]
-				lt_transobject.generate_svc_for_studentfee(ll_classcode, ll_studentcode, ls_remarks, ll_servicecode, ld_fee, ld_flatdisc, ld_discperc, gl_usercode, ll_serviceinvcode)
-				if lt_transobject.sqlcode <> 0 then
-					goto L1368
-				end if
-				messagebox("Student Fee Generation", "Some Problem Occurred while Generating Student Fee.~r~nClass Name = " + ls_classname + "~r~nService Name = " + ls_servicename + "~r~nStudent Name = " + ls_studentname + "~r~n~r~nDetails are:-~r~n" + lt_transobject.sqlerrtext)
-				SQL rollback USING lt_transobject;
-				lb_ok = false
-				exit
 			end if
 		next
 		if lb_ok then

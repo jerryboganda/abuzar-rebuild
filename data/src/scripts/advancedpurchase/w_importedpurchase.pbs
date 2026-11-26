@@ -1212,11 +1212,11 @@
 									SQL update DBO.Item SET PurFlatDisc =:ld_itemflatdisc2 WHERE Item.ICode =:ll_icode USING this.it_transobject;
 									if this.it_transobject.sqlcode = 0 then
 										lb_commitflag = true
-										goto L1788
+									else
+										lb_commitflag = false
+										ls_success_msg = ls_success_msg + " can not update purchase flat discount of item.~r~n"
+										exit
 									end if
-									lb_commitflag = false
-									ls_success_msg = ls_success_msg + " can not update purchase flat discount of item.~r~n"
-									exit
 								end if
 								ll_counter = ll_counter + 1
 							loop
@@ -1559,7 +1559,6 @@
 					as_errtext = "Problem is generating Header invoice code, posting unsuccessfull"
 					return false
 				end if
-				return
 			end if
 			if this.ii_purchasetype = 1 and f_stringpreferences("UpdateSalePriceForItem") = "Y" then
 				ldw_changeprice_foritemlog.retrieve(al_purinvcode)
@@ -2359,9 +2358,7 @@
 						this.id_detail.setfocus()
 						return
 					end if
-					return
 				end if
-				return
 			end if
 			ll_found = 0
 			if ll_count = ll_detailrows then
@@ -2402,7 +2399,6 @@
 			messagebox("Foreign Amount Validation", "Foreign Amount does not match all items foreign value")
 			return
 		end if
-		return
 	end if
 	if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
 		messagebox("Date Violation", ls_date_errtext, stopsign!)
@@ -2576,7 +2572,6 @@
 			this.tab_retrieve.selecttab(2)
 			return
 		end if
-		return
 	end if
 	if wf_isinvoiceinuse(ll_code) = true then
 		messagebox("Invoice Validation", "Impotred Purchase Invoice already in use by some other user.~r~nKindly try again after sometime or open some other invoice.")
@@ -2744,7 +2739,6 @@
 		if wf_commitform() = false then
 			return
 		end if
-		return
 	end if
 	if lb_listtab then
 		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
@@ -2769,7 +2763,6 @@
 		if lstr.i_closemode = -1 then
 			return
 		end if
-		return
 	end if
 	if this.id_print.rowcount() > 0 then
 		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
@@ -3085,7 +3078,6 @@
 		else
 			return 1
 		end if
-		return
 	end choose
 	return 0
 
@@ -3201,7 +3193,6 @@
 				messagebox("Supplier Validation", "Supplier with  AliasName " + data + " does not exist")
 				return 1
 			end if
-			return
 		end if
 	case "pocode"
 		if not isnull(data) and integer(data) <> 0 then
@@ -3525,7 +3516,6 @@
 		else
 			return 1
 		end if
-		return
 	end choose
 	return li_errcode
 
@@ -3649,7 +3639,6 @@
 			post event ue_focusqty()
 			return 1
 		end if
-		return
 	end if
 	parent.parent.parent.wf_grandtotal_withnetrate()
 	return ::message.returnvalue

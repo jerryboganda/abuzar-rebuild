@@ -291,14 +291,14 @@
 					ls_errortext = "Unposted Transaction(s) Exist for this Invoice~r~n~r~n" + ls_msg
 					lb_continue = false
 					exit
+				else
+					this.it_transobject.getsaleinvbalance(ll_invcode, ld_invbalance)
+					if this.it_transobject.sqlcode <> 0 then
+						ls_errortext = "Problem in fetching Sale Invoice Balance for sale invoice code:" + trim(string(ll_invcode)) + "~r~n~r~n" + this.it_transobject.sqlerrtext
+						lb_continue = false
+						exit
+					end if
 				end if
-				this.it_transobject.getsaleinvbalance(ll_invcode, ld_invbalance)
-				if this.it_transobject.sqlcode <> 0 then
-					goto L836
-				end if
-				ls_errortext = "Problem in fetching Sale Invoice Balance for sale invoice code:" + trim(string(ll_invcode)) + "~r~n~r~n" + this.it_transobject.sqlerrtext
-				lb_continue = false
-				exit
 			end if
 			ll_insrow = this.id_invdetail.insertrow(0)
 			this.id_invdetail.object.code[ll_insrow] = al_code
@@ -574,11 +574,11 @@
 					as_errortext = "Not Enough Balance On Sale Invoice."
 					return lb_commitflag
 				end if
-				goto L880
+			else
+				lb_commitflag = false
+				as_errortext = "Balance Retrieval Error:~r~n" + this.it_transobject.sqlerrtext
+				return lb_commitflag
 			end if
-			lb_commitflag = false
-			as_errortext = "Balance Retrieval Error:~r~n" + this.it_transobject.sqlerrtext
-			return lb_commitflag
 		end if
 		ll_counter = ll_counter + 1
 	loop
@@ -1086,7 +1086,6 @@
 					this.id_detail.setcolumn("saleinvcode")
 					return
 				end if
-				return
 			end if
 		next
 		if isnull(ll_invid) then
@@ -1096,7 +1095,6 @@
 				messagebox("DataBase Problem", "Transaction is Rollback Due to Problem in~r~ngenerating Bill Summary Code")
 				return
 			end if
-			return
 		end if
 		if ll_invid > 0 then
 			this.id_master.setitem(ll_mastercurrrow, "code", ll_invid)
@@ -1150,7 +1148,6 @@
 			setpointer(arrow!)
 			return
 		end if
-		return
 	end if
 	setpointer(arrow!)
 
@@ -1210,13 +1207,11 @@
 		if f_validatedw(this.id_detail) < 0 then
 			return
 		end if
-		return
 	end if
 	if ll_rowcount > 0 then
 		if not (this.id_detail.object.saleinvcode[ll_rowcount] > 0 or this.id_detail.object.custcode[ll_rowcount] > 0) then
 			return
 		end if
-		return
 	end if
 	if this.id_master.object.billsummarytypecode[1] = 1 then
 		this.id_detail.setcolumn("aliasname")
@@ -1389,9 +1384,7 @@
 			if wf_commitform() = false then
 				return
 			end if
-			return
 		end if
-		return
 	end if
 	if lb_listtab then
 		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
@@ -1420,7 +1413,6 @@
 		if lstr.i_closemode = -1 then
 			return
 		end if
-		return
 	end if
 	if ll_rowcount > 0 then
 		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
@@ -1654,7 +1646,6 @@
 			parent.parent.parent.event ue_newitem()
 			return 1
 		end if
-		return
 	end if
 	send(handle(this), 256, 9, long(90))
 	return 1
@@ -1708,7 +1699,6 @@
 					end if
 					return message.returnvalue
 				end if
-				return
 			end if
 			setfocus()
 		end if
@@ -1730,7 +1720,6 @@
 					end if
 					return message.returnvalue
 				end if
-				return
 			end if
 			setfocus()
 		end if

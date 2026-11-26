@@ -13,7 +13,6 @@
 				if wf_commitform() = false then
 					return
 				end if
-				return
 			end if
 		else
 			triggerevent("ue_save")
@@ -21,7 +20,6 @@
 				return
 			end if
 		end if
-		return
 	end if
 	if f_stringpreferences("PurBatch") = "Y" and f_stringpreferences("PurExpiry") = "Y" then
 		if gs_company = "MARSHAL" then
@@ -118,7 +116,6 @@
 						setpointer(arrow!)
 						return
 					end if
-					return
 				end if
 			else
 				messagebox("DataBase Error.", "Reasons:~r~n " + this.it_transobject.sqlerrtext)
@@ -727,7 +724,6 @@
 		else
 			return 1
 		end if
-		return
 	end if
 	return 0
 
@@ -1595,9 +1591,8 @@
 					ll_count = 0
 				end if
 				if this.it_transobject.sqlcode = 0 and ll_count > 0 then
-					goto L6968
+					exit
 				end if
-				exit
 			end if
 		next
 		if ll_count > 0 then
@@ -1635,9 +1630,7 @@
 				destroy uo_prod
 				return false
 			end if
-			return
 		end if
-		return
 	end if
 	this.ids_salesetsheader.reset()
 	this.ids_salesetsdetail.reset()
@@ -2061,7 +2054,6 @@
 		else
 			return ll_retcode
 		end if
-		return
 	end if
 	return this.it_transobject.sqlcode
 
@@ -2378,7 +2370,6 @@
 			messagebox("SaleInv Posting Error", "Posting Error in SaleInvNo.: " + string(ll_saleinvcode) + "~r~nReasons are: " + this.it_transobject.sqlerrtext)
 			return false
 		end if
-		return
 	end if
 	return true
 
@@ -2611,7 +2602,6 @@
 					ll_retcode = 0
 					return ll_retcode
 				end if
-				return
 			end if
 		else
 			ll_retcode = 0
@@ -2741,7 +2731,6 @@
 				messagebox(ls_msgtitle, ls_msgdetail, stopsign!)
 				return 0
 			end if
-			return
 		end if
 	next
 	ll_detailrows = this.id_detail.rowcount()
@@ -2828,7 +2817,6 @@
 				messagebox(ls_msgtitle, ls_msgdetail, stopsign!)
 				return 0
 			end if
-			return
 		end if
 	next
 	setredraw(true)
@@ -2914,7 +2902,6 @@
 				messagebox(ls_msgtitle, ls_msgdetail, stopsign!)
 				return 0
 			end if
-			return
 		end if
 	next
 	setredraw(true)
@@ -3981,7 +3968,6 @@
 			messagebox("Invoice Total Validation", "Sale Invoice Total can not be -ve value.", stopsign!)
 			return -1
 		end if
-		return
 	end if
 	wf_setoutstandingamount()
 	return 0
@@ -4859,7 +4845,6 @@
 			messagebox("Fiscalization Problem", "Unable to Un-Fiscalize Sale Invoice~r~nReasons are:-~r~n" + ls_errtext, stopsign!)
 			return
 		end if
-		return
 	end if
 
 // w_postsale.wf_show_branch_itemstockposition() returns long
@@ -4970,9 +4955,7 @@
 				messagebox("Apply Sales Tax Schedule", "Problem in verification of Customer Sales Tax Exemption Status.~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
 				return -1
 			end if
-			return
 		end if
-		return
 	end if
 	if this.ib_apply_stax_schedule_on_unit_stax and upper(ls_exempt) = "N" then
 		if ai_mode = 1 then
@@ -5036,7 +5019,6 @@
 						messagebox("Apply Sales Tax Schedule", "Problem faced in Applying Sales Tax Schedule on Saving.~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
 						return -1
 					end if
-					return
 				end if
 			next
 			if wf_validate_price_discount_matters(1, al_usercode, lds_local) < 0 then
@@ -5097,7 +5079,6 @@
 						messagebox("Apply Sales Tax Schedule", "Problem faced in Applying Sales Tax Schedule on Saving.~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
 						return -1
 					end if
-					return
 				end if
 			next
 		end if
@@ -5224,7 +5205,6 @@
 				destroy lds_groupdiscinfo
 				return -1
 			end if
-			return
 		end if
 		if f_stringpreferences("AllowSaleBelowRPP") = "N" and round(ld_rpp, 2) > round(ld_itemamount, 2) then
 			messagebox("Price Validation", "Sale Price become less than RPP" + "~r~nNet Sale Price = " + string(round(ld_itemamount, 2), "###,###,##0.00") + "~r~nRPP = " + string(round(ld_rpp, 2), "###,###,##0.00") + "~r~nPlease Change Sale Price or Setting In Preferences", stopsign!)
@@ -5305,7 +5285,6 @@
 			messagebox("Accumulated Sales Discount %age Validation", "Accumulated Sales Discount %age is more than the allowed cautious limit~r~nKindly write reason for exceeding cautious limit in customer reference no. 2~r~n~r~nActual Accumulated Sales Invoice Discount  =" + trim(string(ld_actual_accumdiscperc, "###0.00")) + "%~r~nAllowed Accumulated Sales Invoice Discount Cautious Limit  = " + trim(string(ld_accumdiscperccaution, "###0.00")) + "%", stopsign!, ok!)
 			return -1
 		end if
-		return
 	end if
 	return 0
 
@@ -5428,7 +5407,6 @@
 				destroy lds_groupdiscinfo
 				return -1
 			end if
-			return
 		end if
 		if f_stringpreferences("AllowSaleBelowRPP") = "N" and round(ld_rpp, 2) > round(ld_itemamount, 2) then
 			messagebox("Price Validation", "Sale Price become less than RPP" + "~r~nNet Sale Price = " + string(round(ld_itemamount, 2), "###,###,##0.00") + "~r~nRPP = " + string(round(ld_rpp, 2), "###,###,##0.00") + "~r~nPlease Change Sale Price or Setting In Preferences", stopsign!)
@@ -5509,7 +5487,6 @@
 			messagebox("Accumulated Sales Discount %age Validation", "Accumulated Sales Discount %age is more than the allowed cautious limit~r~nKindly write reason for exceeding cautious limit in customer reference no. 2~r~n~r~nActual Accumulated Sales Invoice Discount  =" + trim(string(ld_actual_accumdiscperc, "###0.00")) + "%~r~nAllowed Accumulated Sales Invoice Discount Cautious Limit  = " + trim(string(ld_accumdiscperccaution, "###0.00")) + "%", stopsign!, ok!)
 			return -1
 		end if
-		return
 	end if
 	return 0
 
@@ -5718,7 +5695,6 @@
 			this.id_detail.setcolumn("SalePrice")
 			return
 		end if
-		return
 	end if
 	ll_found = this.id_detail.find("looseqty + bonusqty <= 0 ", 1, this.id_detail.rowcount())
 	if ll_found > 0 then
@@ -5788,7 +5764,6 @@
 		if lstr_header.i_closemode = -1 then
 			return
 		end if
-		return
 	end if
 	if wf_set_cashaccount() = 0 then
 		return
@@ -5800,7 +5775,6 @@
 		if wf_validate_price_discount_matters(0, gl_usercode, this.id_detail) < 0 then
 			return
 		end if
-		return
 	end if
 	wf_grandtotal()
 	if f_stringpreferences("POSSaleSalesmanWindow") = "Y" then
@@ -5909,7 +5883,6 @@
 			if wf_validate_price_discount_matters(0, ll_salesmancode, this.id_detail) < 0 then
 				return
 			end if
-			return
 		end if
 		ll_mastercurrrow = this.id_master.getrow()
 		ll_footercurrrow = this.id_footer.getrow()
@@ -5923,7 +5896,6 @@
 				messagebox("DataBase Problem", "Transaction is Rollback Due to Problem in generating InvCode")
 				return
 			end if
-			return
 		end if
 		if this.ib_assocsaleinvlist then
 			for ll_counter = 1 to this.id_assocsaleinvlist.rowcount()
@@ -6094,7 +6066,6 @@
 				messagebox("Balance Saving Problem", "Unable to save balance on sales posting.")
 				return
 			end if
-			return
 		end if
 		if this.ib_modify then
 			this.id_master.setitem(ll_mastercurrrow, "modifiedby", ll_salesmancode)
@@ -6110,7 +6081,6 @@
 					messagebox("Sales History!", "Failure in Saving Sales Invoice History!.")
 					return
 				end if
-				return
 			end if
 			if lb_continue then
 				this.ids_invoiceinfo.retrieve(ll_invid)
@@ -6256,7 +6226,6 @@
 			messagebox("Database Error", "Customer information can not be retrieved")
 			return
 		end if
-		return
 	end if
 	this.id_assocsaleinvlist.reset()
 	this.id_footer.reset()
@@ -6691,7 +6660,6 @@
 				return
 			end if
 		end if
-		return
 	end if
 	if lb_listtab then
 		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
@@ -6748,7 +6716,6 @@
 				end if
 				return
 			end if
-			return
 		end if
 		if f_stringpreferences("CustBalanceOnPrintOut") = "Y" and (this.id_master.getitemstring(1, "invoicesize") = "F" or this.id_master.getitemstring(1, "invoicesize") = "H" or this.id_master.getitemstring(1, "invoicesize") = "Q") and li_salecatcode <> 3 and gs_company <> "SA" and this.id_print.getitemstring(1, "Posted") = "N" then
 			ll_custcode = this.id_print.getitemnumber(1, "CustCode")
@@ -7792,7 +7759,6 @@
 			if accepttext() = -1 then
 				return 1
 			end if
-			return
 		end if
 	case "messagecode"
 		if not isnull(getitemnumber(row, "custcode")) then
@@ -8392,7 +8358,6 @@
 				parent.parent.parent.event ue_newitem()
 				return 1
 			end if
-			return
 		end if
 		if ls_qty_protect = "1" and (getcolumnname() = "gcode" or getcolumnname() = "saleprice" or getcolumnname() = "discperc") then
 			parent.parent.parent.event ue_newitem()

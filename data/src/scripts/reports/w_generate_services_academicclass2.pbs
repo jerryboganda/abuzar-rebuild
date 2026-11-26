@@ -109,15 +109,14 @@
 			ld_flatdisc = parent.dw_detail.object.flatdiscount[ll_counter]
 			ld_discperc = parent.dw_detail.object.discperc[ll_counter]
 			if (ld_fee - ld_flatdisc) * (1.0 - ld_discperc * 0.01) < 0.0 then
-				goto L1100
+				messagebox("Student Fee Generation Problem", "Negative Fee Generation Ordered.~r~nClass Name = " + ls_classname + "~r~nService Name = " + ls_servicename + "~r~nStudent Name = " + ls_studentname)
+				lb_ok = false
+				parent.dw_detail.setrow(ll_counter)
+				parent.dw_detail.scrolltorow(ll_counter)
+				parent.dw_detail.setcolumn("FlatDiscount")
+				parent.dw_detail.setfocus()
+				exit
 			end if
-			messagebox("Student Fee Generation Problem", "Negative Fee Generation Ordered.~r~nClass Name = " + ls_classname + "~r~nService Name = " + ls_servicename + "~r~nStudent Name = " + ls_studentname)
-			lb_ok = false
-			parent.dw_detail.setrow(ll_counter)
-			parent.dw_detail.scrolltorow(ll_counter)
-			parent.dw_detail.setcolumn("FlatDiscount")
-			parent.dw_detail.setfocus()
-			exit
 		end if
 	next
 	if lb_ok then
@@ -141,12 +140,11 @@
 					ld_discperc = parent.dw_detail.object.discperc[ll_counter]
 					lt_transobject.generate_svc_for_studentfee_template(ll_classcode, ll_studentcode, ls_remarks, ll_servicecode, ld_fee, ld_flatdisc, ld_discperc, gl_usercode, parent.istr_arg.l_code10, ll_serviceinvcode)
 					if lt_transobject.sqlcode <> 0 then
-						goto L2484
+						messagebox("Student Fee Generation", "Some Problem Occurred while Generating Student Fee.~r~nClass Name = " + ls_classname + "~r~nService Name = " + ls_servicename + "~r~nStudent Name = " + ls_studentname + "~r~n~r~nDetails are:-~r~n" + lt_transobject.sqlerrtext)
+						SQL rollback USING lt_transobject;
+						lb_ok = false
+						exit
 					end if
-					messagebox("Student Fee Generation", "Some Problem Occurred while Generating Student Fee.~r~nClass Name = " + ls_classname + "~r~nService Name = " + ls_servicename + "~r~nStudent Name = " + ls_studentname + "~r~n~r~nDetails are:-~r~n" + lt_transobject.sqlerrtext)
-					SQL rollback USING lt_transobject;
-					lb_ok = false
-					exit
 				end if
 			next
 			if lb_ok then
@@ -162,7 +160,6 @@
 			messagebox("Database Connection Problem", "Some Database Connection Problem Occurred~r~nDetails are:-~r~n" + lt_transobject.sqlerrtext)
 			return ::message.returnvalue
 		end if
-		return
 	end if
 	return ::message.returnvalue
 

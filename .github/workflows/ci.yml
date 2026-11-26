@@ -146,6 +146,19 @@ jobs:
           node web/tools/qr-check.ts qr-out
           python tools/qr_verify.py qr-out
 
+  deploy-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: The production image's web data stage builds (deploy/pharmacy/deploy.sh exports it to /opt/pharmacy/web-data)
+        run: |
+          docker build -q -f deploy/pharmacy/Dockerfile --target data-out -o type=local,dest=out .
+          n=$(find out/classes -name '*.json' | wc -l)
+          echo "class files: $n, DataWindows: $(ls out/dw | wc -l)"
+          test -s out/sql.json && test -s out/names.json && test "$n" -ge 2000 && test -n "$(ls -A out/dw)"
+          test ! -s out/build-classes-errors.txt
+
   desktop:
     runs-on: windows-latest
     timeout-minutes: 50

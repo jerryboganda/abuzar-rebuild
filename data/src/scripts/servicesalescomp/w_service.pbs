@@ -9,7 +9,6 @@
 		if wf_commitform() = false then
 			return
 		end if
-		return
 	end if
 	this.id_print.dataobject = "d_deliveryorder_half"
 	this.id_print.settransobject(this.it_transobject)
@@ -118,7 +117,6 @@
 				if wf_commitform() = false then
 					return
 				end if
-				return
 			end if
 		else
 			triggerevent("ue_save")
@@ -126,7 +124,6 @@
 				return
 			end if
 		end if
-		return
 	end if
 	if lb_listtab then
 		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
@@ -157,7 +154,6 @@
 		if lstr.i_closemode = -1 then
 			return
 		end if
-		return
 	end if
 	if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
 		messagebox("Printer", "Printing Error")
@@ -1577,7 +1573,6 @@
 		else
 			return 1
 		end if
-		return
 	end if
 	if f_stringpreferences("applydoctortemplateonsaving") = "Y" then
 		ll_prefsetting = 1
@@ -1624,7 +1619,6 @@
 			else
 				return 1
 			end if
-			return
 		end if
 	end if
 	setredraw(false)
@@ -2465,7 +2459,6 @@
 		else
 			return 1
 		end if
-		return
 	end if
 	if f_stringpreferences("applycustomertemplateonsaving") = "Y" then
 		ll_prefsetting = 1
@@ -2512,7 +2505,6 @@
 			else
 				return 1
 			end if
-			return
 		end if
 	end if
 	setredraw(false)
@@ -2767,7 +2759,6 @@
 			this.id_master.object.tokenno[1] = ll_tokenno
 			return 0
 		end if
-		return
 	end if
 	SQL SELECT ISNULL ( Max ( LastTokenNo ) + 1 , 0 ) , MAX ( ServiceTemplateCode ) INTO :ll_tokenno, :ll_servicetemplatecode FROM Doctors WHERE Doctors.DoctCode =:al_doctcode USING this.it_transobject;
 	if this.it_transobject.sqlcode = 0 then
@@ -2853,7 +2844,6 @@
 				messagebox(ls_msgtitle, ls_msgdetail, stopsign!)
 				return 0
 			end if
-			return
 		end if
 	next
 	setredraw(true)
@@ -3025,7 +3015,6 @@
 			messagebox("Auto CashReceipt Generation Error", "Reasons are:~r~n" + this.it_transobject.sqlerrtext)
 			return -1
 		end if
-		return
 	end if
 	return 0
 
@@ -3327,7 +3316,6 @@
 				this.id_detail.setcolumn("itemname")
 				return -1
 			end if
-			return
 		end if
 	next
 	return 0
@@ -3509,7 +3497,6 @@
 			messagebox("Locker Occupancy", "Locker Occupancy can not be determined.~r~nReasons are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
 			return -1
 		end if
-		return
 	end if
 	return 0
 
@@ -3540,7 +3527,6 @@
 			messagebox("Locker Occupancy", "Unable to update Locker Occupancy status.~r~nReasons are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
 			return -1
 		end if
-		return
 	end if
 	return 0
 
@@ -3999,7 +3985,6 @@
 					this.id_detail.setrow(ll_counter)
 					return -1
 				end if
-				return
 			end if
 		next
 	end if
@@ -4069,7 +4054,6 @@
 					ll_retflag = -3
 					return ll_retflag
 				end if
-				return
 			end if
 			if ls_autopatientreg = "Y" then
 				ll_custcode = this.id_master.object.custcode[1]
@@ -4610,7 +4594,6 @@
 						end if
 						return
 					end if
-					return
 				end if
 			next
 			ld_cashreceived = this.id_master.getitemnumber(ll_mastercurrrow, "cashreceived")
@@ -4858,7 +4841,6 @@
 			this.tab_retrieve.selecttab(2)
 			return
 		end if
-		return
 	end if
 	if this.id_master.object.code[this.id_master.rowcount()] > 0 then
 		this.ids_cashwin.retrieve(this.id_master.object.code[1], this.is_doctype)
@@ -4982,7 +4964,6 @@
 				if wf_commitform() = false then
 					return
 				end if
-				return
 			end if
 		else
 			triggerevent("ue_save")
@@ -4990,7 +4971,6 @@
 				return
 			end if
 		end if
-		return
 	end if
 	if lb_listtab then
 		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
@@ -5036,7 +5016,6 @@
 			end if
 			return
 		end if
-		return
 	end if
 	if f_stringpreferences("askforcopiesinservice") = "Y" then
 		open(w_printer_copies)
@@ -6119,7 +6098,6 @@
 								messagebox("Group Customer Category Validation", "Current group does not have enough permissions for sale ~r~n" + "against the customer.")
 								return 1
 							end if
-							return
 						end if
 						setitem(row, "motorvehiclecode", ll_motorvehiclecode)
 						parent.parent.parent.id_master.setitem(1, "custcode", ll_custcode)
@@ -6165,7 +6143,6 @@
 							messagebox("Group Customer Category Validation", "Current group does not have enough permissions for sale ~r~n" + "against the customer whose patient is selected in the list box.")
 							return 1
 						end if
-						return
 					end if
 					parent.parent.parent.id_master.setitem(1, "custcode", ll_custcode)
 					parent.parent.parent.id_master.object.custcode.protect = 1
@@ -6181,7 +6158,6 @@
 				messagebox("Motor Vehicle Validation", "Motor Vehicle does not exist or Already Inactive.")
 				return 1
 			end if
-			return
 		end if
 	case "salecatcode"
 		if integer(data) = 1 then
