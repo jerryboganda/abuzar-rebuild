@@ -543,6 +543,16 @@ dialog.presentation-compatibility-dialog[open]:not(.ds-report-criteria) {max-hei
 .modern-window .window-data:not(.window-embedded) > .modern-surface:has(.surface-body-grid) {max-height:clamp(12em,40vh,22em);overflow:auto;}
 /* an option's caption stays on one line ("All" broke into "Al / l" in a narrow column) */
 .modern-window .window-option {white-space:nowrap;}
+/* on a phone a long caption beside its box ("Print Inovoice(s) in Range:") wraps between words instead of widening the dialog */
+@media (max-width:520px) {.modern-window .window-option {white-space:normal;overflow-wrap:normal;}}
+/* on a phone a dialog kept in its source proportions (a date range beside its format and type choices) shrank its fields to 52px and
+   laid them over one another: there it is one column like every other dialog */
+@media (max-width:520px) {
+  .modern-window .window-fields.window-source-layout {aspect-ratio:auto!important;grid-template-columns:minmax(0,1fr);row-gap:12px;}
+  .modern-window .window-fields.window-source-layout > *,.modern-window .window-source-layout .window-field > label {position:static!important;inset:auto!important;width:auto!important;height:auto!important;}
+  .modern-window .window-fields.window-source-layout > .window-data {position:relative!important;height:10em!important;}
+  .modern-window .window-fields.window-source-layout > .window-frame-area {border-width:0 0 1px!important;border-radius:0;}
+}
 /* the chosen line of a list box reads as clearly as the others */
 .modern-window select.ctl option:checked {background:var(--p-accent) linear-gradient(0deg,var(--p-accent),var(--p-accent))!important;color:var(--p-on-accent)!important;font-weight:600;}
 /* a small DataWindow inside a dialog (one drop-down) has a whole, quiet frame instead of the original's two-edged 3-D border */
@@ -615,7 +625,7 @@ dialog .modern-window.pbwin > .client > .window-actions {position:sticky;bottom:
 
 /* ---------- dialogs and response windows (mockup .modal) ---------- */
 .modern-window .window-actions {display:flex!important;flex-direction:row!important;justify-content:flex-end;align-items:center;flex-wrap:wrap;}
-.modern-window .window-actions > button.ctl:not(.window-embedded):not(.window-embedded *):not(.window-source-layout *),.modern-window .window-actions > button {width:auto!important;flex:0 0 auto!important;min-width:96px;height:auto!important;position:static!important;}
+.modern-window .window-actions > button.ctl:not(.window-embedded):not(.window-embedded *):not(.window-source-layout *),.modern-window .window-actions > button {width:auto!important;flex:0 0 auto!important;min-width:min(96px,100%);max-width:100%;white-space:normal;overflow-wrap:anywhere;height:auto!important;position:static!important;}
 .modern-window .window-actions button.ctl.ds-primary:not(:disabled):not(.window-embedded *):not(.window-source-layout *),.modern-window .window-actions button.ds-primary:not(:disabled) {background:linear-gradient(180deg,var(--p-accent-2),var(--p-accent))!important;border-color:var(--p-accent)!important;color:var(--p-on-accent)!important;box-shadow:0 6px 18px var(--p-glow);}
 
 .presentation-compatibility-dialog::backdrop,.presentation-settings::backdrop,.mh-palette::backdrop {background:var(--p-scrim);backdrop-filter:blur(3px);}

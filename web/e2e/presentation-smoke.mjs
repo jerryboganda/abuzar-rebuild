@@ -46,15 +46,30 @@ const visibleContrast = (form) => form.evaluate((root) => {
     return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4
   }).reduce((total, value, index) => total + value * [.2126, .7152, .0722][index], 0)
   return [...root.querySelectorAll('.ttl,legend,.window-option span,.window-caption,.window-field label .ctl,.entry-control.st,.entry-order span,input,textarea,select,button,.surface-label,.surface-suffix,.surface-group-caption,.surface-help,.surface-required,.surface-value,.surface-band dt,.surface-band [role=textbox],th,.surface-status,.strip .t,.presentation-lookup h2,.presentation-lookup p,.lookup-search,.lookup-details summary,.lookup-details dt,.lookup-details dd,.lookup-grid-wrap td>span,.dw-choice-popup [role=option],.presentation-settings h2,.presentation-settings p,.presentation-settings label,.page [data-obj]')]
-    .filter((element) => element.getClientRects().length > 0).map((element) => {
+    // check boxes and radio buttons carry no text (their value is "on"): their labels are measured instead
+    .filter((element) => element.getClientRects().length > 0 && !element.matches('input[type=checkbox],input[type=radio]')).map((element) => {
       let ancestor = element
       let background = getComputedStyle(ancestor).backgroundColor
-      while (rgba(background)[3] === 0 && ancestor.parentElement) {
+      // a gradient background (primary buttons) paints over the background colour: measure against its colour stops
+      const gradientStops = (node) => {
+        const image = getComputedStyle(node).backgroundImage
+        return image && image.includes('gradient(') ? (image.match(/rgba?\([^)]*\)/g) || []).filter((stop) => (rgba(stop)[3] ?? 1) === 1) : []
+      }
+      let stops = gradientStops(ancestor)
+      while (!stops.length && rgba(background)[3] === 0 && ancestor.parentElement) {
         ancestor = ancestor.parentElement
         background = getComputedStyle(ancestor).backgroundColor
+        stops = gradientStops(ancestor)
       }
-      const foreground = luminance(getComputedStyle(element).color), back = luminance(background)
-      const ratio = (Math.max(foreground, back) + .05) / (Math.min(foreground, back) + .05)
+      const foreground = luminance(getComputedStyle(element).color)
+      const contrastWith = (color) => {
+        const back = luminance(color)
+        return (Math.max(foreground, back) + .05) / (Math.min(foreground, back) + .05)
+      }
+      const backgrounds = stops.length ? stops : [background]
+      const ratios = backgrounds.map(contrastWith)
+      const ratio = Math.min(...ratios)
+      background = backgrounds[ratios.indexOf(ratio)]
       // the weakest element, so a failure names what to fix
       if (!window.__lowestContrast || ratio < window.__lowestContrast.ratio) {
         window.__lowestContrast = { ratio, element: `${element.tagName.toLowerCase()}.${[...element.classList].join('.')}`,
@@ -384,12 +399,30 @@ async function captureDerivedModalWindows(page, output, names = representativeMo
         return root.scrollWidth <= root.clientWidth + 1 && bounds.left >= 0 && bounds.right <= innerWidth + .5 &&
           bounds.top >= 0 && bounds.bottom <= innerHeight + .5
       }), `${name}/${width}: generated dialog reflows inside the viewport`)
+      // the window's open script (its settings read answered) and the appearance above re-lay the dialog out after it opens: wait
+      // until its content size holds for a few frames, so a field is not moved after its focus scrolled it into view
+      await form.evaluate((root) => new Promise((done) => {
+        const client = root.querySelector('.client') ?? root
+        let last = '', stable = 0, frames = 0
+        const tick = () => {
+          const size = `${client.scrollWidth}x${client.scrollHeight}/${client.clientWidth}x${client.clientHeight}`
+          stable = size === last ? stable + 1 : 0; last = size
+          if (stable >= 5 || ++frames > 120) done(); else requestAnimationFrame(tick)
+        }
+        requestAnimationFrame(tick)
+      }))
+      // the dialog (or its open script, once its settings read is answered) focused a field before the appearance above was applied:
+      // focusing an already focused field does not scroll, so each control is reached from no focus, as a user tabbing in would
       for (const control of await form.locator('input:visible:not(:disabled),select:visible:not(:disabled),button:visible:not(:disabled),.surface-value:visible').all()) {
+        await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur() })
         await control.focus()
-        expect(await control.evaluate((element) => {
+        const revealed = await control.evaluate((element) => {
           const bounds = element.getBoundingClientRect()
-          return bounds.left >= 0 && bounds.right <= innerWidth + 1 && bounds.top >= 0 && bounds.bottom <= innerHeight + 1
-        }), `${name}/${width}: keyboard focus reveals fields and actions`)
+          return { ok: bounds.left >= 0 && bounds.right <= innerWidth + 1 && bounds.top >= 0 && bounds.bottom <= innerHeight + 1,
+            control: `${element.tagName.toLowerCase()}#${element.id}.${[...element.classList].join('.')}`,
+            bounds: [bounds.left, bounds.top, bounds.right, bounds.bottom].map(Math.round).join(','), viewport: `${innerWidth}x${innerHeight}` }
+        })
+        expect(revealed.ok, `${name}/${width}: keyboard focus reveals fields and actions (${revealed.control} at ${revealed.bounds} in ${revealed.viewport})`)
       }
       const contrast = await visibleContrast(form)
       const minimumContrast = contrast.length ? Math.min(...contrast) : 21
@@ -1640,8 +1673,9 @@ try {
   await page.goto(origin + '/presentation.html')
   await page.waitForFunction(() => window.presentationFixtureReady)
   // Accessibility of the generated Modern dialogs on its own (CI runs it as a separate step so a failure elsewhere cannot hide it).
+  // Window names after the flag (argv[5..]) narrow it to those dialogs, a development aid.
   if (process.argv[4] === '--accessibility-only') {
-    const names = representativeModalWindows()
+    const names = process.argv.length > 5 ? process.argv.slice(5) : representativeModalWindows()
     await page.evaluate(async (names) => { window.derivedFilter = names; await window.runDerivedChecks() }, names)
     const failures = []
     try { await captureDerivedModalWindows(page, output, names, failures) } catch (error) { failures.push(String(error?.message ?? error)) }
